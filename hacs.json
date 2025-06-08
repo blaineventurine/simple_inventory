@@ -1,0 +1,11 @@
+{
+  "codeowners": ["@blaineventurine"],
+  "content_in_root": false,
+  "country": ["US", "CA", "GB"],
+  "documentation": "https://github.com/blaineventurine/simple_inventory",
+  "domain": "simple_inventory",
+  "issue_tracker": "https://github.com/blaineventurine/simple_inventory/issues",
+  "name": "Simple Inventory",
+  "render_readme": true,
+  "version": "0.1.0"
+}

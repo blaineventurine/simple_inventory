@@ -1,0 +1,175 @@
+add_item:
+  description: Add an item to an inventory
+  fields:
+    inventory_id:
+      description: ID of the inventory to add to
+      example: 'kitchen_freezer'
+      required: true
+    name:
+      description: Name of the item
+      example: 'Frozen Pizza'
+      required: true
+    quantity:
+      description: Quantity of the item
+      example: 2
+      required: false
+      default: 1
+    unit:
+      description: Unit of measurement
+      example: 'boxes'
+      required: false
+      default: ''
+    category:
+      description: Category of the item
+      example: 'Prepared Foods'
+      required: false
+      default: ''
+    expiry_date:
+      description: Expiration date
+      example: '2025-12-31'
+      required: false
+      default: ''
+    auto_add_enabled:
+      description: Enable automatic adding to todo list
+      example: true
+      required: false
+      default: false
+    threshold:
+      description: Quantity threshold for auto-adding
+      example: 1
+      required: false
+      default: 0
+    todo_list:
+      description: Todo list entity to add to
+      example: 'todo.grocery_list'
+      required: false
+      default: ''
+
+remove_item:
+  description: Remove an item from an inventory
+  fields:
+    inventory_id:
+      description: ID of the inventory to remove from
+      example: 'kitchen_freezer'
+      required: true
+    name:
+      description: Name of the item to remove
+      example: 'Frozen Pizza'
+      required: true
+
+increment_item:
+  description: Increment the quantity of an item
+  fields:
+    inventory_id:
+      description: ID of the inventory
+      example: 'kitchen_freezer'
+      required: true
+    name:
+      description: Name of the item
+      example: 'Frozen Pizza'
+      required: true
+    amount:
+      description: Amount to increment by
+      example: 1
+      required: false
+      default: 1
+
+decrement_item:
+  description: Decrement the quantity of an item
+  fields:
+    inventory_id:
+      description: ID of the inventory
+      example: 'kitchen_freezer'
+      required: true
+    name:
+      description: Name of the item
+      example: 'Frozen Pizza'
+      required: true
+    amount:
+      description: Amount to decrement by
+      example: 1
+      required: false
+      default: 1
+
+update_item_settings:
+  description: Update auto-add settings for an inventory item
+  fields:
+    inventory_id:
+      description: ID of the inventory
+      example: 'kitchen_freezer'
+      required: true
+    name:
+      description: Name of the item
+      example: 'Frozen Pizza'
+      required: true
+    auto_add_enabled:
+      description: Enable automatic adding to todo list
+      example: true
+      required: false
+      default: false
+    threshold:
+      description: Quantity threshold for auto-adding
+      example: 1
+      required: false
+      default: 0
+    todo_list:
+      description: Todo list entity to add to
+      example: 'todo.grocery_list'
+      required: false
+
+update_item:
+  description: Update an existing inventory item
+  fields:
+    inventory_id:
+      description: ID of the inventory
+      example: 'kitchen_freezer'
+      required: true
+    old_name:
+      description: Current name of the item
+      example: 'Old Item Name'
+      required: true
+    name:
+      description: New name of the item
+      example: 'New Item Name'
+      required: true
+    quantity:
+      description: New quantity
+      example: 5
+      required: false
+    unit:
+      description: Unit of measurement
+      example: 'boxes'
+      required: false
+    category:
+      description: Category
+      example: 'Frozen Foods'
+      required: false
+    expiry_date:
+      description: Expiration date
+      example: '2025-12-31'
+      required: false
+    auto_add_enabled:
+      description: Enable auto-add to todo list
+      example: true
+      required: false
+    threshold:
+      description: Threshold for auto-add
+      example: 1
+      required: false
+    todo_list:
+      description: Todo list entity
+      example: 'todo.grocery_list'
+      required: false
+
+set_expiry_threshold:
+  description: Set the threshold for expiry notifications
+  fields:
+    threshold_days:
+      description: Number of days in advance to warn about expiring items
+      example: 7
+      required: true
+      selector:
+        number:
+          min: 1
+          max: 30
+          unit_of_measurement: 'days'
