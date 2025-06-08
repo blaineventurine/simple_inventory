@@ -1,4 +1,6 @@
 {
+  "domain": "simple_inventory",
+  "name": "Simple Inventory",
   "codeowners": [
     "@blaineventurine"
   ],
@@ -8,10 +10,8 @@
     "lovelace"
   ],
   "documentation": "https://github.com/blaineventurine/simple_inventory",
-  "domain": "simple_inventory",
   "iot_class": "local_polling",
   "issue_tracker": "https://github.com/blaineventurine/simple_inventory/issues",
-  "name": "Simple Inventory",
   "requirements": [],
   "version": "0.1.0"
 }
