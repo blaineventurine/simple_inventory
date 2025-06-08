@@ -5,9 +5,6 @@
     "CA",
     "GB"
   ],
-  "documentation": "https://github.com/blaineventurine/simple_inventory",
-  "domain": "simple_inventory",
   "name": "Simple Inventory",
-  "render_readme": true,
-  "version": "0.1.0"
+  "render_readme": true
 }
