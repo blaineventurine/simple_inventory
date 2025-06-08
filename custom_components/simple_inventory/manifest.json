@@ -10,6 +10,7 @@
     "lovelace"
   ],
   "documentation": "https://github.com/blaineventurine/simple_inventory",
+  "integration_type": "device",
   "iot_class": "local_polling",
   "issue_tracker": "https://github.com/blaineventurine/simple_inventory/issues",
   "requirements": [],
