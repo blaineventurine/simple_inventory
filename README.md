@@ -1,15 +1,31 @@
-Add custom card, use:
+# Simple Inventory Integration
 
-```yaml
-type: custom:simple-inventory-card
-entity: sensor.simple_inventory
-```
+A Home Assistant integration for managing household inventories.
 
-May need to edit dashboard -> settings -> add this as a resource:
+## Installation
 
-```yaml
-/local/community/simple-inventory-card/simple-inventory-card.js
-```
+### Via HACS (Recommended)
+
+1. Add this repository to HACS
+2. Install "Simple Inventory"
+3. Install the companion card: [Simple Inventory Card](https://github.com/blaineventurine/simple-inventory-card)
+4. Restart Home Assistant
+
+### Manual Installation
+
+1. Copy `custom_components/simple_inventory/` to your Home Assistant `custom_components/` directory
+2. Restart Home Assistant
+
+## Frontend Card
+
+This integration works best with the companion card:
+**[Simple Inventory Card](https://github.com/blaineventurine/simple-inventory-card)**
+
+## Configuration
+
+Add via Home Assistant UI: Configuration → Integrations → Add Integration → Simple Inventory
+
+## Sample Automation
 
 Sample automation for notifying about expiration dates coming soon:
 
@@ -44,30 +60,3 @@ automation:
               - action: "view_inventory"
                 title: "View Inventory"
 ```
-
-# Simple Inventory Integration
-
-A Home Assistant integration for managing household inventories.
-
-## Installation
-
-### Via HACS (Recommended)
-
-1. Add this repository to HACS
-2. Install "Simple Inventory"
-3. Install the companion card: [Simple Inventory Card](https://github.com/blaineventurine/simple-inventory-card)
-4. Restart Home Assistant
-
-### Manual Installation
-
-1. Copy `custom_components/simple_inventory/` to your Home Assistant `custom_components/` directory
-2. Restart Home Assistant
-
-## Frontend Card
-
-This integration works best with the companion card:
-**[Simple Inventory Card](https://github.com/blaineventurine/simple-inventory-card)**
-
-## Configuration
-
-Add via Home Assistant UI: Configuration → Integrations → Add Integration → Simple Inventory
