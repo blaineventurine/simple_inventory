@@ -9,8 +9,8 @@
   ],
   "documentation": "https://github.com/blaineventurine/simple_inventory",
   "domain": "simple_inventory",
-  "issue_tracker": "https://github.com/blaineventurine/simple_inventory/issues",
   "iot_class": "local_polling",
+  "issue_tracker": "https://github.com/blaineventurine/simple_inventory/issues",
   "name": "Simple Inventory",
   "requirements": [],
   "version": "0.1.0"
