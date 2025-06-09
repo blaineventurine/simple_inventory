@@ -44,3 +44,50 @@ strict_equality = true
 [[tool.mypy.overrides]]
 module = ["homeassistant.*", "voluptuous.*"]
 ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = [
+  "-v",
+  "--tb=short",
+  "--cov=custom_components.simple_inventory",
+  "--cov-report=term-missing",
+  "--cov-report=html:htmlcov",
+  "--cov-report=xml",
+  "--cov-fail-under=80",
+  "--strict-markers",
+  "--strict-config",
+]
+asyncio_mode = "auto"
+markers = [
+  "asyncio: marks tests as async",
+  "slow: marks tests as slow running",
+  "integration: marks tests as integration tests",
+]
+filterwarnings = [
+  "ignore::DeprecationWarning",
+  "ignore::PendingDeprecationWarning",
+]
+
+[tool.coverage.run]
+source = ["custom_components/simple_inventory"]
+omit = ["*/tests/*", "*/__pycache__/*", "*/venv/*", "*/env/*", ".tox/*"]
+
+[tool.coverage.report]
+exclude_lines = [
+  "pragma: no cover",
+  "def __repr__",
+  "if self.debug:",
+  "if settings.DEBUG",
+  "raise AssertionError",
+  "raise NotImplementedError",
+  "if 0:",
+  "if __name__ == .__main__.:",
+  "class .*\\bProtocol\\):",
+  "@(abc\\.)?abstractmethod",
+]
+show_missing = true
+skip_covered = false
+
+[tool.coverage.html]
+directory = "htmlcov"

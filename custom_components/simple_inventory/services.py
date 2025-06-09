@@ -83,7 +83,6 @@ class ServiceHandler:
         amount = call.data.get("amount", 1)
 
         if self.coordinator.decrement_item(inventory_id, name, amount):
-            # Check if we should auto-add to todo list
             item_data = self.coordinator.get_item(inventory_id, name)
             if item_data:
                 await self.todo_manager.check_and_add_item(name, item_data)
@@ -130,14 +129,12 @@ class ServiceHandler:
         if "quantity" in data:
             update_data["quantity"] = data["quantity"]
 
-        # Handle other optional fields
         optional_fields = ["unit", "category", "expiry_date",
                            "auto_add_enabled", "threshold", "todo_list"]
         for field in optional_fields:
             if field in data:
                 update_data[field] = data[field]
 
-        # Update the item
         if self.coordinator.update_item(inventory_id, old_name, new_name, **update_data):
             await self.coordinator.async_save_data(inventory_id)
             _LOGGER.info(f"Updated item: {
@@ -147,7 +144,6 @@ class ServiceHandler:
                           old_name} in inventory: {inventory_id}")
 
 
-# Service schemas
 ITEM_SCHEMA = vol.Schema({
     vol.Required("inventory_id"): cv.string,
     vol.Required("name"): cv.string,

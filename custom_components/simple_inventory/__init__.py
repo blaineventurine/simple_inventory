@@ -30,7 +30,6 @@ PLATFORMS = ["sensor"]
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up Simple Inventory from a config entry."""
 
-    # Initialize coordinator and todo manager if they don't exist
     if DOMAIN not in hass.data:
         hass.data[DOMAIN] = {}
 
@@ -65,22 +64,18 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             DOMAIN, SERVICE_UPDATE_ITEM_SETTINGS, service_handler.async_update_item_settings, schema=UPDATE_SETTINGS_SCHEMA
         )
 
-        # Store coordinator and todo manager
         hass.data[DOMAIN]["coordinator"] = coordinator
         hass.data[DOMAIN]["todo_manager"] = todo_manager
     else:
-        # Reuse existing coordinator
         coordinator = hass.data[DOMAIN]["coordinator"]
         todo_manager = hass.data[DOMAIN]["todo_manager"]
 
-    # Store entry_id for this inventory
     hass.data[DOMAIN][entry.entry_id] = {
         "coordinator": coordinator,
         "todo_manager": todo_manager,
         "config": entry.data
     }
 
-    # Forward the setup to the sensor platform
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
 
     return True
@@ -91,25 +86,20 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     unload_ok = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
 
     if unload_ok:
-        # Remove this entry from the data
         hass.data[DOMAIN].pop(entry.entry_id)
 
-        # If no more entries, remove services and clear data
         remaining_entries = [
             entry_id for entry_id in hass.data[DOMAIN]
             if entry_id not in ["coordinator", "todo_manager"]
         ]
 
         if not remaining_entries:
-            # Remove services
             hass.services.async_remove(DOMAIN, SERVICE_ADD_ITEM)
             hass.services.async_remove(DOMAIN, SERVICE_REMOVE_ITEM)
             hass.services.async_remove(DOMAIN, SERVICE_INCREMENT_ITEM)
             hass.services.async_remove(DOMAIN, SERVICE_DECREMENT_ITEM)
             hass.services.async_remove(DOMAIN, SERVICE_UPDATE_ITEM_SETTINGS)
             hass.services.async_remove(DOMAIN, "update_item")
-
-            # Clear data
             hass.data[DOMAIN].clear()
             hass.data.pop(DOMAIN)
 

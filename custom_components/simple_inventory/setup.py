@@ -6,8 +6,6 @@ setup(
     packages=find_packages(),
     include_package_data=True,
     package_data={
-        "custom_components.simple_inventory": [
-            "frontend/*.js"
-        ]
+        "custom_components.simple_inventory": []
     }
 )
