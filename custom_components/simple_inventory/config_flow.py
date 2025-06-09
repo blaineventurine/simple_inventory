@@ -1,10 +1,9 @@
 """Config flow for Simple Inventory integration."""
 import logging
 import voluptuous as vol
-from typing import Any, Dict
 
 from homeassistant import config_entries
-from homeassistant.core import HomeAssistant, callback
+from homeassistant.core import callback
 from homeassistant.data_entry_flow import FlowResult
 import homeassistant.helpers.config_validation as cv
 
@@ -12,25 +11,34 @@ from .const import DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
 
-# Icon suggestions for common inventory types
 ICON_SUGGESTIONS = {
+    "bath": "mdi:shower",  # Alternative
+    "bathroom": "mdi:shower",
+    "book": "mdi:book-open-page-variant",  # Singular form
+    "books": "mdi:book-open-page-variant",
+    "cleaning": "mdi:spray-bottle",
+    "clothes": "mdi:tshirt-crew",
+    "clothing": "mdi:tshirt-crew",  # Alternative
+    "craft": "mdi:palette",
+    "crafts": "mdi:palette",  # Plural form
+    "default": "mdi:package-variant",
+    "electronic": "mdi:memory",  # Singular form
+    "electronics": "mdi:memory",
     "freezer": "mdi:snowflake",
     "fridge": "mdi:fridge",
-    "pantry": "mdi:food",
-    "cleaning": "mdi:spray-bottle",
-    "tools": "mdi:hammer-wrench",
+    "garage": "mdi:garage",
+    "garden": "mdi:flower",
+    "gardening": "mdi:flower",  # Alternative
+    "laundry": "mdi:washing-machine",
+    "medication": "mdi:pill",  # Alternative word
     "medicine": "mdi:pill",
     "office": "mdi:briefcase",
-    "garage": "mdi:garage",
-    "bathroom": "mdi:shower",
-    "laundry": "mdi:washing-machine",
-    "garden": "mdi:flower",
+    "pantry": "mdi:food",
     "pet": "mdi:paw",
-    "craft": "mdi:palette",
-    "electronics": "mdi:memory",
-    "books": "mdi:book-open-page-variant",
-    "clothes": "mdi:tshirt-crew",
-    "default": "mdi:package-variant"
+    "pets": "mdi:paw",  # Plural form
+    "pills": "mdi:pill",  # Plural form
+    "tool": "mdi:hammer-wrench",  # Add singular form explicitly
+    "tools": "mdi:hammer-wrench",
 }
 
 
@@ -93,12 +101,37 @@ class SimpleInventoryConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         """Suggest an icon based on the inventory name."""
         name_lower = name.lower()
 
-        # Check for keywords in the name
         for keyword, icon in ICON_SUGGESTIONS.items():
             if keyword in name_lower:
                 return icon
 
-        # Default icon
+        for keyword, icon in ICON_SUGGESTIONS.items():
+            # These end in 's' but aren't simple plurals
+            if keyword in ['electronics', 'clothes']:
+                continue
+
+            if keyword.endswith('s') and len(keyword) > 1:
+                singular = keyword[:-1]
+                if singular in name_lower:
+                    return icon
+
+            elif not keyword.endswith('s'):
+                plural = keyword + 's'
+                if plural in name_lower:
+                    return icon
+
+        irregular_plurals = {
+            'child': 'children',
+            'children': 'child',
+            'person': 'people',
+            'people': 'person',
+        }
+
+        for keyword, icon in ICON_SUGGESTIONS.items():
+            if keyword in irregular_plurals:
+                if irregular_plurals[keyword] in name_lower:
+                    return icon
+
         return ICON_SUGGESTIONS["default"]
 
     async def async_step_manage_inventories(self, user_input=None) -> FlowResult:
