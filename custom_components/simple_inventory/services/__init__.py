@@ -51,10 +51,6 @@ class ServiceHandler:
         """Update item auto-add settings."""
         await self.settings_service.async_update_item_settings(call)
 
-    async def async_set_expiry_threshold(self, call: ServiceCall):
-        """Set the expiry notification threshold."""
-        await self.settings_service.async_set_expiry_threshold(call)
-
 
 # Export the classes
 __all__ = ["ServiceHandler", "InventoryService",

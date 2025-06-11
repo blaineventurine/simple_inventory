@@ -43,9 +43,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
         # Register services
         hass.services.async_register(
-            DOMAIN, "set_expiry_threshold", service_handler.async_set_expiry_threshold, schema=SET_EXPIRY_THRESHOLD_SCHEMA
-        )
-        hass.services.async_register(
             DOMAIN, "update_item", service_handler.async_update_item, schema=UPDATE_ITEM_SCHEMA
         )
         hass.services.async_register(

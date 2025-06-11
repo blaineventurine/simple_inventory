@@ -251,15 +251,10 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
         if user_input is not None:
             new_data = {**self.config_entry.data}
             new_data.update(user_input)
-            new_options = {**self.config_entry.options}
-
-            if "expiry_threshold" in user_input:
-                new_options["expiry_threshold"] = user_input["expiry_threshold"]
 
             self.hass.config_entries.async_update_entry(
                 self.config_entry,
                 data=new_data,
-                options=new_options,
                 title=user_input.get("name", self.config_entry.title)
             )
 
@@ -269,27 +264,17 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
             step_id="init",
             data_schema=vol.Schema({
                 vol.Required(
-                    "name",
+                    "Name",
                     default=self.config_entry.data.get("name", "")
                 ): cv.string,
                 vol.Optional(
-                    "icon",
+                    "Icon",
                     default=self.config_entry.data.get(
                         "icon", "mdi:package-variant")
                 ): cv.string,
                 vol.Optional(
-                    "description",
+                    "Description",
                     default=self.config_entry.data.get("description", "")
                 ): cv.string,
-                vol.Optional(
-                    "expiry_threshold",
-                    default=self.config_entry.options.get(
-                        "expiry_threshold", 7)
-                ): vol.All(vol.Coerce(int), vol.Range(min=1, max=30))
             }),
-            description_placeholders={
-                "current_name": self.config_entry.title,
-                "icon_examples": "Examples: mdi:snowflake, mdi:fridge, mdi:food, mdi:hammer-wrench",
-                "threshold_help": "Number of days in advance to warn about expiring items"
-            }
         )

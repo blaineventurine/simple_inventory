@@ -26,40 +26,6 @@ class SettingsService(BaseServiceHandler):
             _LOGGER.error(f"Failed to update settings for item {
                           name} in inventory {inventory_id}: {e}")
 
-    async def async_set_expiry_threshold(self, call: ServiceCall):
-        """Set the expiry notification threshold."""
-        threshold_days = call.data["threshold_days"]
-
-        try:
-            # Find the first config entry to store the global threshold
-            config_entries = self.hass.config_entries.async_entries(DOMAIN)
-            if not config_entries:
-                _LOGGER.error("No Simple Inventory config entries found")
-                return
-
-            # Use the first config entry to store the global threshold
-            primary_entry = config_entries[0]
-            old_threshold = primary_entry.options.get("expiry_threshold", 7)
-
-            # Update the config entry options
-            new_options = {**primary_entry.options,
-                           "expiry_threshold": threshold_days}
-
-            await self.hass.config_entries.async_update_entry(
-                primary_entry,
-                options=new_options
-            )
-
-            await self._update_expiry_sensor_threshold(threshold_days)
-
-            _LOGGER.info(f"Expiry threshold updated from {
-                         old_threshold} to {threshold_days} days")
-
-        except Exception as e:
-            _LOGGER.error(f"Failed to set expiry threshold to {
-                          threshold_days} days: {e}")
-            raise
-
     async def _update_expiry_sensor_threshold(self, threshold_days: int):
         """Update the expiry sensor threshold and refresh its data."""
         expiry_sensor_entity_id = None

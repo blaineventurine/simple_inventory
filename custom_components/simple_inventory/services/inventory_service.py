@@ -54,12 +54,8 @@ class InventoryService(BaseServiceHandler):
         # Prepare update data (only include fields that were provided)
         update_data = {}
 
-        # Handle quantity specially - set it to the exact value provided
-        if "quantity" in data:
-            update_data["quantity"] = data["quantity"]
-
-        # Handle optional fields
-        optional_fields = ["unit", "category", "expiry_date",
+        # Handle all optional fields including expiry_date and threshold
+        optional_fields = ["quantity", "unit", "category", "expiry_date",
                            "auto_add_enabled", "threshold", "todo_list"]
         for field in optional_fields:
             if field in data:

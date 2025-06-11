@@ -15,7 +15,6 @@ class ExpiryNotificationSensor(SensorEntity):
         """Initialize the sensor."""
         self.hass = hass
         self.coordinator = coordinator
-        # Use the threshold from coordinator if not explicitly provided
         self._days_threshold = days_threshold if days_threshold is not None else coordinator.expiry_threshold_days()
         self._attr_name = "Items Expiring Soon"
         self._attr_unique_id = "simple_inventory_expiring_items"
@@ -90,6 +89,9 @@ class ExpiryNotificationSensor(SensorEntity):
                             expiry_date_str, "%Y-%m-%d").date()
                         days_left = (expiry_date - today).days
 
+                        # Use per-item threshold, fallback to default of 7 days
+                        item_threshold = item_data.get("threshold", 7)
+
                         item_info = {
                             "name": item_name,
                             "inventory": inventory_name,
@@ -98,18 +100,18 @@ class ExpiryNotificationSensor(SensorEntity):
                             "days_left": days_left,
                             "quantity": item_data.get("quantity", 0),
                             "unit": item_data.get("unit", ""),
-                            "category": item_data.get("category", "")
+                            "category": item_data.get("category", ""),
+                            "threshold": item_threshold
                         }
 
                         if days_left < 0:
                             expired_items.append(item_info)
-                        elif days_left <= self._days_threshold:
+                        elif days_left <= item_threshold:
                             expiring_items.append(item_info)
 
                     except ValueError:
                         _LOGGER.warning(f"Invalid date format for item {
                                         item_name}: {expiry_date_str}")
-                        pass
 
         expiring_items.sort(key=lambda x: x["days_left"])
         expired_items.sort(key=lambda x: x["days_left"])
@@ -120,17 +122,17 @@ class ExpiryNotificationSensor(SensorEntity):
         self._attr_extra_state_attributes = {
             "expiring_items": expiring_items,
             "expired_items": expired_items,
-            "threshold_days": self._days_threshold,
             "total_expiring": len(expiring_items),
             "total_expired": len(expired_items),
             "next_expiring": expiring_items[0] if expiring_items else None,
             "oldest_expired": expired_items[0] if expired_items else None,
         }
 
+        # Update icon logic (same as before)
         if expired_items:
             self._attr_icon = "mdi:calendar-remove"
         elif expiring_items:
-            most_urgent_days = expiring_items[0]["days_left"] if expiring_items else self._days_threshold
+            most_urgent_days = expiring_items[0]["days_left"] if expiring_items else 7
             if most_urgent_days <= 1:
                 self._attr_icon = "mdi:calendar-alert"
             elif most_urgent_days <= 3:
