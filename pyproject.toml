@@ -40,11 +40,6 @@ warn_no_return = true
 warn_unreachable = true
 strict_equality = true
 
-# Ignore missing imports for Home Assistant
-[[tool.mypy.overrides]]
-module = ["homeassistant.*", "voluptuous.*"]
-ignore_missing_imports = true
-
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = [
@@ -91,3 +86,9 @@ skip_covered = false
 
 [tool.coverage.html]
 directory = "htmlcov"
+
+[tool.mutmut]
+paths_to_mutate = ["custom_components/simple_inventory/"]
+tests_dir = ["tests/"]
+runner = "python -m pytest tests/ -x --tb=no -q"
+backup = false

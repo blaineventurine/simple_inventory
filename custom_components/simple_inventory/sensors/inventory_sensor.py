@@ -2,7 +2,7 @@
 import logging
 from homeassistant.components.sensor import SensorEntity
 from homeassistant.core import HomeAssistant, callback
-from ..const import DOMAIN, INVENTORY_ITEMS
+from ..const import DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
 

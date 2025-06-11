@@ -170,3 +170,5 @@ yarn-debug.log*
 coverage
 
 update.sh
+
+mutants/
