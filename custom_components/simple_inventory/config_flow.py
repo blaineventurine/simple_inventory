@@ -60,7 +60,6 @@ class SimpleInventoryConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         errors = {}
 
         if user_input is not None:
-            # Check if inventory name already exists
             existing_entries = self._async_current_entries()
             existing_names = [entry.data.get(
                 "name", "").lower() for entry in existing_entries]
@@ -68,9 +67,9 @@ class SimpleInventoryConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             if user_input["name"].lower() in existing_names:
                 errors["name"] = "name_exists"
             else:
-                # Auto-suggest icon based on name if not provided
+                # Auto-suggest icon if none provided
                 suggested_icon = self._suggest_icon(user_input["name"])
-                icon = user_input.get("icon", suggested_icon)
+                icon = user_input.get("icon") or suggested_icon
 
                 return self.async_create_entry(
                     title=user_input["name"],
@@ -81,20 +80,18 @@ class SimpleInventoryConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     }
                 )
 
-        # Show form for creating new inventory
+        name_default = user_input.get("name", "") if user_input else ""
+        icon_default = user_input.get("icon", "") if user_input else ""
+        desc_default = user_input.get("description", "") if user_input else ""
+
         return self.async_show_form(
             step_id="add_inventory",
             data_schema=vol.Schema({
-                vol.Required("name"): cv.string,
-                vol.Optional("icon"): cv.string,
-                vol.Optional("description"): cv.string,
+                vol.Required("name", default=name_default): cv.string,
+                vol.Optional("icon", default=icon_default): cv.string,
+                vol.Optional("description", default=desc_default): cv.string,
             }),
             errors=errors,
-            description_placeholders={
-                "name_examples": "Examples: Kitchen Freezer, Garage Fridge, Pantry, Tool Shed, Medicine Cabinet",
-                "icon_examples": "Examples: mdi:snowflake, mdi:fridge, mdi:food, mdi:hammer-wrench, mdi:pill",
-                "icon_help": "Leave blank for auto-suggestion based on name"
-            }
         )
 
     def _suggest_icon(self, name: str) -> str:
@@ -147,7 +144,6 @@ class SimpleInventoryConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 }
             )
 
-        # Show list of existing inventories with options to configure or delete
         inventory_options = {
             entry.entry_id: f"{
                 entry.title} - {len(self._get_inventory_items(entry.entry_id))} items"
@@ -180,7 +176,6 @@ class SimpleInventoryConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             if action == "delete":
                 return await self.async_step_confirm_delete(entry_id)
             elif action == "configure":
-                # Redirect to options flow
                 return self.async_external_step(step_id="configure", url=f"/config/integrations/configure/{entry_id}")
 
         return self.async_show_form(
@@ -231,7 +226,6 @@ class SimpleInventoryConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
     def _get_inventory_items(self, entry_id: str) -> list:
         """Get items for a specific inventory."""
-        # Access the coordinator data if available
         if DOMAIN in self.hass.data and "coordinator" in self.hass.data[DOMAIN]:
             coordinator = self.hass.data[DOMAIN]["coordinator"]
             items = coordinator.get_all_items(entry_id)
@@ -255,12 +249,10 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
     async def async_step_init(self, user_input=None):
         """Manage the options."""
         if user_input is not None:
-            # Update the config entry data
             new_data = {**self.config_entry.data}
             new_data.update(user_input)
-
-            # Save options separately
             new_options = {**self.config_entry.options}
+
             if "expiry_threshold" in user_input:
                 new_options["expiry_threshold"] = user_input["expiry_threshold"]
 

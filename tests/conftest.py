@@ -10,14 +10,10 @@ from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 from datetime import datetime, timedelta
 
-# Add the project root to Python path
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
-# Import after path setup
 
-
-# Core Home Assistant fixtures
 @pytest.fixture
 def hass():
     """Create a mock Home Assistant instance."""
@@ -29,7 +25,6 @@ def hass():
     hass_mock.bus.async_listen = MagicMock()
     hass_mock.bus.async_fire = MagicMock()
 
-    # Add entity registry mock
     entity_registry = MagicMock()
     entity_registry.entities = {}
     hass_mock.helpers = MagicMock()
@@ -38,12 +33,10 @@ def hass():
         return_value=entity_registry)
     hass_mock.helpers.utcnow = MagicMock(return_value=datetime.now())
 
-    # Add config entries mock
     hass_mock.config_entries = MagicMock()
     hass_mock.config_entries.async_entries = MagicMock(return_value=[])
     hass_mock.config_entries.async_update_entry = AsyncMock()
 
-    # Add states mock methods
     hass_mock.states.async_entity_ids = MagicMock(return_value=[])
     hass_mock.states.get = MagicMock(return_value=None)
     hass_mock.states.async_set = MagicMock()
@@ -51,7 +44,6 @@ def hass():
     return hass_mock
 
 
-# Coordinator fixtures
 @pytest.fixture
 def mock_coordinator():
     """Create a mock coordinator with common methods."""
@@ -79,7 +71,6 @@ def mock_coordinator():
     return coordinator
 
 
-# Service management fixtures
 @pytest.fixture
 def mock_todo_manager():
     """Create a mock todo manager."""
@@ -118,7 +109,6 @@ def settings_service(hass, mock_coordinator):
     return SettingsService(hass, mock_coordinator)
 
 
-# Service call fixtures
 @pytest.fixture
 def basic_service_call():
     """Create a basic service call with inventory_id and name."""
@@ -185,7 +175,6 @@ def threshold_service_call():
     return call
 
 
-# Test data fixtures
 @pytest.fixture
 def sample_todo_items():
     """Sample todo items for testing."""
@@ -255,7 +244,6 @@ def sample_inventory_data():
     }
 
 
-# Config entry fixtures
 @pytest.fixture
 def mock_config_entry():
     """Create a mock config entry."""
@@ -272,7 +260,6 @@ def mock_config_entries(mock_config_entry):
     return [mock_config_entry]
 
 
-# Sensor fixtures
 @pytest.fixture
 def mock_sensor_coordinator(sample_inventory_data):
     """Create a mock coordinator specifically for sensor testing."""
@@ -282,11 +269,7 @@ def mock_sensor_coordinator(sample_inventory_data):
         "kitchen", {}).get("items", {})
     coordinator.last_update_success = True
     coordinator.last_update_time = datetime.now()
-
-    # Add expiry_threshold_days method that returns an integer
     coordinator.expiry_threshold_days.return_value = 7
-
-    # Add async_add_listener method
     coordinator.async_add_listener = MagicMock(return_value=MagicMock())
 
     return coordinator
@@ -319,14 +302,12 @@ def caplog_debug(caplog):
     return caplog
 
 
-# Async test utilities
 @pytest.fixture
 def async_mock():
     """Create a simple AsyncMock for general use."""
     return AsyncMock()
 
 
-# Integration test fixtures
 @pytest.fixture
 def full_service_setup(hass, mock_coordinator, mock_todo_manager):
     """Create a complete service setup for integration testing."""
@@ -343,20 +324,17 @@ def full_service_setup(hass, mock_coordinator, mock_todo_manager):
     }
 
 
-# Domain constant fixture
 @pytest.fixture
 def domain():
     """Return the domain constant."""
     return "simple_inventory"
 
 
-# Error simulation fixtures
 @pytest.fixture
 def coordinator_with_errors(mock_coordinator):
     """Create a coordinator that simulates various error conditions."""
     coordinator = mock_coordinator
 
-    # Add methods to simulate specific errors
     def simulate_save_error():
         coordinator.async_save_data.side_effect = Exception("Save failed")
 
@@ -399,13 +377,9 @@ def mock_expiry_sensor_state():
 def mock_entity_registry_with_expiry_sensor():
     """Create a mock entity registry with expiry sensor."""
     entity_registry = MagicMock()
-
-    # Create mock expiry sensor entity
     expiry_entity = MagicMock()
     expiry_entity.entity_id = "sensor.items_expiring_soon"
     expiry_entity.platform = "simple_inventory"
-
-    # Create mock entities dict
     entity_registry.entities = {
         "expiry_sensor_key": expiry_entity
     }
@@ -416,14 +390,9 @@ def mock_entity_registry_with_expiry_sensor():
 @pytest.fixture
 def hass_with_expiry_sensor(hass, mock_config_entries, mock_expiry_sensor_state, mock_entity_registry_with_expiry_sensor):
     """Enhanced hass fixture with expiry sensor setup."""
-    # Set up config entries
     hass.config_entries.async_entries.return_value = mock_config_entries
-
-    # Set up states to return expiry sensor
     hass.states.async_entity_ids.return_value = ["sensor.items_expiring_soon"]
     hass.states.get.return_value = mock_expiry_sensor_state
-
-    # Set up entity registry
     hass.helpers.entity_registry.async_get.return_value = mock_entity_registry_with_expiry_sensor
 
     return hass
