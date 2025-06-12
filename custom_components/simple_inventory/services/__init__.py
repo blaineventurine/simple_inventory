@@ -6,7 +6,6 @@ from ..coordinator import SimpleInventoryCoordinator
 from ..todo_manager import TodoManager
 from .inventory_service import InventoryService
 from .quantity_service import QuantityService
-from .settings_service import SettingsService
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -19,14 +18,10 @@ class ServiceHandler:
         self.hass = hass
         self.coordinator = coordinator
         self.todo_manager = todo_manager
-
-        # Initialize specialized service handlers
         self.inventory_service = InventoryService(hass, coordinator)
         self.quantity_service = QuantityService(
             hass, coordinator, todo_manager)
-        self.settings_service = SettingsService(hass, coordinator)
 
-    # Delegate methods to specialized services
     async def async_add_item(self, call: ServiceCall):
         """Add an item to the inventory."""
         await self.inventory_service.async_add_item(call)
@@ -47,11 +42,6 @@ class ServiceHandler:
         """Decrement item quantity."""
         await self.quantity_service.async_decrement_item(call)
 
-    async def async_update_item_settings(self, call: ServiceCall):
-        """Update item auto-add settings."""
-        await self.settings_service.async_update_item_settings(call)
-
 
 # Export the classes
-__all__ = ["ServiceHandler", "InventoryService",
-           "QuantityService", "SettingsService"]
+__all__ = ["ServiceHandler", "InventoryService", "QuantityService"]

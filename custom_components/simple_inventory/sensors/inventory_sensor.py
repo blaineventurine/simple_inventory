@@ -24,19 +24,16 @@ class InventorySensor(SensorEntity):
 
     async def async_added_to_hass(self) -> None:
         """Register callbacks."""
-        # Listen for specific inventory updates
         self.async_on_remove(
             self.hass.bus.async_listen(
                 f"{DOMAIN}_updated_{self._entry_id}", self._handle_update)
         )
 
-        # Also listen for general updates
         self.async_on_remove(
             self.hass.bus.async_listen(
                 f"{DOMAIN}_updated", self._handle_update)
         )
 
-        # Add as coordinator listener for direct updates
         self.async_on_remove(
             self.coordinator.async_add_listener(
                 self._handle_coordinator_update)
@@ -55,17 +52,11 @@ class InventorySensor(SensorEntity):
         self.async_write_ha_state()
 
     def _update_data(self):
-        """Update sensor data."""
+        """update sensor data."""
         items = self.coordinator.get_all_items(self._entry_id)
-
-        # Count total items
-        total_count = sum(item["quantity"] for item in items.values())
-        self._attr_native_value = total_count
-
-        # Get inventory statistics
         stats = self.coordinator.get_inventory_statistics(self._entry_id)
+        self._attr_native_value = stats["total_quantity"]
 
-        # Add all items and statistics as attributes
         self._attr_extra_state_attributes = {
             "inventory_id": self._entry_id,
             "items": [{

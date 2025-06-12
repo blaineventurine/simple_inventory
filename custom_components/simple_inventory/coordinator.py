@@ -8,10 +8,11 @@ from homeassistant.helpers.storage import Store
 
 from .const import (
     FIELD_QUANTITY, FIELD_UNIT, FIELD_CATEGORY, FIELD_EXPIRY_DATE,
-    FIELD_AUTO_ADD_ENABLED, FIELD_THRESHOLD, FIELD_TODO_LIST,
-    DEFAULT_QUANTITY, DEFAULT_THRESHOLD, DEFAULT_UNIT, DEFAULT_CATEGORY,
-    DEFAULT_EXPIRY_DATE, DEFAULT_TODO_LIST, DEFAULT_AUTO_ADD_ENABLED,
-    INVENTORY_ITEMS, STORAGE_VERSION, STORAGE_KEY, DOMAIN
+    FIELD_AUTO_ADD_ENABLED, FIELD_TODO_LIST, FIELD_EXPIRY_ALERT_DAYS,
+    FIELD_AUTO_ADD_TO_LIST_QUANTITY, DEFAULT_AUTO_ADD_TO_LIST_QUANTITY,
+    DEFAULT_QUANTITY, DEFAULT_UNIT, DEFAULT_CATEGORY, DEFAULT_EXPIRY_DATE,
+    DEFAULT_TODO_LIST, DEFAULT_AUTO_ADD_ENABLED, INVENTORY_ITEMS,
+    STORAGE_VERSION, STORAGE_KEY, DOMAIN, DEFAULT_EXPIRY_ALERT_DAYS
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -25,51 +26,15 @@ class SimpleInventoryCoordinator:
         self.hass = hass
         self._store = Store(hass, STORAGE_VERSION, STORAGE_KEY)
         self._data = {"inventories": {},
-                      "config": {"expiry_threshold_days": 7}}
+                      "config": {"expiry_alert_days": 7}}
         self._listeners = []
 
     async def async_load_data(self) -> Dict[str, Any]:
         """Load data from storage and handle migrations if needed."""
         data = await self._store.async_load() or {"inventories": {}}
 
-        # Migrate from old format if needed
-        if "items" in data and "inventories" not in data:
-            _LOGGER.info(
-                "Migrating from old single inventory format to multi-inventory format")
-            data = {
-                "inventories": {
-                    "default": {"items": data.get("items", {})}
-                }
-            }
-
-        if "inventories" not in data:
-            data["inventories"] = {}
-
         if "config" not in data:
-            data["config"] = {"expiry_threshold_days": 7}
-        elif "expiry_threshold_days" not in data["config"]:
-            data["config"]["expiry_threshold_days"] = 7
-
-        # Ensure all inventories have required structure
-        for inventory_id, inventory_data in data["inventories"].items():
-            if "items" not in inventory_data:
-                inventory_data["items"] = {}
-
-            # Migrate existing items to include any missing fields
-            for item_name, item_data in inventory_data["items"].items():
-                # Ensure all required fields exist with defaults
-                defaults = {
-                    FIELD_QUANTITY: DEFAULT_QUANTITY,
-                    FIELD_UNIT: DEFAULT_UNIT,
-                    FIELD_CATEGORY: DEFAULT_CATEGORY,
-                    FIELD_EXPIRY_DATE: DEFAULT_EXPIRY_DATE,
-                    FIELD_AUTO_ADD_ENABLED: DEFAULT_AUTO_ADD_ENABLED,
-                    FIELD_THRESHOLD: DEFAULT_THRESHOLD,
-                    FIELD_TODO_LIST: DEFAULT_TODO_LIST,
-                }
-                for key, default_value in defaults.items():
-                    if key not in item_data:
-                        item_data[key] = default_value
+            data["config"] = {}
 
         self._data = data
         return data
@@ -134,24 +99,62 @@ class SimpleInventoryCoordinator:
                 f"Cannot update non-existent item '{old_name}' in inventory '{inventory_id}'")
             return False
 
-        # Get the current item data
+        item_name = new_name if new_name is not None else old_name
         current_item = inventory["items"][old_name].copy()
+        allowed_fields = {
+            FIELD_AUTO_ADD_ENABLED,
+            FIELD_AUTO_ADD_TO_LIST_QUANTITY,
+            FIELD_CATEGORY,
+            FIELD_EXPIRY_ALERT_DAYS,
+            FIELD_EXPIRY_DATE,
+            FIELD_QUANTITY,
+            FIELD_TODO_LIST,
+            FIELD_UNIT,
+        }
 
-        # Update with new values (only update provided fields)
         for key, value in kwargs.items():
-            if key in [FIELD_QUANTITY, FIELD_UNIT, FIELD_CATEGORY, FIELD_EXPIRY_DATE,
-                       FIELD_AUTO_ADD_ENABLED, FIELD_THRESHOLD, FIELD_TODO_LIST]:
-                current_item[key] = value
+            _LOGGER.warning(f"updating '{key}' to '{value}'")
+            if key in allowed_fields:
+                if key == FIELD_QUANTITY:
+                    current_item[key] = max(
+                        0, int(value)) if value is not None else 0
+                elif key == FIELD_AUTO_ADD_TO_LIST_QUANTITY:
+                    current_item[key] = max(
+                        0, int(value)) if value is not None else None
+                elif key == FIELD_EXPIRY_ALERT_DAYS:
+                    current_item[key] = max(
+                        1, int(value)) if value is not None else None
+                elif key == FIELD_AUTO_ADD_ENABLED:
+                    current_item[key] = bool(value)
+                else:
+                    current_item[key] = str(value) if value is not None else ""
 
-        # If name changed, remove old entry and add new one
-        if old_name != new_name:
+        final_auto_add_enabled = current_item.get(
+            FIELD_AUTO_ADD_ENABLED, False)
+        if final_auto_add_enabled:
+            final_auto_add_quantity = current_item.get(
+                FIELD_AUTO_ADD_TO_LIST_QUANTITY)
+            final_todo_list = current_item.get(FIELD_TODO_LIST, "")
+            auto_add_being_enabled = kwargs.get(FIELD_AUTO_ADD_ENABLED) is True
+
+            if auto_add_being_enabled:
+                if final_auto_add_quantity is None or final_auto_add_quantity <= 0:
+                    _LOGGER.error(f"Cannot enable auto-add without valid quantity for item '{
+                                  old_name}' in inventory '{inventory_id}'")
+                    return False
+
+                if not final_todo_list or not final_todo_list.strip():
+                    _LOGGER.error(f"Cannot enable auto-add without todo list for item '{
+                                  old_name}' in inventory '{inventory_id}'")
+                    return False
+
+        if old_name != item_name:
             _LOGGER.info(f"Renaming item '{old_name}' to '{
-                         new_name}' in inventory '{inventory_id}'")
+                         item_name}' in inventory '{inventory_id}'")
             del inventory["items"][old_name]
-            inventory["items"][new_name] = current_item
+            inventory["items"][item_name] = current_item
         else:
-            # Just update the existing entry
-            inventory["items"][old_name] = current_item
+            inventory["items"][item_name] = current_item
 
         return True
 
@@ -171,15 +174,41 @@ class SimpleInventoryCoordinator:
             # Add new item with all fields
             _LOGGER.info(f"Adding new item '{
                          name}' to inventory '{inventory_id}'")
-            inventory[INVENTORY_ITEMS][name] = {
-                FIELD_QUANTITY: max(0, quantity),
-                FIELD_UNIT: kwargs.get(FIELD_UNIT, DEFAULT_UNIT),
-                FIELD_CATEGORY: kwargs.get(FIELD_CATEGORY, DEFAULT_CATEGORY),
-                FIELD_EXPIRY_DATE: kwargs.get(FIELD_EXPIRY_DATE, DEFAULT_EXPIRY_DATE),
+
+            auto_add_quantity = kwargs.get(
+                FIELD_AUTO_ADD_TO_LIST_QUANTITY, DEFAULT_AUTO_ADD_TO_LIST_QUANTITY)
+            if auto_add_quantity is not None:
+                auto_add_quantity = max(0, int(auto_add_quantity))
+
+            expiry_alert_days = kwargs.get(
+                FIELD_EXPIRY_ALERT_DAYS, DEFAULT_EXPIRY_ALERT_DAYS)
+            if expiry_alert_days is not None:
+                expiry_alert_days = max(1, int(expiry_alert_days))
+
+            new_item = {
                 FIELD_AUTO_ADD_ENABLED: kwargs.get(FIELD_AUTO_ADD_ENABLED, DEFAULT_AUTO_ADD_ENABLED),
-                FIELD_THRESHOLD: max(0, kwargs.get(FIELD_THRESHOLD, DEFAULT_THRESHOLD)),
+                FIELD_AUTO_ADD_TO_LIST_QUANTITY: auto_add_quantity,
+                FIELD_CATEGORY: kwargs.get(FIELD_CATEGORY, DEFAULT_CATEGORY),
+                FIELD_EXPIRY_ALERT_DAYS: expiry_alert_days,
+                FIELD_EXPIRY_DATE: kwargs.get(FIELD_EXPIRY_DATE, DEFAULT_EXPIRY_DATE),
+                FIELD_QUANTITY: max(0, quantity),
                 FIELD_TODO_LIST: kwargs.get(FIELD_TODO_LIST, DEFAULT_TODO_LIST),
+                FIELD_UNIT: kwargs.get(FIELD_UNIT, DEFAULT_UNIT),
             }
+
+            if new_item[FIELD_AUTO_ADD_ENABLED]:
+                if new_item[FIELD_AUTO_ADD_TO_LIST_QUANTITY] is None or new_item[FIELD_AUTO_ADD_TO_LIST_QUANTITY] <= 0:
+                    _LOGGER.error(f"Auto-add enabled but no valid quantity specified for new item '{
+                                  name}' in inventory '{inventory_id}'")
+                    return False
+
+                todo_list = new_item[FIELD_TODO_LIST]
+                if not todo_list or not todo_list.strip():
+                    _LOGGER.error(f"Auto-add enabled but no todo list specified for new item '{
+                                  name}' in inventory '{inventory_id}'")
+                    return False
+
+            inventory[INVENTORY_ITEMS][name] = new_item
 
         return True
 
@@ -199,25 +228,6 @@ class SimpleInventoryCoordinator:
 
         _LOGGER.warning(
             f"Cannot remove non-existent item '{name}' from inventory '{inventory_id}'")
-        return False
-
-    def update_item_quantity(self, inventory_id: str, name: str, new_quantity: int) -> bool:
-        """Update item quantity in a specific inventory."""
-        if not name or not name.strip():
-            _LOGGER.warning(
-                f"Cannot update quantity for item with empty name in inventory '{inventory_id}'")
-            return False
-
-        inventory = self.get_inventory(inventory_id)
-        if name in inventory[INVENTORY_ITEMS]:
-            _LOGGER.debug(f"Updating quantity of item '{name}' in inventory '{
-                          inventory_id}' to {max(0, new_quantity)}")
-            inventory[INVENTORY_ITEMS][name][FIELD_QUANTITY] = max(
-                0, new_quantity)
-            return True
-
-        _LOGGER.warning(
-            f"Cannot update quantity for non-existent item '{name}' in inventory '{inventory_id}'")
         return False
 
     def increment_item(self, inventory_id: str, name: str, amount: int = 1) -> bool:
@@ -260,69 +270,9 @@ class SimpleInventoryCoordinator:
             f"Cannot decrement non-existent item '{name}' in inventory '{inventory_id}'")
         return False
 
-    def update_item_settings(self, inventory_id: str, name: str, **kwargs) -> bool:
-        """Update item settings in a specific inventory."""
-        if not name or not name.strip():
-            _LOGGER.warning(
-                f"Cannot update settings for item with empty name in inventory '{inventory_id}'")
-            return False
-
-        inventory = self.get_inventory(inventory_id)
-        if name in inventory[INVENTORY_ITEMS]:
-            item = inventory[INVENTORY_ITEMS][name]
-            updated_fields = []
-
-            # Define allowed fields for settings update
-            allowed_fields = {
-                FIELD_AUTO_ADD_ENABLED, FIELD_THRESHOLD, FIELD_TODO_LIST,
-                FIELD_UNIT, FIELD_CATEGORY, FIELD_EXPIRY_DATE, FIELD_QUANTITY
-            }
-
-            for key, value in kwargs.items():
-                if key in allowed_fields:
-                    old_value = item[key]
-                    if key == FIELD_QUANTITY or key == FIELD_THRESHOLD:
-                        item[key] = max(
-                            0, int(value)) if value is not None else 0
-                    elif key == FIELD_AUTO_ADD_ENABLED:
-                        item[key] = bool(value)
-                    else:
-                        item[key] = str(value) if value is not None else ""
-
-                    if item[key] != old_value:
-                        updated_fields.append(key)
-
-            if updated_fields:
-                _LOGGER.debug(f"Updated settings for item '{name}' in inventory '{
-                              inventory_id}': {', '.join(updated_fields)}")
-
-            return True
-
-        _LOGGER.warning(
-            f"Cannot update settings for non-existent item '{name}' in inventory '{inventory_id}'")
-        return False
-
-    def expiry_threshold_days(self) -> int:
-        """Get the current expiry threshold in days."""
-        return self._data["config"]["expiry_threshold_days"]
-
-    def set_expiry_threshold(self, threshold_days: int) -> None:
-        """Set the expiry threshold in days."""
-        old_threshold = self._data["config"]["expiry_threshold_days"]
-        self._data["config"]["expiry_threshold_days"] = threshold_days
-
-        _LOGGER.info(f"Expiry threshold changed from {
-                     old_threshold} to {threshold_days} days")
-
-        # Notify listeners about threshold change
-        self.hass.bus.async_fire(f"{DOMAIN}_threshold_updated", {
-                                 "new_threshold": threshold_days})
-
     def get_items_expiring_soon(self, inventory_id: Optional[str] = None) -> List[Dict[str, Any]]:
-        """Get items expiring within the threshold period."""
-        threshold_days = self._data["config"]["expiry_threshold_days"]
+        """Get items expiring within their individual threshold periods."""
         current_datetime = datetime.now()
-        threshold_date = current_datetime.date() + timedelta(days=threshold_days)
         expiring_items = []
 
         # If inventory_id is provided, only check that inventory
@@ -337,13 +287,19 @@ class SimpleInventoryCoordinator:
         for inv_id, inventory in inventories_to_check.items():
             for item_name, item_data in inventory.get("items", {}).items():
                 expiry_date_str = item_data.get(FIELD_EXPIRY_DATE, "")
-                if expiry_date_str and expiry_date_str.strip():
+                item_threshold = item_data.get(
+                    FIELD_EXPIRY_ALERT_DAYS, 7)
+                quantity = item_data.get(FIELD_QUANTITY, 0)
+
+                if (expiry_date_str and expiry_date_str.strip() and
+                        item_threshold is not None and
+                        quantity > 0):
                     try:
-                        # Assuming expiry_date is in YYYY-MM-DD format
                         expiry_date = datetime.strptime(
                             expiry_date_str, "%Y-%m-%d").date()
                         days_until_expiry = (
                             expiry_date - current_datetime.date()).days
+                        threshold_date = current_datetime.date() + timedelta(days=item_threshold)
 
                         if expiry_date <= threshold_date:
                             expiring_items.append({
@@ -351,6 +307,7 @@ class SimpleInventoryCoordinator:
                                 "name": item_name,
                                 "expiry_date": expiry_date_str,
                                 "days_until_expiry": days_until_expiry,
+                                "threshold": item_threshold,
                                 **item_data
                             })
                     except ValueError:
@@ -399,7 +356,7 @@ class SimpleInventoryCoordinator:
         below_threshold = []
         for name, item in items.items():
             quantity = item.get(FIELD_QUANTITY, 0)
-            threshold = item.get(FIELD_THRESHOLD, 0)
+            threshold = item.get(FIELD_AUTO_ADD_TO_LIST_QUANTITY, 0)
             if threshold > 0 and quantity <= threshold:
                 below_threshold.append({
                     "name": name,

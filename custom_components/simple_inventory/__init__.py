@@ -5,19 +5,18 @@ from homeassistant.config_entries import ConfigEntry
 from .const import (
     DOMAIN,
     SERVICE_ADD_ITEM,
+    SERVICE_UPDATE_ITEM,
     SERVICE_REMOVE_ITEM,
     SERVICE_INCREMENT_ITEM,
     SERVICE_DECREMENT_ITEM,
-    SERVICE_UPDATE_ITEM_SETTINGS,
 )
 from .coordinator import SimpleInventoryCoordinator
 from .services import ServiceHandler
 from .todo_manager import TodoManager
 from .schemas.service_schemas import (
-    ITEM_SCHEMA,
+    ADD_ITEM_SCHEMA,
     QUANTITY_UPDATE_SCHEMA,
-    UPDATE_SETTINGS_SCHEMA,
-    REMOVE_SCHEMA,
+    REMOVE_ITEM_SCHEMA,
     UPDATE_ITEM_SCHEMA,
 )
 
@@ -42,22 +41,19 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
         # Register services
         hass.services.async_register(
-            DOMAIN, "update_item", service_handler.async_update_item, schema=UPDATE_ITEM_SCHEMA
+            DOMAIN, SERVICE_UPDATE_ITEM, service_handler.async_update_item, schema=UPDATE_ITEM_SCHEMA
         )
         hass.services.async_register(
-            DOMAIN, SERVICE_ADD_ITEM, service_handler.async_add_item, schema=ITEM_SCHEMA
+            DOMAIN, SERVICE_ADD_ITEM, service_handler.async_add_item, schema=ADD_ITEM_SCHEMA
         )
         hass.services.async_register(
-            DOMAIN, SERVICE_REMOVE_ITEM, service_handler.async_remove_item, schema=REMOVE_SCHEMA
+            DOMAIN, SERVICE_REMOVE_ITEM, service_handler.async_remove_item, schema=REMOVE_ITEM_SCHEMA
         )
         hass.services.async_register(
             DOMAIN, SERVICE_INCREMENT_ITEM, service_handler.async_increment_item, schema=QUANTITY_UPDATE_SCHEMA
         )
         hass.services.async_register(
             DOMAIN, SERVICE_DECREMENT_ITEM, service_handler.async_decrement_item, schema=QUANTITY_UPDATE_SCHEMA
-        )
-        hass.services.async_register(
-            DOMAIN, SERVICE_UPDATE_ITEM_SETTINGS, service_handler.async_update_item_settings, schema=UPDATE_SETTINGS_SCHEMA
         )
 
         hass.data[DOMAIN]["coordinator"] = coordinator
@@ -91,11 +87,10 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
         if not remaining_entries:
             hass.services.async_remove(DOMAIN, SERVICE_ADD_ITEM)
-            hass.services.async_remove(DOMAIN, SERVICE_REMOVE_ITEM)
-            hass.services.async_remove(DOMAIN, SERVICE_INCREMENT_ITEM)
             hass.services.async_remove(DOMAIN, SERVICE_DECREMENT_ITEM)
-            hass.services.async_remove(DOMAIN, SERVICE_UPDATE_ITEM_SETTINGS)
-            hass.services.async_remove(DOMAIN, "update_item")
+            hass.services.async_remove(DOMAIN, SERVICE_INCREMENT_ITEM)
+            hass.services.async_remove(DOMAIN, SERVICE_REMOVE_ITEM)
+            hass.services.async_remove(DOMAIN, SERVICE_UPDATE_ITEM)
             hass.data[DOMAIN].clear()
             hass.data.pop(DOMAIN)
 

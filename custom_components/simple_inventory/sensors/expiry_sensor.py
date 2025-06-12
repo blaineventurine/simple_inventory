@@ -1,9 +1,8 @@
 """Expiry notification sensor for Simple Inventory."""
 import logging
-import datetime
 from homeassistant.components.sensor import SensorEntity
 from homeassistant.core import HomeAssistant, callback
-from ..const import DOMAIN
+from ..const import (DOMAIN)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -26,19 +25,16 @@ class ExpiryNotificationSensor(SensorEntity):
 
     async def async_added_to_hass(self) -> None:
         """Register callbacks for inventory updates."""
-        # Listen for updates to this specific inventory
         self.async_on_remove(
             self.hass.bus.async_listen(
                 f"{DOMAIN}_updated_{self.inventory_id}", self._handle_update)
         )
 
-        # Listen for general inventory updates
         self.async_on_remove(
             self.hass.bus.async_listen(
                 f"{DOMAIN}_updated", self._handle_update)
         )
 
-        # Add as coordinator listener for direct updates
         if hasattr(self.coordinator, "async_add_listener"):
             self.async_on_remove(
                 self.coordinator.async_add_listener(
@@ -59,47 +55,17 @@ class ExpiryNotificationSensor(SensorEntity):
 
     def _update_data(self):
         """Update sensor data for this specific inventory."""
-        today = datetime.datetime.now().date()
+        all_items = self.coordinator.get_items_expiring_soon(self.inventory_id)
 
-        expiring_items = []
-        expired_items = []
+        expired_items = [
+            item for item in all_items if item["days_until_expiry"] < 0]
+        expiring_items = [
+            item for item in all_items if item["days_until_expiry"] >= 0]
 
-        # Only process this inventory's data
-        inventories = self.coordinator.get_data().get("inventories", {})
-        inventory_data = inventories.get(self.inventory_id, {})
+        for item in all_items:
+            item["inventory"] = self.inventory_name
 
-        for item_name, item_data in inventory_data.get("items", {}).items():
-            expiry_date_str = item_data.get("expiry_date")
-            if expiry_date_str and expiry_date_str.strip():
-                try:
-                    expiry_date = datetime.datetime.strptime(
-                        expiry_date_str, "%Y-%m-%d").date()
-                    days_left = (expiry_date - today).days
-                    item_threshold = item_data.get("threshold", 7)
-
-                    item_info = {
-                        "name": item_name,
-                        "inventory": self.inventory_name,
-                        "inventory_id": self.inventory_id,
-                        "expiry_date": expiry_date_str,
-                        "days_left": days_left,
-                        "quantity": item_data.get("quantity", 0),
-                        "unit": item_data.get("unit", ""),
-                        "category": item_data.get("category", ""),
-                        "threshold": item_threshold
-                    }
-
-                    if days_left < 0:
-                        expired_items.append(item_info)
-                    elif days_left <= item_threshold:
-                        expiring_items.append(item_info)
-
-                except ValueError:
-                    _LOGGER.warning(f"Invalid date format for item {
-                                    item_name}: {expiry_date_str}")
-
-        # Update sensor state
-        total_items = len(expired_items) + len(expiring_items)
+        total_items = len(all_items)
         self._attr_native_value = total_items
         self._attr_extra_state_attributes = {
             "expiring_items": expiring_items,
@@ -110,7 +76,6 @@ class ExpiryNotificationSensor(SensorEntity):
             "total_expired": len(expired_items),
         }
 
-        # Update icon based on urgency
         if expired_items:
             self._attr_icon = "mdi:calendar-remove"
         elif expiring_items:
@@ -136,13 +101,11 @@ class GlobalExpiryNotificationSensor(SensorEntity):
 
     async def async_added_to_hass(self) -> None:
         """Register callbacks for all inventory updates."""
-        # Listen for any inventory updates
         self.async_on_remove(
             self.hass.bus.async_listen(
                 f"{DOMAIN}_updated", self._handle_update)
         )
 
-        # Also listen for specific inventory updates
         inventories = self.coordinator.get_data().get("inventories", {})
         for inventory_id in inventories:
             self.async_on_remove(
@@ -150,7 +113,6 @@ class GlobalExpiryNotificationSensor(SensorEntity):
                     f"{DOMAIN}_updated_{inventory_id}", self._handle_update)
             )
 
-        # Add as coordinator listener for direct updates
         if hasattr(self.coordinator, "async_add_listener"):
             self.async_on_remove(
                 self.coordinator.async_add_listener(
@@ -171,50 +133,19 @@ class GlobalExpiryNotificationSensor(SensorEntity):
 
     def _update_data(self):
         """Update sensor data aggregating all inventories."""
-        today = datetime.datetime.now().date()
+        all_items = self.coordinator.get_items_expiring_soon()
 
-        expiring_items = []
-        expired_items = []
-        inventories = self.coordinator.get_data().get("inventories", {})
+        for item in all_items:
+            item["inventory"] = self._get_inventory_name(item["inventory_id"])
 
-        for inventory_id, inventory_data in inventories.items():
-            inventory_name = self._get_inventory_name(inventory_id)
+        expired_items = [
+            item for item in all_items if item["days_until_expiry"] < 0]
+        expiring_items = [
+            item for item in all_items if item["days_until_expiry"] >= 0]
 
-            for item_name, item_data in inventory_data.get("items", {}).items():
-                expiry_date_str = item_data.get("expiry_date")
-                if expiry_date_str and expiry_date_str.strip():
-                    try:
-                        expiry_date = datetime.datetime.strptime(
-                            expiry_date_str, "%Y-%m-%d").date()
-                        days_left = (expiry_date - today).days
-                        item_threshold = item_data.get("threshold", 7)
-
-                        item_info = {
-                            "name": item_name,
-                            "inventory": inventory_name,
-                            "inventory_id": inventory_id,
-                            "expiry_date": expiry_date_str,
-                            "days_left": days_left,
-                            "quantity": item_data.get("quantity", 0),
-                            "unit": item_data.get("unit", ""),
-                            "category": item_data.get("category", ""),
-                            "threshold": item_threshold
-                        }
-
-                        if days_left < 0:
-                            expired_items.append(item_info)
-                        elif days_left <= item_threshold:
-                            expiring_items.append(item_info)
-
-                    except ValueError:
-                        _LOGGER.warning(f"Invalid date format for item {
-                                        item_name}: {expiry_date_str}")
-                        pass
-
-        expiring_items.sort(key=lambda x: x["days_left"])
-        expired_items.sort(key=lambda x: x["days_left"])
-
-        total_items = len(expired_items) + len(expiring_items)
+        total_items = len(all_items)
+        inventories_count = len(
+            set(item["inventory_id"] for item in all_items)) if all_items else 0
 
         self._attr_native_value = total_items
         self._attr_extra_state_attributes = {
@@ -224,13 +155,13 @@ class GlobalExpiryNotificationSensor(SensorEntity):
             "total_expired": len(expired_items),
             "next_expiring": expiring_items[0] if expiring_items else None,
             "oldest_expired": expired_items[0] if expired_items else None,
-            "inventories_count": len(inventories),
+            "inventories_count": inventories_count,
         }
 
         if expired_items:
             self._attr_icon = "mdi:calendar-remove"
         elif expiring_items:
-            most_urgent_days = expiring_items[0]["days_left"] if expiring_items else 7
+            most_urgent_days = expiring_items[0]["days_until_expiry"] if expiring_items else 7
             if most_urgent_days <= 1:
                 self._attr_icon = "mdi:calendar-alert"
             elif most_urgent_days <= 3:

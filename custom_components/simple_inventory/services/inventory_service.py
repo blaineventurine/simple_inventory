@@ -46,17 +46,15 @@ class InventoryService(BaseServiceHandler):
         old_name = data["old_name"]
         new_name = data["name"]
 
-        # Check if the item exists
         if not self.coordinator.get_item(inventory_id, old_name):
             self._log_item_not_found("Update item", old_name, inventory_id)
             return
 
-        # Prepare update data (only include fields that were provided)
         update_data = {}
 
-        # Handle all optional fields including expiry_date and threshold
         optional_fields = ["quantity", "unit", "category", "expiry_date",
-                           "auto_add_enabled", "threshold", "todo_list"]
+                           "auto_add_enabled", "auto_add_to_list_quantity",
+                           "expiry_alert_days", "todo_list"]
         for field in optional_fields:
             if field in data:
                 update_data[field] = data[field]
