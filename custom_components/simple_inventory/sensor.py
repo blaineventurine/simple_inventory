@@ -6,7 +6,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .const import DOMAIN
-from .sensors import InventorySensor, ExpiryNotificationSensor
+from .sensors import InventorySensor, ExpiryNotificationSensor, GlobalExpiryNotificationSensor
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -22,14 +22,22 @@ async def async_setup_entry(
     icon = config_entry.data.get("icon", "mdi:package-variant")
     entry_id = config_entry.entry_id
 
-    async_add_entities(
-        [InventorySensor(hass, coordinator, inventory_name, icon, entry_id)])
+    sensors_to_add = []
 
-    # Add the expiry notification sensor (only once)
+    inventory_sensor = InventorySensor(
+        hass, coordinator, inventory_name, icon, entry_id)
+    sensors_to_add.append(inventory_sensor)
+    per_inventory_expiry_sensor = ExpiryNotificationSensor(
+        hass, coordinator, entry_id, inventory_name
+    )
+
+    sensors_to_add.append(per_inventory_expiry_sensor)
+
+    # Create global expiry sensor (only once)
     all_entries = hass.config_entries.async_entries(DOMAIN)
     if entry_id == all_entries[0].entry_id:
-        # Get threshold from options or use default
-        threshold_days = config_entry.options.get("expiry_threshold", 7)
-        expiry_sensor = ExpiryNotificationSensor(
-            hass, coordinator, threshold_days)
-        async_add_entities([expiry_sensor])
+        global_expiry_sensor = GlobalExpiryNotificationSensor(
+            hass, coordinator)
+        sensors_to_add.append(global_expiry_sensor)
+
+    async_add_entities(sensors_to_add)

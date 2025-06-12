@@ -19,7 +19,6 @@ from .schemas.service_schemas import (
     UPDATE_SETTINGS_SCHEMA,
     REMOVE_SCHEMA,
     UPDATE_ITEM_SCHEMA,
-    SET_EXPIRY_THRESHOLD_SCHEMA
 )
 
 _LOGGER = logging.getLogger(__name__)
