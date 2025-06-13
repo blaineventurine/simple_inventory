@@ -143,16 +143,3 @@ update_item:
       description: Number of days in advance to warn about expiring items
       example: 7
       require: false
-
-set_expiry_alert_days:
-  description: Set the threshold for expiry notifications
-  fields:
-    expiry_alert_days:
-      description: Number of days in advance to warn about expiring items
-      example: 7
-      required: true
-      selector:
-        number:
-          min: 1
-          max: 30
-          unit_of_measurement: "days"
