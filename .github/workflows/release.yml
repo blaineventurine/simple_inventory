@@ -11,6 +11,9 @@ on:
         required: true
         type: string
 
+env:
+  DEFAULT_PYTHON: "3.13"
+
 jobs:
   test:
     uses: ./.github/workflows/tests.yml
@@ -34,7 +37,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: "3.11"
+          python-version: ${{ env.DEFAULT_PYTHON }}
 
       - name: Install dependencies
         run: |
@@ -56,8 +59,10 @@ jobs:
           VERSION=${{ steps.version.outputs.version }}
           VERSION_NUM=${VERSION#v}
 
+          # Update manifest.json
           sed -i "s/\"version\": \".*\"/\"version\": \"$VERSION_NUM\"/" custom_components/simple_inventory/manifest.json
 
+          # Update const.py if it exists
           if [ -f custom_components/simple_inventory/const.py ]; then
             sed -i "s/VERSION = \".*\"/VERSION = \"$VERSION_NUM\"/" custom_components/simple_inventory/const.py
           fi

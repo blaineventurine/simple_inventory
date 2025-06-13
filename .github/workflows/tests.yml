@@ -6,6 +6,11 @@ on:
   pull_request:
     branches: [master]
 
+env:
+  DEFAULT_PYTHON: "3.13"
+  # MIN_PYTHON: "3.10"
+  # MAX_PYTHON: "3.12"
+
 jobs:
   lint:
     runs-on: ubuntu-latest
@@ -15,13 +20,13 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: "3.11"
+          python-version: ${{ env.DEFAULT_PYTHON }}
 
       - name: Cache pip dependencies
         uses: actions/cache@v3
         with:
           path: ~/.cache/pip
-          key: ${{ runner.os }}-pip-${{ hashFiles('requirements-dev.txt') }}
+          key: ${{ runner.os }}-pip-${{ env.DEFAULT_PYTHON }}-${{ hashFiles('requirements-dev.txt') }}
 
       - name: Install dependencies
         run: |
@@ -39,14 +44,18 @@ jobs:
 
       - name: Run mypy
         run: mypy custom_components/
-        continue-on-error: true # MyPy can be strict, make it non-blocking initially
+        continue-on-error: true
 
   test:
     runs-on: ubuntu-latest
     needs: lint
     strategy:
       matrix:
-        python-version: ["3.10", "3.11", "3.12"]
+        python-version: [
+            "${{ env.MIN_PYTHON }}",
+            # "${{ env.DEFAULT_PYTHON }}",
+            # "${{ env.MAX_PYTHON }}",
+          ]
         home-assistant-version: ["2024.1.0", "2024.6.0", "2024.12.0"]
 
     steps:
@@ -75,7 +84,7 @@ jobs:
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v4
-        if: matrix.python-version == '3.11' && matrix.home-assistant-version == '2024.12.0'
+        if: matrix.python-version == env.DEFAULT_PYTHON && matrix.home-assistant-version == '2024.12.0'
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
 
@@ -87,7 +96,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: "3.11"
+          python-version: ${{ env.DEFAULT_PYTHON }}
 
       - name: Install safety
         run: pip install safety
@@ -106,13 +115,13 @@ jobs:
   #     - name: Set up Python
   #       uses: actions/setup-python@v4
   #       with:
-  #         python-version: "3.11"
+  #         python-version: ${{ env.DEFAULT_PYTHON }}
   #
   #     - name: Cache pip dependencies
   #       uses: actions/cache@v3
   #       with:
   #         path: ~/.cache/pip
-  #         key: ${{ runner.os }}-pip-mutation-${{ hashFiles('requirements-dev.txt') }}
+  #         key: ${{ runner.os }}-pip-mutation-${{ env.DEFAULT_PYTHON }}-${{ hashFiles('requirements-dev.txt') }}
   #
   #     - name: Install dependencies
   #       run: |
