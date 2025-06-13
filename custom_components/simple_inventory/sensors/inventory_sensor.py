@@ -70,8 +70,17 @@ class InventorySensor(SensorEntity):
         stats = self.coordinator.get_inventory_statistics(self._entry_id)
         self._attr_native_value = stats["total_quantity"]
 
+        description = ""
+        try:
+            config_entry = self.hass.config_entries.async_get_entry(self._entry_id)
+            if config_entry:
+                description = config_entry.data.get("description", "")
+        except Exception:
+            pass  # Fallback to empty description if config entry not found
+
         self._attr_extra_state_attributes = {
             "inventory_id": self._entry_id,
+            "description": description,
             "items": [{"name": name, **details} for name, details in items.items()],
             "total_items": stats["total_items"],
             "total_quantity": stats["total_quantity"],
