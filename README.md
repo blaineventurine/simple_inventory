@@ -25,6 +25,12 @@ This integration works best with the companion card:
 
 Add via Home Assistant UI: Configuration → Integrations → Add Integration → Simple Inventory
 
+The integration will create two sensors, `sensor.whatever_inventory` and `sensor.items_expiring_soon`. You are free to add additional inventories, they will appear as separate sensors. When you add an inventory, you will be prompted to provide a name, and optional icon/description. A default `expiry_threshold` of 7 is set.
+
+The `expiry_threshold` determines when to add an item to the `items_expiring_soon` sensor. If it is set to 7 days, when an item is seven days away from the expiring, it will be put on the `items_expiring_soon` list for you to build notifications/automations around.
+
+Each inventory item can be given an expiration date, and optionally automatically added to a specific todo list if it reaches a certain threshold.
+
 ## Sample Automation
 
 Sample automation for notifying about expiration dates coming soon:
