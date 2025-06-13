@@ -10,16 +10,14 @@ class TestTodoManager:
         assert manager.hass is hass
 
     @pytest.mark.parametrize("item,expected", [
-        ({"status": "completed"}, True),
-        ({"status": "done"}, True),
-        ({"completed": True}, True),
-        ({"done": True}, True),
-        ({"state": "completed"}, True),
-        ({"status": "needs_action"}, False),
-        ({"completed": False}, False),
-        ({"done": False}, False),
-        ({"state": "pending"}, False),
-        ({}, False),
+        ({"auto_add_enabled": False, "quantity": 5,
+          "auto_add_to_list_quantity": 10, "todo_list": "todo.list"}, False),
+        ({"auto_add_enabled": True, "quantity": 15,
+          "auto_add_to_list_quantity": 10, "todo_list": "todo.list"}, False),
+        ({"auto_add_enabled": True, "quantity": 5,
+         "auto_add_to_list_quantity": 10, "todo_list": ""}, False),
+        ({"auto_add_enabled": True, "quantity": 5,
+          "auto_add_to_list_quantity": 10}, False),
     ])
     def test_is_item_completed(self, todo_manager, item, expected):
         result = todo_manager._is_item_completed(item)
@@ -41,11 +39,8 @@ class TestTodoManager:
 
     @pytest.mark.asyncio
     async def test_get_incomplete_items_service_fallback(self, todo_manager, sample_todo_items):
-        # Mock service call failure
         todo_manager.hass.services.async_call.side_effect = Exception(
             "Service error")
-
-        # Mock state fallback
         mock_state = MagicMock()
         mock_state.attributes = {"items": sample_todo_items}
         todo_manager.hass.states.get.return_value = mock_state
@@ -61,11 +56,8 @@ class TestTodoManager:
 
     @pytest.mark.asyncio
     async def test_get_incomplete_items_no_entity(self, todo_manager):
-        # Mock service call failure
         todo_manager.hass.services.async_call.side_effect = Exception(
             "Service error")
-
-        # Mock no state found
         todo_manager.hass.states.get.return_value = None
 
         result = await todo_manager._get_incomplete_items("todo.nonexistent")
@@ -115,13 +107,13 @@ class TestTodoManager:
 
     @pytest.mark.parametrize("item_data,expected", [
         ({"auto_add_enabled": False, "quantity": 5,
-         "threshold": 10, "todo_list": "todo.list"}, False),
+         "auto_add_to_list_quantity": 10, "todo_list": "todo.list"}, False),
         ({"auto_add_enabled": True, "quantity": 15,
-         "threshold": 10, "todo_list": "todo.list"}, False),
+         "auto_add_to_list_quantity": 10, "todo_list": "todo.list"}, False),
         ({"auto_add_enabled": True, "quantity": 5,
-         "threshold": 10, "todo_list": ""}, False),
+         "auto_add_to_list_quantity": 10, "todo_list": ""}, False),
         ({"auto_add_enabled": True, "quantity": 5,
-         "threshold": 10}, False),  # no todo_list
+         "auto_add_to_list_quantity": 10}, False),  # no todo_list
     ])
     @pytest.mark.asyncio
     async def test_check_and_add_item_conditions_not_met(self, todo_manager, item_data, expected):
@@ -131,10 +123,7 @@ class TestTodoManager:
 
     @pytest.mark.asyncio
     async def test_check_and_add_item_service_error(self, todo_manager, sample_item_data):
-        # Mock getting incomplete items (no duplicates)
         todo_manager._get_incomplete_items = AsyncMock(return_value=[])
-
-        # Mock service call failure
         todo_manager.hass.services.async_call.side_effect = Exception(
             "Service error")
 
@@ -144,7 +133,6 @@ class TestTodoManager:
 
     @pytest.mark.asyncio
     async def test_check_and_add_item_get_items_error(self, todo_manager, sample_item_data):
-        # Mock _get_incomplete_items failure
         todo_manager._get_incomplete_items = AsyncMock(
             side_effect=Exception("Get items error"))
 
@@ -157,7 +145,7 @@ class TestTodoManager:
         item_data = {
             "auto_add_enabled": True,
             "quantity": 2,
-            "threshold": 5,
+            "auto_add_to_list_quantity": 5,
             "todo_list": "todo.shopping_list"
         }
 

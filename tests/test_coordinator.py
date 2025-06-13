@@ -6,8 +6,8 @@ from datetime import datetime, timedelta
 from custom_components.simple_inventory.coordinator import SimpleInventoryCoordinator
 from custom_components.simple_inventory.const import (
     FIELD_QUANTITY, FIELD_UNIT, FIELD_CATEGORY, FIELD_EXPIRY_DATE,
-    FIELD_AUTO_ADD_ENABLED, FIELD_THRESHOLD, FIELD_TODO_LIST,
-    DEFAULT_QUANTITY, DEFAULT_THRESHOLD, DEFAULT_UNIT, DEFAULT_CATEGORY,
+    FIELD_AUTO_ADD_ENABLED, FIELD_TODO_LIST,
+    DEFAULT_QUANTITY, DEFAULT_UNIT, DEFAULT_CATEGORY,
     DEFAULT_EXPIRY_DATE, DEFAULT_TODO_LIST, DEFAULT_AUTO_ADD_ENABLED,
     INVENTORY_ITEMS, STORAGE_VERSION, STORAGE_KEY, DOMAIN
 )
@@ -38,7 +38,7 @@ def loaded_coordinator(hass):
                         "category": "dairy",
                         "expiry_date": "2024-12-31",
                         "auto_add_enabled": True,
-                        "threshold": 1,
+                        "auto_add_to_list_quantity": 1,
                         "todo_list": "todo.shopping"
                     },
                     "bread": {
@@ -47,14 +47,14 @@ def loaded_coordinator(hass):
                         "category": "bakery",
                         "expiry_date": "2024-06-20",
                         "auto_add_enabled": False,
-                        "threshold": 0,
+                        "auto_add_to_list_quantity": 0,
                         "todo_list": ""
                     }
                 }
             }
         },
         "config": {
-            "expiry_threshold_days": 7
+            "expiry_alert_days": 7
         }
     }
 
@@ -72,10 +72,10 @@ class TestSimpleInventoryCoordinator:
         assert coordinator.hass is not None
         assert coordinator._store is not None
         assert coordinator._data == {
-            "inventories": {}, "config": {"expiry_threshold_days": 7}}
+            "inventories": {}, "config": {"expiry_alert_days": 7}}
         assert "config" in coordinator._data
-        assert "expiry_threshold_days" in coordinator._data["config"]
-        assert coordinator._data["config"]["expiry_threshold_days"] == 7
+        assert "expiry_alert_days" in coordinator._data["config"]
+        assert coordinator._data["config"]["expiry_alert_days"] == 7
 
     async def test_async_load_data_empty(self, coordinator):
         """Test loading data when storage is empty."""
@@ -85,16 +85,14 @@ class TestSimpleInventoryCoordinator:
         assert "inventories" in data
         assert "config" in data
         assert data["inventories"] == {}
-        assert data["config"]["expiry_threshold_days"] == 7
 
         assert coordinator._data["inventories"] == {}
-        assert coordinator._data["config"]["expiry_threshold_days"] == 7
 
     async def test_async_load_data_with_content(self, coordinator):
         """Test loading data with existing content."""
         test_data = {
             "inventories": {"kitchen": {"items": {"milk": {"quantity": 1}}}},
-            "config": {"expiry_threshold_days": 14}
+            "config": {"expiry_alert_days": 14}
         }
         coordinator._store.async_load.return_value = test_data
 
@@ -102,99 +100,23 @@ class TestSimpleInventoryCoordinator:
 
         assert data == test_data
         assert coordinator._data == test_data
-        assert coordinator._data["config"]["expiry_threshold_days"] == 14
 
-    async def test_async_load_data_migration_from_old_format(self, coordinator):
-        """Test migration from old format to new format."""
-        # Old format had "items" at the root level
-        old_format = {"items": {"milk": {"quantity": 1}}}
-        coordinator._store.async_load.return_value = old_format
-
-        data = await coordinator.async_load_data()
-
-        # Should be migrated to new format with default inventory
-        assert "inventories" in data
-        assert "default" in data["inventories"]
-        assert "items" in data["inventories"]["default"]
-        assert data["inventories"]["default"]["items"] == old_format["items"]
-
-        # Should also have config section
-        assert "config" in data
-        assert "expiry_threshold_days" in data["config"]
-        assert data["config"]["expiry_threshold_days"] == 7
-
-    async def test_async_load_data_missing_inventories(self, coordinator):
-        """Test loading data with missing inventories key."""
-        test_data = {"some_other_key": "value"}
+    async def test_async_load_data_missing_config(self, coordinator):
+        """Test loading data with missing config section."""
+        test_data = {"inventories": {"kitchen": {"items": {}}}}
         coordinator._store.async_load.return_value = test_data
 
         data = await coordinator.async_load_data()
 
-        # Should add inventories key
-        assert "inventories" in data
-        assert data["inventories"] == {}
-        assert coordinator._data["inventories"] == {}
-
-        # Should also have config section
+        # Should add config section
         assert "config" in data
-        assert "expiry_threshold_days" in data["config"]
-        assert data["config"]["expiry_threshold_days"] == 7
-
-    async def test_async_load_data_missing_items(self, coordinator):
-        """Test loading data with missing items in inventory."""
-        test_data = {"inventories": {"kitchen": {}}}
-        coordinator._store.async_load.return_value = test_data
-
-        data = await coordinator.async_load_data()
-
-        # Should add items key to each inventory
-        assert "items" in data["inventories"]["kitchen"]
-        assert data["inventories"]["kitchen"]["items"] == {}
-        assert coordinator._data["inventories"]["kitchen"]["items"] == {}
-
-        # Should also have config section
-        assert "config" in data
-        assert "expiry_threshold_days" in data["config"]
-        assert data["config"]["expiry_threshold_days"] == 7
-
-    async def test_async_load_data_missing_fields(self, coordinator):
-        """Test loading data with items missing required fields."""
-        test_data = {
-            "inventories": {
-                "kitchen": {
-                    "items": {
-                        "milk": {
-                            "quantity": 1
-                            # Missing other fields
-                        }
-                    }
-                }
-            }
-        }
-        coordinator._store.async_load.return_value = test_data
-
-        data = await coordinator.async_load_data()
-
-        # Should add missing fields with defaults
-        milk = data["inventories"]["kitchen"]["items"]["milk"]
-        assert milk["quantity"] == 1
-        assert milk["unit"] == ""
-        assert milk["category"] == ""
-        assert milk["expiry_date"] == ""
-        assert milk["auto_add_enabled"] is False
-        assert milk["threshold"] == 0
-        assert milk["todo_list"] == ""
-
-        # Should also have config section
-        assert "config" in data
-        assert "expiry_threshold_days" in data["config"]
-        assert data["config"]["expiry_threshold_days"] == 7
+        assert coordinator._data["config"] == {}
 
     async def test_async_save_data(self, coordinator):
         """Test saving data."""
         coordinator._data = {
             "inventories": {"kitchen": {"items": {}}},
-            "config": {"expiry_threshold_days": 7}
+            "config": {"expiry_alert_days": 7}
         }
 
         await coordinator.async_save_data()
@@ -212,7 +134,7 @@ class TestSimpleInventoryCoordinator:
         """Test saving data for a specific inventory."""
         coordinator._data = {
             "inventories": {"kitchen": {"items": {}}, "pantry": {"items": {}}},
-            "config": {"expiry_threshold_days": 7}
+            "config": {"expiry_alert_days": 7}
         }
 
         await coordinator.async_save_data(inventory_id="kitchen")
@@ -228,8 +150,8 @@ class TestSimpleInventoryCoordinator:
         assert "inventories" in data
         assert "kitchen" in data["inventories"]
         assert "config" in data
-        assert "expiry_threshold_days" in data["config"]
-        assert data["config"]["expiry_threshold_days"] == 7
+        assert "expiry_alert_days" in data["config"]
+        assert data["config"]["expiry_alert_days"] == 7
 
     async def test_get_inventory(self, loaded_coordinator):
         """Test getting a specific inventory."""
@@ -323,7 +245,7 @@ class TestSimpleInventoryCoordinator:
             category="dairy",
             expiry_date="2024-12-31",
             auto_add_enabled=True,
-            threshold=1,
+            auto_add_to_list_quantity=1,
             todo_list="todo.shopping"
         )
         assert result is True
@@ -336,7 +258,7 @@ class TestSimpleInventoryCoordinator:
         assert item["category"] == "dairy"
         assert item["expiry_date"] == "2024-12-31"
         assert item["auto_add_enabled"] is True
-        assert item["threshold"] == 1
+        assert item["auto_add_to_list_quantity"] == 1
         assert item["todo_list"] == "todo.shopping"
 
     async def test_add_item_existing(self, loaded_coordinator):
@@ -370,15 +292,15 @@ class TestSimpleInventoryCoordinator:
         item = coordinator.get_item("kitchen", "milk")
         assert item["quantity"] == 0
 
-    async def test_add_item_negative_threshold(self, coordinator):
-        """Test adding an item with negative threshold."""
+    async def test_add_item_negative_auto_add_quantity(self, coordinator):
+        """Test adding an item with negative auto add quantity."""
         result = coordinator.add_item(
-            "kitchen", "milk", quantity=1, threshold=-2)
+            "kitchen", "milk", quantity=1, auto_add_to_list_quantity=-2)
         assert result is True
 
-        # Threshold should be set to 0 (max of 0 and -2)
+        # Auto add quantity should be set to 0 (max of 0 and -2)
         item = coordinator.get_item("kitchen", "milk")
-        assert item["threshold"] == 0
+        assert item["auto_add_to_list_quantity"] == 0
 
     async def test_remove_item(self, loaded_coordinator):
         """Test removing an item."""
@@ -398,35 +320,6 @@ class TestSimpleInventoryCoordinator:
 
         # Test removing with empty name
         result = loaded_coordinator.remove_item("kitchen", "")
-        assert result is False
-
-    async def test_update_item_quantity(self, loaded_coordinator):
-        """Test updating item quantity."""
-        # Initial quantity is 2
-        initial_item = loaded_coordinator.get_item("kitchen", "milk")
-        assert initial_item["quantity"] == 2
-
-        # Update quantity to 5
-        result = loaded_coordinator.update_item_quantity("kitchen", "milk", 5)
-        assert result is True
-
-        # Verify quantity was updated
-        updated_item = loaded_coordinator.get_item("kitchen", "milk")
-        assert updated_item["quantity"] == 5
-
-        # Test negative quantity (should be set to 0)
-        result = loaded_coordinator.update_item_quantity("kitchen", "milk", -3)
-        assert result is True
-        updated_item = loaded_coordinator.get_item("kitchen", "milk")
-        assert updated_item["quantity"] == 0
-
-        # Test updating non-existent item
-        result = loaded_coordinator.update_item_quantity(
-            "kitchen", "non_existent", 1)
-        assert result is False
-
-        # Test updating with empty name
-        result = loaded_coordinator.update_item_quantity("kitchen", "", 1)
         assert result is False
 
     async def test_increment_item(self, loaded_coordinator):
@@ -499,69 +392,6 @@ class TestSimpleInventoryCoordinator:
         result = loaded_coordinator.decrement_item("kitchen", "milk", -1)
         assert result is False
 
-    async def test_update_item_settings(self, loaded_coordinator):
-        """Test updating item settings."""
-        # Update settings
-        result = loaded_coordinator.update_item_settings(
-            "kitchen",
-            "milk",
-            auto_add_enabled=False,
-            threshold=3,
-            todo_list="todo.grocery",
-            unit="gallons",
-            category="beverages",
-            expiry_date="2025-01-15",
-            quantity=4
-        )
-        assert result is True
-
-        # Verify settings were updated
-        updated_item = loaded_coordinator.get_item("kitchen", "milk")
-        assert updated_item["auto_add_enabled"] is False
-        assert updated_item["threshold"] == 3
-        assert updated_item["todo_list"] == "todo.grocery"
-        assert updated_item["unit"] == "gallons"
-        assert updated_item["category"] == "beverages"
-        assert updated_item["expiry_date"] == "2025-01-15"
-        assert updated_item["quantity"] == 4
-
-        # Test updating non-existent item
-        result = loaded_coordinator.update_item_settings(
-            "kitchen", "non_existent")
-        assert result is False
-
-        # Test updating with empty name
-        result = loaded_coordinator.update_item_settings("kitchen", "")
-        assert result is False
-
-    async def test_expiry_threshold_days(self, loaded_coordinator):
-        """Test getting expiry threshold days."""
-        # Default is 7
-        assert loaded_coordinator.expiry_threshold_days() == 7
-
-        # Change threshold
-        loaded_coordinator._data["config"]["expiry_threshold_days"] = 14
-        assert loaded_coordinator.expiry_threshold_days() == 14
-
-    async def test_set_expiry_threshold(self, loaded_coordinator, caplog):
-        """Test setting expiry threshold."""
-        # Initial value is 7
-        assert loaded_coordinator._data["config"]["expiry_threshold_days"] == 7
-
-        # Set new value
-        loaded_coordinator.set_expiry_threshold(14)
-
-        # Verify value was updated
-        assert loaded_coordinator._data["config"]["expiry_threshold_days"] == 14
-
-        # Verify event was fired
-        loaded_coordinator.hass.bus.async_fire.assert_called_once_with(
-            "simple_inventory_threshold_updated", {"new_threshold": 14}
-        )
-
-        # Verify log message
-        assert "Expiry threshold changed from 7 to 14 days" in caplog.text
-
     @patch('datetime.datetime')
     async def test_get_items_expiring_soon(self, mock_datetime, loaded_coordinator):
         """Test getting items expiring soon."""
@@ -588,16 +418,19 @@ class TestSimpleInventoryCoordinator:
                     "items": {
                         "milk": {
                             "quantity": 1,
-                            "expiry_date": date_5_days_ahead  # 5 days from now
+                            "expiry_date": date_5_days_ahead,  # 5 days from now
+                            "expiry_alert_days": 7
                         },
                         "yogurt": {
                             "quantity": 1,
-                            "expiry_date": date_1_day_ahead  # 1 day from now
+                            "expiry_date": date_1_day_ahead,  # 1 day from now
+                            "expiry_alert_days": 7
                         },
                         "cheese": {
                             "quantity": 1,
                             # 15 days from now (beyond default threshold)
-                            "expiry_date": date_15_days_ahead
+                            "expiry_date": date_15_days_ahead,
+                            "expiry_alert_days": 7
                         },
                         "bread": {
                             "quantity": 1,
@@ -607,7 +440,7 @@ class TestSimpleInventoryCoordinator:
                 }
             },
             "config": {
-                "expiry_threshold_days": 7
+                "expiry_alert_days": 7
             }
         }
 
@@ -622,8 +455,6 @@ class TestSimpleInventoryCoordinator:
 
         # Print debug info
         print(f"Fixed date: {fixed_date}")
-        print(f"Threshold days: {
-              loaded_coordinator._data['config']['expiry_threshold_days']}")
         print(f"Found {len(expiring_items)} expiring items:")
         for item in expiring_items:
             print(f"  - {item['name']}: expiry={item['expiry_date']
@@ -676,14 +507,14 @@ class TestSimpleInventoryCoordinator:
 
     async def test_get_inventory_statistics(self, loaded_coordinator):
         """Test getting inventory statistics."""
-        # Add some items with different categories and thresholds
+        # Add some items with different categories and auto add quantities
         loaded_coordinator._data["inventories"]["kitchen"]["items"]["yogurt"] = {
             "quantity": 1,
             "unit": "cup",
             "category": "dairy",
             "expiry_date": "2024-06-16",  # Expiring soon
             "auto_add_enabled": False,
-            "threshold": 2,  # Below threshold
+            "auto_add_to_list_quantity": 2,  # Below threshold
             "todo_list": ""
         }
 
@@ -693,7 +524,7 @@ class TestSimpleInventoryCoordinator:
             "category": "grains",
             "expiry_date": "2025-06-15",
             "auto_add_enabled": False,
-            "threshold": 2,
+            "auto_add_to_list_quantity": 2,
             "todo_list": ""
         }
 

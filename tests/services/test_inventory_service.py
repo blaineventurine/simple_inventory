@@ -16,25 +16,23 @@ class TestInventoryService:
         assert hasattr(inventory_service, '_extract_item_kwargs')
         assert hasattr(inventory_service, '_get_inventory_and_name')
 
-    # Tests for async_add_item
     @pytest.mark.asyncio
     async def test_async_add_item_success(self, inventory_service, add_item_service_call, mock_coordinator):
         """Test successful item addition."""
         await inventory_service.async_add_item(add_item_service_call)
 
-        # Verify coordinator add_item was called with correct parameters
         mock_coordinator.add_item.assert_called_once_with(
             "kitchen", "milk",
-            quantity=2,
-            unit="liters",
-            category="dairy",
-            expiry_date="2024-12-31",
             auto_add_enabled=True,
-            threshold=1,
-            todo_list="todo.shopping"
+            auto_add_to_list_quantity=1,
+            category="dairy",
+            expiry_alert_days=7,
+            expiry_date="2024-12-31",
+            quantity=2,
+            todo_list="todo.shopping",
+            unit="liters"
         )
 
-        # Verify save and log was called
         mock_coordinator.async_save_data.assert_called_once_with("kitchen")
 
     @pytest.mark.asyncio
@@ -42,7 +40,6 @@ class TestInventoryService:
         """Test adding item with minimal required data."""
         await inventory_service.async_add_item(basic_service_call)
 
-        # Should call add_item with no additional kwargs
         mock_coordinator.add_item.assert_called_once_with("kitchen", "milk")
         mock_coordinator.async_save_data.assert_called_once_with("kitchen")
 
@@ -54,13 +51,9 @@ class TestInventoryService:
         with caplog.at_level(logging.ERROR):
             await inventory_service.async_add_item(add_item_service_call)
 
-        # Verify error was logged
         assert "Failed to add item milk to inventory kitchen: Database error" in caplog.text
-
-        # Verify save was not called due to exception
         mock_coordinator.async_save_data.assert_not_called()
 
-    # Tests for async_remove_item
     @pytest.mark.asyncio
     async def test_async_remove_item_success(self, inventory_service, basic_service_call, mock_coordinator):
         """Test successful item removal."""
@@ -82,7 +75,6 @@ class TestInventoryService:
         mock_coordinator.remove_item.assert_called_once_with("kitchen", "milk")
         mock_coordinator.async_save_data.assert_not_called()
 
-        # Verify warning was logged
         assert "Remove item failed - Item not found: milk in inventory: kitchen" in caplog.text
 
     @pytest.mark.asyncio
@@ -97,16 +89,12 @@ class TestInventoryService:
         assert "Failed to remove item milk from inventory kitchen: Database connection lost" in caplog.text
         mock_coordinator.async_save_data.assert_not_called()
 
-    # Tests for async_update_item
     @pytest.mark.asyncio
     async def test_async_update_item_success(self, inventory_service, update_item_service_call, mock_coordinator):
         """Test successful item update."""
         await inventory_service.async_update_item(update_item_service_call)
 
-        # Verify item existence was checked
         mock_coordinator.get_item.assert_called_once_with("kitchen", "milk")
-
-        # Verify update was called with correct parameters
         mock_coordinator.update_item.assert_called_once_with(
             "kitchen", "milk", "whole_milk",
             quantity=3, unit="liters", category="dairy"
@@ -168,10 +156,8 @@ class TestInventoryService:
             }
             calls.append(call)
 
-        # Execute concurrent add operations
         tasks = [inventory_service.async_add_item(call) for call in calls]
         await asyncio.gather(*tasks)
 
-        # Verify all operations completed
         assert mock_coordinator.add_item.call_count == 3
         assert mock_coordinator.async_save_data.call_count == 3

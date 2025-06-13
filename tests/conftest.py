@@ -1,5 +1,4 @@
 """Test configuration and fixtures."""
-from custom_components.simple_inventory.services.settings_service import SettingsService
 from custom_components.simple_inventory.services.quantity_service import QuantityService
 from custom_components.simple_inventory.services.inventory_service import InventoryService
 from custom_components.simple_inventory.services.base_service import BaseServiceHandler
@@ -54,9 +53,8 @@ def mock_coordinator():
     coordinator.add_item = MagicMock()
     coordinator.remove_item = MagicMock(return_value=True)
     coordinator.update_item = MagicMock(return_value=True)
-    coordinator.update_item_settings = MagicMock(return_value=True)
     coordinator.get_item = MagicMock(
-        return_value={"quantity": 5, "threshold": 2})
+        return_value={"quantity": 5, "auto_add_to_list_quantity": 2})
     coordinator.get_all_items = MagicMock(return_value={})
 
     # Quantity operations
@@ -104,12 +102,6 @@ def quantity_service(hass, mock_coordinator, mock_todo_manager):
 
 
 @pytest.fixture
-def settings_service(hass, mock_coordinator):
-    """Create a SettingsService instance."""
-    return SettingsService(hass, mock_coordinator)
-
-
-@pytest.fixture
 def basic_service_call():
     """Create a basic service call with inventory_id and name."""
     call = MagicMock()
@@ -125,15 +117,16 @@ def add_item_service_call():
     """Create a service call for adding items."""
     call = MagicMock()
     call.data = {
+        "auto_add_enabled": True,
+        "auto_add_to_list_quantity": 1,
+        "category": "dairy",
+        "expiry_alert_days": 7,
+        "expiry_date": "2024-12-31",
         "inventory_id": "kitchen",
         "name": "milk",
         "quantity": 2,
+        "todo_list": "todo.shopping",
         "unit": "liters",
-        "category": "dairy",
-        "expiry_date": "2024-12-31",
-        "auto_add_enabled": True,
-        "threshold": 1,
-        "todo_list": "todo.shopping"
     }
     return call
 
@@ -192,8 +185,8 @@ def sample_item_data():
     """Sample item data for testing."""
     return {
         "auto_add_enabled": True,
+        "auto_add_to_list_quantity": 10,
         "quantity": 5,
-        "threshold": 10,
         "todo_list": "todo.shopping_list"
     }
 
@@ -206,38 +199,48 @@ def sample_inventory_data():
         "kitchen": {
             "items": {
                 "milk": {
-                    "quantity": 2,
-                    "unit": "liters",
-                    "category": "dairy",
-                    "expiry_date": (today + timedelta(days=5)).strftime("%Y-%m-%d"),
                     "auto_add_enabled": True,
-                    "threshold": 1,
-                    "todo_list": "todo.shopping"
+                    "auto_add_to_list_quantity": 1,
+                    "category": "dairy",
+                    "expiry_alert_days": 7,
+                    "expiry_date": (today + timedelta(days=5)).strftime("%Y-%m-%d"),
+                    "quantity": 2,
+                    "todo_list": "todo.shopping",
+                    "unit": "liters",
                 },
                 "bread": {
-                    "quantity": 1,
-                    "unit": "loaf",
-                    "category": "bakery",
-                    "expiry_date": (today + timedelta(days=2)).strftime("%Y-%m-%d"),
                     "auto_add_enabled": False,
-                    "threshold": 0,
-                    "todo_list": ""
+                    "auto_add_to_list_quantity": None,
+                    "category": "bakery",
+                    "expiry_alert_days": None,
+                    "expiry_date": (today + timedelta(days=2)).strftime("%Y-%m-%d"),
+                    "quantity": 1,
+                    "todo_list": "",
+                    "unit": "loaf",
                 },
                 "expired_yogurt": {
-                    "quantity": 1,
-                    "unit": "cup",
+                    "auto_add_enabled": False,
+                    "auto_add_to_list_quantity": None,
                     "category": "dairy",
+                    "expiry_alert_days": 7,
                     "expiry_date": (today - timedelta(days=1)).strftime("%Y-%m-%d"),
+                    "quantity": 1,
+                    "todo_list": "",
+                    "unit": "cup",
                 }
             }
         },
         "pantry": {
             "items": {
                 "rice": {
-                    "quantity": 5,
-                    "unit": "kg",
+                    "auto_add_enabled": False,
+                    "auto_add_to_list_quantity": None,
                     "category": "grains",
+                    "expiry_alert_days": None,
                     "expiry_date": (today + timedelta(days=365)).strftime("%Y-%m-%d"),
+                    "quantity": 5,
+                    "todo_list": "",
+                    "unit": "kg",
                 }
             }
         }
@@ -269,7 +272,48 @@ def mock_sensor_coordinator(sample_inventory_data):
         "kitchen", {}).get("items", {})
     coordinator.last_update_success = True
     coordinator.last_update_time = datetime.now()
-    coordinator.expiry_threshold_days.return_value = 7
+    coordinator.get_inventory_statistics = MagicMock(return_value={
+        "total_quantity": 0,
+        "total_items": 0,
+        "categories": [],
+        "below_threshold": [],
+        "expiring_items": []
+    })
+
+    def mock_get_items_expiring_soon(inventory_id=None):
+        """Mock implementation of get_items_expiring_soon."""
+        today = datetime.now().date()
+        items = []
+
+        inventories_to_check = {}
+        if inventory_id:
+            inventories_to_check = {
+                inventory_id: sample_inventory_data.get(inventory_id, {})}
+        else:
+            inventories_to_check = sample_inventory_data
+
+        for inv_id, inventory in inventories_to_check.items():
+            for item_name, item_data in inventory.get("items", {}).items():
+                expiry_date_str = item_data.get("expiry_date", "")
+                if expiry_date_str:
+                    expiry_date = datetime.strptime(
+                        expiry_date_str, "%Y-%m-%d").date()
+                    days_until_expiry = (expiry_date - today).days
+                    item_threshold = item_data.get("expiry_alert_days", 7)
+
+                    if item_threshold and days_until_expiry <= item_threshold:
+                        items.append({
+                            "inventory_id": inv_id,
+                            "name": item_name,
+                            "expiry_date": expiry_date_str,
+                            "days_until_expiry": days_until_expiry,
+                            "threshold": item_threshold,
+                            **item_data
+                        })
+        return items
+
+    coordinator.get_items_expiring_soon = MagicMock(
+        side_effect=mock_get_items_expiring_soon)
     coordinator.async_add_listener = MagicMock(return_value=MagicMock())
 
     return coordinator
@@ -320,7 +364,6 @@ def full_service_setup(hass, mock_coordinator, mock_todo_manager):
         "service_handler": ServiceHandler(hass, mock_coordinator, mock_todo_manager),
         "inventory_service": InventoryService(hass, mock_coordinator),
         "quantity_service": QuantityService(hass, mock_coordinator, mock_todo_manager),
-        "settings_service": SettingsService(hass, mock_coordinator)
     }
 
 
@@ -349,20 +392,6 @@ def coordinator_with_errors(mock_coordinator):
     coordinator.simulate_update_error = simulate_update_error
 
     return coordinator
-
-
-@pytest.fixture
-def update_settings_service_call():
-    """Create a service call for updating item settings."""
-    call = MagicMock()
-    call.data = {
-        "inventory_id": "kitchen",
-        "name": "milk",
-        "auto_add_enabled": True,
-        "threshold": 5,
-        "todo_list": "todo.shopping"
-    }
-    return call
 
 
 @pytest.fixture

@@ -11,11 +11,8 @@ class TestQuantityService:
         from custom_components.simple_inventory.services.quantity_service import QuantityService
         service = QuantityService(hass, mock_coordinator, mock_todo_manager)
 
-        # Test inheritance from BaseServiceHandler
         assert service.hass is hass
         assert service.coordinator is mock_coordinator
-
-        # Test todo_manager assignment
         assert service.todo_manager is mock_todo_manager
 
     def test_inheritance(self, quantity_service):
@@ -27,17 +24,13 @@ class TestQuantityService:
         assert hasattr(quantity_service, '_get_inventory_and_name')
         assert hasattr(quantity_service, '_log_item_not_found')
 
-    # Tests for async_increment_item
     @pytest.mark.asyncio
     async def test_async_increment_item_success(self, quantity_service, quantity_service_call, mock_coordinator):
         """Test successful item increment."""
         await quantity_service.async_increment_item(quantity_service_call)
 
-        # Verify coordinator increment was called with correct parameters
         mock_coordinator.increment_item.assert_called_once_with(
             "kitchen", "milk", 2)
-
-        # Verify save and log was called
         mock_coordinator.async_save_data.assert_called_once_with("kitchen")
 
     @pytest.mark.asyncio
@@ -45,7 +38,6 @@ class TestQuantityService:
         """Test increment with default amount (1)."""
         await quantity_service.async_increment_item(basic_service_call)
 
-        # Should use default amount of 1
         mock_coordinator.increment_item.assert_called_once_with(
             "kitchen", "milk", 1)
         mock_coordinator.async_save_data.assert_called_once_with("kitchen")
@@ -62,7 +54,6 @@ class TestQuantityService:
             "kitchen", "milk", 2)
         mock_coordinator.async_save_data.assert_not_called()
 
-        # Verify warning was logged
         assert "Increment item failed - Item not found: milk in inventory: kitchen" in caplog.text
 
     @pytest.mark.asyncio
@@ -77,25 +68,17 @@ class TestQuantityService:
         assert "Failed to increment item milk in inventory kitchen: Database error" in caplog.text
         mock_coordinator.async_save_data.assert_not_called()
 
-    # Tests for async_decrement_item
     @pytest.mark.asyncio
     async def test_async_decrement_item_success_with_todo_check(self, quantity_service, quantity_service_call, mock_coordinator, mock_todo_manager):
         """Test successful item decrement with todo list check."""
         await quantity_service.async_decrement_item(quantity_service_call)
 
-        # Verify coordinator decrement was called
         mock_coordinator.decrement_item.assert_called_once_with(
             "kitchen", "milk", 2)
-
-        # Verify item data was retrieved for todo check
         mock_coordinator.get_item.assert_called_once_with("kitchen", "milk")
-
-        # Verify todo manager was called
-        expected_item_data = {"quantity": 5, "threshold": 2}
+        expected_item_data = {"quantity": 5, "auto_add_to_list_quantity": 2}
         mock_todo_manager.check_and_add_item.assert_called_once_with(
             "milk", expected_item_data)
-
-        # Verify save and log was called
         mock_coordinator.async_save_data.assert_called_once_with("kitchen")
 
     @pytest.mark.asyncio
