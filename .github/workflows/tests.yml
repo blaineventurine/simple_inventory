@@ -43,7 +43,7 @@ jobs:
         run: flake8 custom_components/ tests/
 
       - name: Run mypy
-        run: mypy custom_components/
+        run: mypy --explicit-package-bases custom_components/
         continue-on-error: true
 
   test:

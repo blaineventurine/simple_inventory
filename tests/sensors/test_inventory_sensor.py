@@ -5,7 +5,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from custom_components.simple_inventory.const import DOMAIN
-from custom_components.simple_inventory.sensors.inventory_sensor import InventorySensor
+from custom_components.simple_inventory.sensors import InventorySensor
 
 
 class TestInventorySensor:
@@ -147,6 +147,13 @@ class TestInventorySensor:
         }
 
         with patch.object(InventorySensor, "_update_data") as mock_update:
+            _ = InventorySensor(
+                hass,
+                mock_sensor_coordinator,
+                "Test",
+                "mdi:test",
+                "test_123"
+            )
             mock_update.assert_called_once()
 
     @pytest.mark.parametrize(

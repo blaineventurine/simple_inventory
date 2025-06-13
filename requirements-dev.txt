@@ -21,3 +21,4 @@ pytest-homeassistant-custom-component
 safety
 pre-commit
 bump2version
+types-setuptools
