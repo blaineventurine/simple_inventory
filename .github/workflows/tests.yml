@@ -70,12 +70,46 @@ jobs:
 
       - name: Run tests with coverage
         run: |
-          pytest tests/ --cov=custom_components/simple_inventory --cov-report=xml --cov-report=term-missing
+          pytest tests/ \
+            --cov=custom_components/simple_inventory \
+            --cov-report=xml \
+            --cov-report=html \
+            --cov-report=term-missing \
+            --cov-fail-under=80
 
-      - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v4
+      - name: Upload HTML coverage report
+        uses: actions/upload-artifact@v4
+        if: always()
         with:
-          token: ${{ secrets.CODECOV_TOKEN }}
+          name: coverage-report-html
+          path: htmlcov/
+
+      - name: Generate coverage summary
+        if: github.event_name == 'pull_request'
+        run: |
+          echo "## 📊 Coverage Report" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          python -m coverage report --show-missing >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "📈 [View detailed HTML report](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})" >> $GITHUB_STEP_SUMMARY
+
+      - name: Comment PR with coverage
+        uses: marocchino/sticky-pull-request-comment@v2
+        if: github.event_name == 'pull_request'
+        with:
+          recreate: true
+          message: |
+            ## 📊 Coverage Report
+
+            ```
+            $(python -m coverage report --show-missing | head -20)
+            ```
+
+            📈 [View detailed HTML report](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})
+
+            Coverage threshold: 80% | Status: ${{ job.status }}
 
   security:
     runs-on: ubuntu-latest
