@@ -74,6 +74,8 @@ class SimpleInventoryConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                         "name": user_input["name"],
                         "icon": icon,
                         "description": user_input.get("description", ""),
+                        "entry_type": "inventory",
+                        "create_global": not self._global_entry_exists(),
                     },
                 )
 
@@ -102,6 +104,20 @@ class SimpleInventoryConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             description_placeholders={
                 "icon_help": "Click the icon field to open the icon picker with all Material Design Icons"
             },
+        )
+
+    async def async_step_internal(self, user_input=None) -> FlowResult:
+        """Handle internal creation of global entry."""
+        return self.async_create_entry(
+            title="Global Items Expiring Soon",
+            data=user_input,
+        )
+
+    def _global_entry_exists(self) -> bool:
+        """Check if global config entry already exists."""
+        existing_entries = self._async_current_entries()
+        return any(
+            entry.data.get("entry_type") == "global" for entry in existing_entries
         )
 
     async def _async_name_exists(self, name: str) -> bool:

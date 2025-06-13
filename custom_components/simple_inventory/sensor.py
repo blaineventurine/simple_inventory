@@ -21,28 +21,20 @@ async def async_setup_entry(
     config_entry: ConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
-    """Set up the inventory sensor."""
+    """Set up sensors based on config entry type."""
     coordinator = hass.data[DOMAIN]["coordinator"]
-    inventory_name = config_entry.data.get("name", "Inventory")
-    icon = config_entry.data.get("icon", "mdi:package-variant")
-    entry_id = config_entry.entry_id
+    entry_type = config_entry.data.get("entry_type", "inventory")
 
-    sensors_to_add = []
+    if entry_type == "global":
+        global_sensor = GlobalExpiryNotificationSensor(hass, coordinator)
+        async_add_entities([global_sensor])
+    else:
+        inventory_name = config_entry.data.get("name", "Inventory")
+        icon = config_entry.data.get("icon", "mdi:package-variant")
+        entry_id = config_entry.entry_id
 
-    inventory_sensor = InventorySensor(
-        hass, coordinator, inventory_name, icon, entry_id
-    )
-    sensors_to_add.append(inventory_sensor)
-    per_inventory_expiry_sensor = ExpiryNotificationSensor(
-        hass, coordinator, entry_id, inventory_name
-    )
-
-    sensors_to_add.append(per_inventory_expiry_sensor)
-
-    # Create global expiry sensor (only once)
-    all_entries = hass.config_entries.async_entries(DOMAIN)
-    if entry_id == all_entries[0].entry_id:
-        global_expiry_sensor = GlobalExpiryNotificationSensor(hass, coordinator)
-        sensors_to_add.append(global_expiry_sensor)
-
-    async_add_entities(sensors_to_add)
+        sensors_to_add = [
+            InventorySensor(hass, coordinator, inventory_name, icon, entry_id),
+            ExpiryNotificationSensor(hass, coordinator, entry_id, inventory_name),
+        ]
+        async_add_entities(sensors_to_add)

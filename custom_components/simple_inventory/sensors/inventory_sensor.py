@@ -30,6 +30,10 @@ class InventorySensor(SensorEntity):
         self._attr_icon = icon
         self._attr_native_unit_of_measurement = "items"
         self._attr_extra_state_attributes = {}
+        self._attr_device_info = {
+            "identifiers": {(DOMAIN, entry_id)},
+            "name": inventory_name,
+        }
         self._update_data()
 
     async def async_added_to_hass(self) -> None:

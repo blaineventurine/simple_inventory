@@ -84,9 +84,29 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         "config": entry.data,
     }
 
+    if entry.data.get("create_global", False):
+        await _create_global_entry(hass)
+
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
 
     return True
+
+
+async def _create_global_entry(hass: HomeAssistant) -> None:
+    """Create the global config entry."""
+    global_data = {
+        "name": "Global Expiry Tracker",
+        "icon": "mdi:calendar-alert",
+        "description": "Tracks expiring items across all inventories",
+        "entry_type": "global",
+    }
+
+    # Use the config flow to create the entry
+    await hass.config_entries.flow.async_init(
+        DOMAIN,
+        context={"source": "internal"},
+        data=global_data,
+    )
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
