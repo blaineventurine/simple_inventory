@@ -130,9 +130,11 @@ class SimpleInventoryConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         }
 
         for keyword, icon in ICON_SUGGESTIONS.items():
-            if keyword in irregular_plurals:
-                if irregular_plurals[keyword] in name_lower:
-                    return icon
+            if (
+                keyword in irregular_plurals
+                and irregular_plurals[keyword] in name_lower
+            ):
+                return icon
 
         return ICON_SUGGESTIONS["default"]
 

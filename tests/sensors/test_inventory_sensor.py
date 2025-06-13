@@ -147,10 +147,6 @@ class TestInventorySensor:
         }
 
         with patch.object(InventorySensor, "_update_data") as mock_update:
-            sensor = InventorySensor(
-                hass, mock_sensor_coordinator, "Test", "mdi:test", "test_123"
-            )
-
             mock_update.assert_called_once()
 
     @pytest.mark.parametrize(

@@ -1,10 +1,9 @@
 [flake8]
 max-line-length = 120
 extend-ignore = 
-    # Black compatibility
-    E203,  # whitespace before ':'
-    W503,  # line break before binary operator
-    E501,  # line too long (handled by black)
+    E203,  
+    W503, 
+    E501,
 exclude = 
     .git,
     __pycache__,
@@ -14,6 +13,5 @@ exclude =
     dist,
     build
 per-file-ignores =
-    # Allow unused imports in __init__.py files
     __init__.py:F401
 

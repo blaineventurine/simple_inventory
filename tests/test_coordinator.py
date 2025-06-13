@@ -6,22 +6,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from custom_components.simple_inventory.const import (
-    DEFAULT_AUTO_ADD_ENABLED,
-    DEFAULT_CATEGORY,
-    DEFAULT_EXPIRY_DATE,
-    DEFAULT_QUANTITY,
-    DEFAULT_TODO_LIST,
-    DEFAULT_UNIT,
     DOMAIN,
-    FIELD_AUTO_ADD_ENABLED,
-    FIELD_CATEGORY,
-    FIELD_EXPIRY_DATE,
-    FIELD_QUANTITY,
-    FIELD_TODO_LIST,
-    FIELD_UNIT,
-    INVENTORY_ITEMS,
-    STORAGE_KEY,
-    STORAGE_VERSION,
 )
 from custom_components.simple_inventory.coordinator import SimpleInventoryCoordinator
 
@@ -448,7 +433,8 @@ class TestSimpleInventoryCoordinator:
                             "expiry_date": date_15_days_ahead,
                             "expiry_alert_days": 7,
                         },
-                        "bread": {"quantity": 1, "expiry_date": ""},  # No expiry date
+                        # No expiry date
+                        "bread": {"quantity": 1, "expiry_date": ""},
                     }
                 }
             },
@@ -471,7 +457,7 @@ class TestSimpleInventoryCoordinator:
         for item in expiring_items:
             print(
                 f"  - {item['name']}: expiry={item['expiry_date']
-                                                }, days={item['days_until_expiry']}"
+                                              }, days={item['days_until_expiry']}"
             )
 
         # Should include milk and yogurt (within 7 days), but not cheese (beyond threshold) or bread (no date)

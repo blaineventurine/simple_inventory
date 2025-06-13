@@ -432,18 +432,10 @@ class TestSimpleInventoryInit:
             patch(
                 "custom_components.simple_inventory.ServiceHandler"
             ) as mock_service_class,
-            patch(
-                "custom_components.simple_inventory.ADD_ITEM_SCHEMA"
-            ) as mock_add_schema,
-            patch(
-                "custom_components.simple_inventory.UPDATE_ITEM_SCHEMA"
-            ) as mock_update_schema,
-            patch(
-                "custom_components.simple_inventory.REMOVE_ITEM_SCHEMA"
-            ) as mock_remove_schema,
-            patch(
-                "custom_components.simple_inventory.QUANTITY_UPDATE_SCHEMA"
-            ) as mock_quantity_schema,
+            patch("custom_components.simple_inventory.ADD_ITEM_SCHEMA"),
+            patch("custom_components.simple_inventory.UPDATE_ITEM_SCHEMA"),
+            patch("custom_components.simple_inventory.REMOVE_ITEM_SCHEMA"),
+            patch("custom_components.simple_inventory.QUANTITY_UPDATE_SCHEMA"),
         ):
 
             # Set up mocks

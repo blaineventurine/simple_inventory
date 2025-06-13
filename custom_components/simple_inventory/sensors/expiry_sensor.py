@@ -144,7 +144,7 @@ class GlobalExpiryNotificationSensor(SensorEntity):
 
         total_items = len(all_items)
         inventories_count = (
-            len(set(item["inventory_id"] for item in all_items)) if all_items else 0
+            len({item["inventory_id"] for item in all_items}) if all_items else 0
         )
 
         self._attr_native_value = total_items
