@@ -48,33 +48,23 @@ jobs:
   test:
     runs-on: ubuntu-latest
     needs: lint
-    strategy:
-      matrix:
-        python-version: [
-            # "${{ env.MIN_PYTHON }}",
-            "${{ env.DEFAULT_PYTHON }}",
-            # "${{ env.MAX_PYTHON }}",
-          ]
-        home-assistant-version: ["2024.1.0", "2024.6.0", "2024.12.0"]
-
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Python ${{ matrix.python-version }}
+      - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: ${{ matrix.python-version }}
+          python-version: ${{ env.DEFAULT_PYTHON }}
 
       - name: Cache pip dependencies
         uses: actions/cache@v3
         with:
           path: ~/.cache/pip
-          key: ${{ runner.os }}-pip-${{ matrix.python-version }}-${{ hashFiles('requirements-dev.txt') }}
+          key: ${{ runner.os }}-pip-${{ env.DEFAULT_PYTHON }}-${{ hashFiles('requirements-dev.txt') }}
 
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install homeassistant==${{ matrix.home-assistant-version }}
           pip install -r requirements-dev.txt
 
       - name: Run tests with coverage
@@ -83,7 +73,6 @@ jobs:
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v4
-        if: matrix.python-version == env.DEFAULT_PYTHON && matrix.home-assistant-version == '2024.12.0'
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
 
