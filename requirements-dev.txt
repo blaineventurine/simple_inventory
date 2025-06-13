@@ -16,3 +16,7 @@ pytest==8.3.5
 pytest-cov==6.0.0
 pytest-homeassistant-custom-component==0.13.249
 
+safety
+pre-commit
+bump2version
+
