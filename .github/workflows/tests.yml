@@ -2,8 +2,9 @@ name: Tests
 
 on:
   push:
-    branches: [master, develop, refactor]
+    branches: [master]
   pull_request:
+    branches: [master]
 
 env:
   DEFAULT_PYTHON: "3.13.4"
