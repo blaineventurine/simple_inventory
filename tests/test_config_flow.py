@@ -1,9 +1,11 @@
 """Tests for the Simple Inventory config flow."""
-from unittest.mock import patch, MagicMock, AsyncMock
-import pytest
 
+from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
 from homeassistant import data_entry_flow
 from homeassistant.core import HomeAssistant
+
 from custom_components.simple_inventory.config_flow import SimpleInventoryConfigFlow
 from custom_components.simple_inventory.const import DOMAIN
 
@@ -14,7 +16,7 @@ def mock_coordinator():
     coordinator = MagicMock()
     coordinator.get_all_items.return_value = {
         "milk": {"quantity": 2},
-        "bread": {"quantity": 1}
+        "bread": {"quantity": 1},
     }
     return coordinator
 
@@ -22,7 +24,9 @@ def mock_coordinator():
 @pytest.fixture
 def mock_setup_entry():
     """Mock setting up a config entry."""
-    with patch("custom_components.simple_inventory.async_setup_entry", return_value=True) as mock_setup:
+    with patch(
+        "custom_components.simple_inventory.async_setup_entry", return_value=True
+    ) as mock_setup:
         yield mock_setup
 
 
@@ -47,18 +51,20 @@ async def test_add_inventory_step(hass: HomeAssistant, mock_setup_entry):
     assert result["type"] == data_entry_flow.FlowResultType.FORM
     assert result["step_id"] == "add_inventory"
 
-    result = await flow.async_step_add_inventory({
-        "name": "Kitchen Fridge",
-        "icon": "mdi:fridge",
-        "description": "Our main refrigerator"
-    })
+    result = await flow.async_step_add_inventory(
+        {
+            "name": "Kitchen Fridge",
+            "icon": "mdi:fridge",
+            "description": "Our main refrigerator",
+        }
+    )
 
     assert result["type"] == data_entry_flow.FlowResultType.CREATE_ENTRY
     assert result["title"] == "Kitchen Fridge"
     assert result["data"] == {
         "name": "Kitchen Fridge",
         "icon": "mdi:fridge",
-        "description": "Our main refrigerator"
+        "description": "Our main refrigerator",
     }
 
 
@@ -68,10 +74,9 @@ async def test_add_inventory_auto_icon(hass: HomeAssistant, mock_setup_entry):
     flow.hass = hass
 
     # Submit without specifying an icon
-    result = await flow.async_step_add_inventory({
-        "name": "Kitchen Fridge",
-        "description": "Our main refrigerator"
-    })
+    result = await flow.async_step_add_inventory(
+        {"name": "Kitchen Fridge", "description": "Our main refrigerator"}
+    )
 
     assert result["type"] == data_entry_flow.FlowResultType.CREATE_ENTRY
     # Auto-suggested based on "fridge" in name
@@ -181,8 +186,7 @@ async def test_cancel_delete_inventory(hass: HomeAssistant, mock_coordinator):
     entry.title = "Kitchen Fridge"
     hass.config_entries.async_get_entry = MagicMock(return_value=entry)
     hass.data[DOMAIN] = {"coordinator": mock_coordinator}
-    flow.async_step_manage_inventories = AsyncMock(
-        return_value={"type": "menu"})
+    flow.async_step_manage_inventories = AsyncMock(return_value={"type": "menu"})
 
     # Cancel deletion
     await flow.async_step_confirm_delete("test_entry", {"confirm": False})
@@ -200,16 +204,11 @@ async def test_icon_suggestion():
     assert flow._suggest_icon("Pantry") == "mdi:food"
 
     # Test singular/plural variations
-    assert flow._suggest_icon(
-        "Tool Shed") == "mdi:hammer-wrench"  # singular -> plural
-    assert flow._suggest_icon(
-        "Tools Shed") == "mdi:hammer-wrench"  # exact match
-    assert flow._suggest_icon(
-        "Book Shelf") == "mdi:book-open-page-variant"  # singular
-    assert flow._suggest_icon(
-        "Books Shelf") == "mdi:book-open-page-variant"  # plural
-    assert flow._suggest_icon(
-        "Pet Supplies") == "mdi:paw"  # singular -> plural
+    assert flow._suggest_icon("Tool Shed") == "mdi:hammer-wrench"  # singular -> plural
+    assert flow._suggest_icon("Tools Shed") == "mdi:hammer-wrench"  # exact match
+    assert flow._suggest_icon("Book Shelf") == "mdi:book-open-page-variant"  # singular
+    assert flow._suggest_icon("Books Shelf") == "mdi:book-open-page-variant"  # plural
+    assert flow._suggest_icon("Pet Supplies") == "mdi:paw"  # singular -> plural
     assert flow._suggest_icon("Pets Supplies") == "mdi:paw"  # plural
 
     # Test alternative words
@@ -228,8 +227,11 @@ async def test_icon_suggestion():
 async def test_options_flow():
     """Test the options flow logic."""
     config_entry = MagicMock()
-    config_entry.data = {"name": "Kitchen Fridge",
-                         "icon": "mdi:fridge", "description": ""}
+    config_entry.data = {
+        "name": "Kitchen Fridge",
+        "icon": "mdi:fridge",
+        "description": "",
+    }
     config_entry.options = {"expiry_threshold": 7}
     config_entry.title = "Kitchen Fridge"
     config_entry.entry_id = "test_entry"
@@ -239,7 +241,7 @@ async def test_options_flow():
         "name": "Main Fridge",
         "icon": "mdi:fridge-outline",
         "description": "Updated description",
-        "expiry_threshold": 14
+        "expiry_threshold": 14,
     }
 
     # Simulate what async_step_init does
@@ -270,7 +272,9 @@ async def test_get_inventory_items_no_coordinator(hass: HomeAssistant):
     assert items == []
 
 
-async def test_get_inventory_items_with_coordinator(hass: HomeAssistant, mock_coordinator):
+async def test_get_inventory_items_with_coordinator(
+    hass: HomeAssistant, mock_coordinator
+):
     """Test getting inventory items with coordinator available."""
     flow = SimpleInventoryConfigFlow()
     flow.hass = hass
@@ -320,14 +324,17 @@ async def test_configure_inventory_select_delete(hass: HomeAssistant, mock_coord
     hass.data[DOMAIN] = {"coordinator": mock_coordinator}
 
     flow.async_step_confirm_delete = AsyncMock(
-        return_value={"type": "form", "step_id": "confirm_delete"})
+        return_value={"type": "form", "step_id": "confirm_delete"}
+    )
 
     await flow.async_step_configure_inventory("test_entry", {"action": "delete"})
 
     flow.async_step_confirm_delete.assert_called_once_with("test_entry")
 
 
-async def test_manage_inventories_select_inventory(hass: HomeAssistant, mock_coordinator):
+async def test_manage_inventories_select_inventory(
+    hass: HomeAssistant, mock_coordinator
+):
     """Test selecting an inventory in manage inventories."""
     flow = SimpleInventoryConfigFlow()
     flow.hass = hass
@@ -337,7 +344,8 @@ async def test_manage_inventories_select_inventory(hass: HomeAssistant, mock_coo
     flow._async_current_entries = MagicMock(return_value=[entry1])
     hass.data[DOMAIN] = {"coordinator": mock_coordinator}
     flow.async_step_configure_inventory = AsyncMock(
-        return_value={"type": "form", "step_id": "configure_inventory"})
+        return_value={"type": "form", "step_id": "configure_inventory"}
+    )
 
     await flow.async_step_manage_inventories({"inventory": "entry1"})
 

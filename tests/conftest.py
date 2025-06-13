@@ -1,13 +1,18 @@
 """Test configuration and fixtures."""
-from custom_components.simple_inventory.services.quantity_service import QuantityService
-from custom_components.simple_inventory.services.inventory_service import InventoryService
-from custom_components.simple_inventory.services.base_service import BaseServiceHandler
-from custom_components.simple_inventory.todo_manager import TodoManager
+
 import sys
-import pytest
+from datetime import datetime, timedelta
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
-from datetime import datetime, timedelta
+
+import pytest
+
+from custom_components.simple_inventory.services.base_service import BaseServiceHandler
+from custom_components.simple_inventory.services.inventory_service import (
+    InventoryService,
+)
+from custom_components.simple_inventory.services.quantity_service import QuantityService
+from custom_components.simple_inventory.todo_manager import TodoManager
 
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
@@ -29,7 +34,8 @@ def hass():
     hass_mock.helpers = MagicMock()
     hass_mock.helpers.entity_registry = MagicMock()
     hass_mock.helpers.entity_registry.async_get = AsyncMock(
-        return_value=entity_registry)
+        return_value=entity_registry
+    )
     hass_mock.helpers.utcnow = MagicMock(return_value=datetime.now())
 
     hass_mock.config_entries = MagicMock()
@@ -54,7 +60,8 @@ def mock_coordinator():
     coordinator.remove_item = MagicMock(return_value=True)
     coordinator.update_item = MagicMock(return_value=True)
     coordinator.get_item = MagicMock(
-        return_value={"quantity": 5, "auto_add_to_list_quantity": 2})
+        return_value={"quantity": 5, "auto_add_to_list_quantity": 2}
+    )
     coordinator.get_all_items = MagicMock(return_value={})
 
     # Quantity operations
@@ -105,10 +112,7 @@ def quantity_service(hass, mock_coordinator, mock_todo_manager):
 def basic_service_call():
     """Create a basic service call with inventory_id and name."""
     call = MagicMock()
-    call.data = {
-        "inventory_id": "kitchen",
-        "name": "milk"
-    }
+    call.data = {"inventory_id": "kitchen", "name": "milk"}
     return call
 
 
@@ -141,7 +145,7 @@ def update_item_service_call():
         "name": "whole_milk",
         "quantity": 3,
         "unit": "liters",
-        "category": "dairy"
+        "category": "dairy",
     }
     return call
 
@@ -150,11 +154,7 @@ def update_item_service_call():
 def quantity_service_call():
     """Create a service call for quantity operations."""
     call = MagicMock()
-    call.data = {
-        "inventory_id": "kitchen",
-        "name": "milk",
-        "amount": 2
-    }
+    call.data = {"inventory_id": "kitchen", "name": "milk", "amount": 2}
     return call
 
 
@@ -162,9 +162,7 @@ def quantity_service_call():
 def threshold_service_call():
     """Create a service call for setting expiry threshold."""
     call = MagicMock()
-    call.data = {
-        "threshold_days": 7
-    }
+    call.data = {"threshold_days": 7}
     return call
 
 
@@ -176,7 +174,7 @@ def sample_todo_items():
         {"summary": "bread", "status": "completed"},
         {"summary": "eggs", "completed": False},
         {"summary": "cheese", "done": True},
-        {"summary": "butter", "state": "completed"}
+        {"summary": "butter", "state": "completed"},
     ]
 
 
@@ -187,7 +185,7 @@ def sample_item_data():
         "auto_add_enabled": True,
         "auto_add_to_list_quantity": 10,
         "quantity": 5,
-        "todo_list": "todo.shopping_list"
+        "todo_list": "todo.shopping_list",
     }
 
 
@@ -227,7 +225,7 @@ def sample_inventory_data():
                     "quantity": 1,
                     "todo_list": "",
                     "unit": "cup",
-                }
+                },
             }
         },
         "pantry": {
@@ -243,7 +241,7 @@ def sample_inventory_data():
                     "unit": "kg",
                 }
             }
-        }
+        },
     }
 
 
@@ -269,16 +267,19 @@ def mock_sensor_coordinator(sample_inventory_data):
     coordinator = MagicMock()
     coordinator.get_data.return_value = {"inventories": sample_inventory_data}
     coordinator.get_all_items.return_value = sample_inventory_data.get(
-        "kitchen", {}).get("items", {})
+        "kitchen", {}
+    ).get("items", {})
     coordinator.last_update_success = True
     coordinator.last_update_time = datetime.now()
-    coordinator.get_inventory_statistics = MagicMock(return_value={
-        "total_quantity": 0,
-        "total_items": 0,
-        "categories": [],
-        "below_threshold": [],
-        "expiring_items": []
-    })
+    coordinator.get_inventory_statistics = MagicMock(
+        return_value={
+            "total_quantity": 0,
+            "total_items": 0,
+            "categories": [],
+            "below_threshold": [],
+            "expiring_items": [],
+        }
+    )
 
     def mock_get_items_expiring_soon(inventory_id=None):
         """Mock implementation of get_items_expiring_soon."""
@@ -288,7 +289,8 @@ def mock_sensor_coordinator(sample_inventory_data):
         inventories_to_check = {}
         if inventory_id:
             inventories_to_check = {
-                inventory_id: sample_inventory_data.get(inventory_id, {})}
+                inventory_id: sample_inventory_data.get(inventory_id, {})
+            }
         else:
             inventories_to_check = sample_inventory_data
 
@@ -296,24 +298,26 @@ def mock_sensor_coordinator(sample_inventory_data):
             for item_name, item_data in inventory.get("items", {}).items():
                 expiry_date_str = item_data.get("expiry_date", "")
                 if expiry_date_str:
-                    expiry_date = datetime.strptime(
-                        expiry_date_str, "%Y-%m-%d").date()
+                    expiry_date = datetime.strptime(expiry_date_str, "%Y-%m-%d").date()
                     days_until_expiry = (expiry_date - today).days
                     item_threshold = item_data.get("expiry_alert_days", 7)
 
                     if item_threshold and days_until_expiry <= item_threshold:
-                        items.append({
-                            "inventory_id": inv_id,
-                            "name": item_name,
-                            "expiry_date": expiry_date_str,
-                            "days_until_expiry": days_until_expiry,
-                            "threshold": item_threshold,
-                            **item_data
-                        })
+                        items.append(
+                            {
+                                "inventory_id": inv_id,
+                                "name": item_name,
+                                "expiry_date": expiry_date_str,
+                                "days_until_expiry": days_until_expiry,
+                                "threshold": item_threshold,
+                                **item_data,
+                            }
+                        )
         return items
 
     coordinator.get_items_expiring_soon = MagicMock(
-        side_effect=mock_get_items_expiring_soon)
+        side_effect=mock_get_items_expiring_soon
+    )
     coordinator.async_add_listener = MagicMock(return_value=MagicMock())
 
     return coordinator
@@ -324,7 +328,7 @@ def mock_sensor_coordinator(sample_inventory_data):
 def mock_datetime():
     """Create a mock datetime for consistent testing."""
     fixed_datetime = datetime(2024, 6, 15, 12, 0, 0)
-    with patch('datetime.datetime') as mock_dt:
+    with patch("datetime.datetime") as mock_dt:
         mock_dt.now.return_value = fixed_datetime
         mock_dt.side_effect = lambda *args, **kw: datetime(*args, **kw)
         yield mock_dt
@@ -334,6 +338,7 @@ def mock_datetime():
 def caplog_info(caplog):
     """Set caplog to INFO level for testing."""
     import logging
+
     caplog.set_level(logging.INFO)
     return caplog
 
@@ -342,6 +347,7 @@ def caplog_info(caplog):
 def caplog_debug(caplog):
     """Set caplog to DEBUG level for testing."""
     import logging
+
     caplog.set_level(logging.DEBUG)
     return caplog
 
@@ -409,19 +415,24 @@ def mock_entity_registry_with_expiry_sensor():
     expiry_entity = MagicMock()
     expiry_entity.entity_id = "sensor.items_expiring_soon"
     expiry_entity.platform = "simple_inventory"
-    entity_registry.entities = {
-        "expiry_sensor_key": expiry_entity
-    }
+    entity_registry.entities = {"expiry_sensor_key": expiry_entity}
 
     return entity_registry
 
 
 @pytest.fixture
-def hass_with_expiry_sensor(hass, mock_config_entries, mock_expiry_sensor_state, mock_entity_registry_with_expiry_sensor):
+def hass_with_expiry_sensor(
+    hass,
+    mock_config_entries,
+    mock_expiry_sensor_state,
+    mock_entity_registry_with_expiry_sensor,
+):
     """Enhanced hass fixture with expiry sensor setup."""
     hass.config_entries.async_entries.return_value = mock_config_entries
     hass.states.async_entity_ids.return_value = ["sensor.items_expiring_soon"]
     hass.states.get.return_value = mock_expiry_sensor_state
-    hass.helpers.entity_registry.async_get.return_value = mock_entity_registry_with_expiry_sensor
+    hass.helpers.entity_registry.async_get.return_value = (
+        mock_entity_registry_with_expiry_sensor
+    )
 
     return hass

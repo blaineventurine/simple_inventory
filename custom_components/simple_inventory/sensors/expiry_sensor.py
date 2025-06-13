@@ -1,8 +1,11 @@
 """Expiry notification sensor for Simple Inventory."""
+
 import logging
+
 from homeassistant.components.sensor import SensorEntity
 from homeassistant.core import HomeAssistant, callback
-from ..const import (DOMAIN)
+
+from ..const import DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -10,7 +13,9 @@ _LOGGER = logging.getLogger(__name__)
 class ExpiryNotificationSensor(SensorEntity):
     """Sensor to track items nearing expiry for a specific inventory."""
 
-    def __init__(self, hass: HomeAssistant, coordinator, inventory_id: str, inventory_name: str):
+    def __init__(
+        self, hass: HomeAssistant, coordinator, inventory_id: str, inventory_name: str
+    ):
         """Initialize the sensor."""
         self.hass = hass
         self.coordinator = coordinator
@@ -27,18 +32,17 @@ class ExpiryNotificationSensor(SensorEntity):
         """Register callbacks for inventory updates."""
         self.async_on_remove(
             self.hass.bus.async_listen(
-                f"{DOMAIN}_updated_{self.inventory_id}", self._handle_update)
+                f"{DOMAIN}_updated_{self.inventory_id}", self._handle_update
+            )
         )
 
         self.async_on_remove(
-            self.hass.bus.async_listen(
-                f"{DOMAIN}_updated", self._handle_update)
+            self.hass.bus.async_listen(f"{DOMAIN}_updated", self._handle_update)
         )
 
         if hasattr(self.coordinator, "async_add_listener"):
             self.async_on_remove(
-                self.coordinator.async_add_listener(
-                    self._handle_coordinator_update)
+                self.coordinator.async_add_listener(self._handle_coordinator_update)
             )
 
     @callback
@@ -57,10 +61,8 @@ class ExpiryNotificationSensor(SensorEntity):
         """Update sensor data for this specific inventory."""
         all_items = self.coordinator.get_items_expiring_soon(self.inventory_id)
 
-        expired_items = [
-            item for item in all_items if item["days_until_expiry"] < 0]
-        expiring_items = [
-            item for item in all_items if item["days_until_expiry"] >= 0]
+        expired_items = [item for item in all_items if item["days_until_expiry"] < 0]
+        expiring_items = [item for item in all_items if item["days_until_expiry"] >= 0]
 
         for item in all_items:
             item["inventory"] = self.inventory_name
@@ -102,21 +104,20 @@ class GlobalExpiryNotificationSensor(SensorEntity):
     async def async_added_to_hass(self) -> None:
         """Register callbacks for all inventory updates."""
         self.async_on_remove(
-            self.hass.bus.async_listen(
-                f"{DOMAIN}_updated", self._handle_update)
+            self.hass.bus.async_listen(f"{DOMAIN}_updated", self._handle_update)
         )
 
         inventories = self.coordinator.get_data().get("inventories", {})
         for inventory_id in inventories:
             self.async_on_remove(
                 self.hass.bus.async_listen(
-                    f"{DOMAIN}_updated_{inventory_id}", self._handle_update)
+                    f"{DOMAIN}_updated_{inventory_id}", self._handle_update
+                )
             )
 
         if hasattr(self.coordinator, "async_add_listener"):
             self.async_on_remove(
-                self.coordinator.async_add_listener(
-                    self._handle_coordinator_update)
+                self.coordinator.async_add_listener(self._handle_coordinator_update)
             )
 
     @callback
@@ -138,14 +139,13 @@ class GlobalExpiryNotificationSensor(SensorEntity):
         for item in all_items:
             item["inventory"] = self._get_inventory_name(item["inventory_id"])
 
-        expired_items = [
-            item for item in all_items if item["days_until_expiry"] < 0]
-        expiring_items = [
-            item for item in all_items if item["days_until_expiry"] >= 0]
+        expired_items = [item for item in all_items if item["days_until_expiry"] < 0]
+        expiring_items = [item for item in all_items if item["days_until_expiry"] >= 0]
 
         total_items = len(all_items)
-        inventories_count = len(
-            set(item["inventory_id"] for item in all_items)) if all_items else 0
+        inventories_count = (
+            len(set(item["inventory_id"] for item in all_items)) if all_items else 0
+        )
 
         self._attr_native_value = total_items
         self._attr_extra_state_attributes = {
@@ -161,7 +161,9 @@ class GlobalExpiryNotificationSensor(SensorEntity):
         if expired_items:
             self._attr_icon = "mdi:calendar-remove"
         elif expiring_items:
-            most_urgent_days = expiring_items[0]["days_until_expiry"] if expiring_items else 7
+            most_urgent_days = (
+                expiring_items[0]["days_until_expiry"] if expiring_items else 7
+            )
             if most_urgent_days <= 1:
                 self._attr_icon = "mdi:calendar-alert"
             elif most_urgent_days <= 3:

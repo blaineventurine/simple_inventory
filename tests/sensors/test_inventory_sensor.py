@@ -1,8 +1,11 @@
 """Tests for InventorySensor."""
-import pytest
+
 from unittest.mock import MagicMock, patch
-from custom_components.simple_inventory.sensors.inventory_sensor import InventorySensor
+
+import pytest
+
 from custom_components.simple_inventory.const import DOMAIN
+from custom_components.simple_inventory.sensors.inventory_sensor import InventorySensor
 
 
 class TestInventorySensor:
@@ -16,15 +19,11 @@ class TestInventorySensor:
             "total_items": 0,
             "categories": [],
             "below_threshold": [],
-            "expiring_items": []
+            "expiring_items": [],
         }
 
         return InventorySensor(
-            hass,
-            mock_sensor_coordinator,
-            "Kitchen",
-            "mdi:fridge",
-            "kitchen_123"
+            hass, mock_sensor_coordinator, "Kitchen", "mdi:fridge", "kitchen_123"
         )
 
     def test_init(self, inventory_sensor):
@@ -44,11 +43,10 @@ class TestInventorySensor:
         assert hass.bus.async_listen.call_count == 2
         hass.bus.async_listen.assert_any_call(
             f"{DOMAIN}_updated_{inventory_sensor._entry_id}",
-            inventory_sensor._handle_update
+            inventory_sensor._handle_update,
         )
         hass.bus.async_listen.assert_any_call(
-            f"{DOMAIN}_updated",
-            inventory_sensor._handle_update
+            f"{DOMAIN}_updated", inventory_sensor._handle_update
         )
 
     def test_handle_update(self, inventory_sensor):
@@ -68,21 +66,17 @@ class TestInventorySensor:
 
         mock_stats = {
             "total_quantity": 4,  # 2 + 1 + 1 from sample data
-            "total_items": 3,     # milk, bread, expired_yogurt
+            "total_items": 3,  # milk, bread, expired_yogurt
             "categories": ["dairy", "bakery"],
             "below_threshold": [],
             "expiring_items": [
-                {
-                    "name": "milk",
-                    "expiry_date": "2024-06-20",
-                    "days_until_expiry": 5
-                },
+                {"name": "milk", "expiry_date": "2024-06-20", "days_until_expiry": 5},
                 {
                     "name": "expired_yogurt",
                     "expiry_date": "2024-06-14",
-                    "days_until_expiry": -1
-                }
-            ]
+                    "days_until_expiry": -1,
+                },
+            ],
         }
         inventory_sensor.coordinator.get_inventory_statistics.return_value = mock_stats
 
@@ -115,7 +109,7 @@ class TestInventorySensor:
             "total_items": 0,
             "categories": [],
             "below_threshold": [],
-            "expiring_items": []
+            "expiring_items": [],
         }
 
         inventory_sensor._update_data()
@@ -136,9 +130,11 @@ class TestInventorySensor:
         inventory_sensor._update_data()
 
         inventory_sensor.coordinator.get_all_items.assert_called_once_with(
-            "kitchen_123")
+            "kitchen_123"
+        )
         inventory_sensor.coordinator.get_inventory_statistics.assert_called_once_with(
-            "kitchen_123")
+            "kitchen_123"
+        )
 
     def test_update_data_called_during_init(self, hass, mock_sensor_coordinator):
         """Test that _update_data is called during initialization."""
@@ -147,42 +143,39 @@ class TestInventorySensor:
             "total_items": 0,
             "categories": [],
             "below_threshold": [],
-            "expiring_items": []
+            "expiring_items": [],
         }
 
-        with patch.object(InventorySensor, '_update_data') as mock_update:
+        with patch.object(InventorySensor, "_update_data") as mock_update:
             sensor = InventorySensor(
-                hass,
-                mock_sensor_coordinator,
-                "Test",
-                "mdi:test",
-                "test_123"
+                hass, mock_sensor_coordinator, "Test", "mdi:test", "test_123"
             )
 
             mock_update.assert_called_once()
 
-    @pytest.mark.parametrize("inventory_name,expected_attr_name", [
-        ("Kitchen", "Kitchen Inventory"),
-        ("Main Pantry", "Main Pantry Inventory"),
-        ("Garage Storage", "Garage Storage Inventory"),
-        ("", " Inventory"),
-    ])
-    def test_dynamic_sensor_names(self, hass, mock_sensor_coordinator, inventory_name, expected_attr_name):
+    @pytest.mark.parametrize(
+        "inventory_name,expected_attr_name",
+        [
+            ("Kitchen", "Kitchen Inventory"),
+            ("Main Pantry", "Main Pantry Inventory"),
+            ("Garage Storage", "Garage Storage Inventory"),
+            ("", " Inventory"),
+        ],
+    )
+    def test_dynamic_sensor_names(
+        self, hass, mock_sensor_coordinator, inventory_name, expected_attr_name
+    ):
         """Test sensor name generation with different inventory names."""
         mock_sensor_coordinator.get_inventory_statistics.return_value = {
             "total_quantity": 0,
             "total_items": 0,
             "categories": [],
             "below_threshold": [],
-            "expiring_items": []
+            "expiring_items": [],
         }
 
         sensor = InventorySensor(
-            hass,
-            mock_sensor_coordinator,
-            inventory_name,
-            "mdi:test",
-            "test_123"
+            hass, mock_sensor_coordinator, inventory_name, "mdi:test", "test_123"
         )
 
         assert sensor._attr_name == expected_attr_name

@@ -1,11 +1,12 @@
 """Config flow for Simple Inventory integration."""
-import logging
-import voluptuous as vol
 
+import logging
+
+import homeassistant.helpers.config_validation as cv
+import voluptuous as vol
 from homeassistant import config_entries
 from homeassistant.core import callback
 from homeassistant.data_entry_flow import FlowResult
-import homeassistant.helpers.config_validation as cv
 
 from .const import DOMAIN
 
@@ -52,8 +53,9 @@ class SimpleInventoryConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         return self.async_show_menu(
             menu_options={
                 "add_inventory": "Add New Inventory",
-                "manage_inventories": "Manage Existing Inventories"
-            })
+                "manage_inventories": "Manage Existing Inventories",
+            }
+        )
 
     async def async_step_add_inventory(self, user_input=None) -> FlowResult:
         """Handle adding a new inventory."""
@@ -61,8 +63,9 @@ class SimpleInventoryConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         if user_input is not None:
             existing_entries = self._async_current_entries()
-            existing_names = [entry.data.get(
-                "name", "").lower() for entry in existing_entries]
+            existing_names = [
+                entry.data.get("name", "").lower() for entry in existing_entries
+            ]
 
             if user_input["name"].lower() in existing_names:
                 errors["name"] = "name_exists"
@@ -77,7 +80,7 @@ class SimpleInventoryConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                         "name": user_input["name"],
                         "icon": icon,
                         "description": user_input.get("description", ""),
-                    }
+                    },
                 )
 
         name_default = user_input.get("name", "") if user_input else ""
@@ -86,11 +89,13 @@ class SimpleInventoryConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         return self.async_show_form(
             step_id="add_inventory",
-            data_schema=vol.Schema({
-                vol.Required("name", default=name_default): cv.string,
-                vol.Optional("icon", default=icon_default): cv.string,
-                vol.Optional("description", default=desc_default): cv.string,
-            }),
+            data_schema=vol.Schema(
+                {
+                    vol.Required("name", default=name_default): cv.string,
+                    vol.Optional("icon", default=icon_default): cv.string,
+                    vol.Optional("description", default=desc_default): cv.string,
+                }
+            ),
             errors=errors,
         )
 
@@ -104,24 +109,24 @@ class SimpleInventoryConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         for keyword, icon in ICON_SUGGESTIONS.items():
             # These end in 's' but aren't simple plurals
-            if keyword in ['electronics', 'clothes']:
+            if keyword in ["electronics", "clothes"]:
                 continue
 
-            if keyword.endswith('s') and len(keyword) > 1:
+            if keyword.endswith("s") and len(keyword) > 1:
                 singular = keyword[:-1]
                 if singular in name_lower:
                     return icon
 
-            elif not keyword.endswith('s'):
-                plural = keyword + 's'
+            elif not keyword.endswith("s"):
+                plural = keyword + "s"
                 if plural in name_lower:
                     return icon
 
         irregular_plurals = {
-            'child': 'children',
-            'children': 'child',
-            'person': 'people',
-            'people': 'person',
+            "child": "children",
+            "children": "child",
+            "person": "people",
+            "people": "person",
         }
 
         for keyword, icon in ICON_SUGGESTIONS.items():
@@ -141,7 +146,7 @@ class SimpleInventoryConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 data_schema=vol.Schema({}),
                 description_placeholders={
                     "message": "No inventories created yet. Use 'Add Inventory' to create your first one."
-                }
+                },
             )
 
         inventory_options = {
@@ -156,15 +161,19 @@ class SimpleInventoryConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         return self.async_show_form(
             step_id="manage_inventories",
-            data_schema=vol.Schema({
-                vol.Required("inventory"): vol.In(inventory_options),
-            }),
+            data_schema=vol.Schema(
+                {
+                    vol.Required("inventory"): vol.In(inventory_options),
+                }
+            ),
             description_placeholders={
                 "action": "Select an inventory to configure or delete"
-            }
+            },
         )
 
-    async def async_step_configure_inventory(self, entry_id: str, user_input=None) -> FlowResult:
+    async def async_step_configure_inventory(
+        self, entry_id: str, user_input=None
+    ) -> FlowResult:
         """Configure or delete a specific inventory."""
         entry = self.hass.config_entries.async_get_entry(entry_id)
         if not entry:
@@ -176,23 +185,32 @@ class SimpleInventoryConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             if action == "delete":
                 return await self.async_step_confirm_delete(entry_id)
             elif action == "configure":
-                return self.async_external_step(step_id="configure", url=f"/config/integrations/configure/{entry_id}")
+                return self.async_external_step(
+                    step_id="configure",
+                    url=f"/config/integrations/configure/{entry_id}",
+                )
 
         return self.async_show_form(
             step_id="configure_inventory",
-            data_schema=vol.Schema({
-                vol.Required("action"): vol.In({
-                    "configure": "Configure settings",
-                    "delete": "Delete inventory"
-                }),
-            }),
+            data_schema=vol.Schema(
+                {
+                    vol.Required("action"): vol.In(
+                        {
+                            "configure": "Configure settings",
+                            "delete": "Delete inventory",
+                        }
+                    ),
+                }
+            ),
             description_placeholders={
                 "inventory_name": entry.title,
-                "item_count": str(len(self._get_inventory_items(entry_id)))
-            }
+                "item_count": str(len(self._get_inventory_items(entry_id))),
+            },
         )
 
-    async def async_step_confirm_delete(self, entry_id: str, user_input=None) -> FlowResult:
+    async def async_step_confirm_delete(
+        self, entry_id: str, user_input=None
+    ) -> FlowResult:
         """Confirm deletion of an inventory."""
         entry = self.hass.config_entries.async_get_entry(entry_id)
         if not entry:
@@ -203,9 +221,7 @@ class SimpleInventoryConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 # Delete the config entry
                 await self.hass.config_entries.async_remove(entry_id)
                 return self.async_create_entry(
-                    title="",
-                    data={},
-                    description="Inventory deleted successfully"
+                    title="", data={}, description="Inventory deleted successfully"
                 )
             else:
                 return await self.async_step_manage_inventories()
@@ -214,14 +230,16 @@ class SimpleInventoryConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         return self.async_show_form(
             step_id="confirm_delete",
-            data_schema=vol.Schema({
-                vol.Required("confirm", default=False): cv.boolean,
-            }),
+            data_schema=vol.Schema(
+                {
+                    vol.Required("confirm", default=False): cv.boolean,
+                }
+            ),
             description_placeholders={
                 "inventory_name": entry.title,
                 "item_count": str(item_count),
-                "warning": f"This will permanently delete '{entry.title}' and all {item_count} items in it."
-            }
+                "warning": f"This will permanently delete '{entry.title}' and all {item_count} items in it.",
+            },
         )
 
     def _get_inventory_items(self, entry_id: str) -> list:
@@ -255,26 +273,28 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
             self.hass.config_entries.async_update_entry(
                 self.config_entry,
                 data=new_data,
-                title=user_input.get("name", self.config_entry.title)
+                title=user_input.get("name", self.config_entry.title),
             )
 
             return self.async_create_entry(title="", data={})
 
         return self.async_show_form(
             step_id="init",
-            data_schema=vol.Schema({
-                vol.Required(
-                    "Name",
-                    default=self.config_entry.data.get("name", "")
-                ): cv.string,
-                vol.Optional(
-                    "Icon",
-                    default=self.config_entry.data.get(
-                        "icon", "mdi:package-variant")
-                ): cv.string,
-                vol.Optional(
-                    "Description",
-                    default=self.config_entry.data.get("description", "")
-                ): cv.string,
-            }),
+            data_schema=vol.Schema(
+                {
+                    vol.Required(
+                        "Name", default=self.config_entry.data.get("name", "")
+                    ): cv.string,
+                    vol.Optional(
+                        "Icon",
+                        default=self.config_entry.data.get(
+                            "icon", "mdi:package-variant"
+                        ),
+                    ): cv.string,
+                    vol.Optional(
+                        "Description",
+                        default=self.config_entry.data.get("description", ""),
+                    ): cv.string,
+                }
+            ),
         )

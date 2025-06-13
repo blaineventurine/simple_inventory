@@ -1,5 +1,7 @@
 """Service handlers for Simple Inventory integration."""
+
 import logging
+
 from homeassistant.core import HomeAssistant, ServiceCall
 
 from ..coordinator import SimpleInventoryCoordinator
@@ -13,14 +15,18 @@ _LOGGER = logging.getLogger(__name__)
 class ServiceHandler:
     """Main service handler that coordinates specialized service handlers."""
 
-    def __init__(self, hass: HomeAssistant, coordinator: SimpleInventoryCoordinator, todo_manager: TodoManager):
+    def __init__(
+        self,
+        hass: HomeAssistant,
+        coordinator: SimpleInventoryCoordinator,
+        todo_manager: TodoManager,
+    ):
         """Initialize the main service handler."""
         self.hass = hass
         self.coordinator = coordinator
         self.todo_manager = todo_manager
         self.inventory_service = InventoryService(hass, coordinator)
-        self.quantity_service = QuantityService(
-            hass, coordinator, todo_manager)
+        self.quantity_service = QuantityService(hass, coordinator, todo_manager)
 
     async def async_add_item(self, call: ServiceCall):
         """Add an item to the inventory."""

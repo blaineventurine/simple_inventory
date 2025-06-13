@@ -1,7 +1,13 @@
 """Tests for ExpiryNotificationSensor."""
-import pytest
+
 from unittest.mock import MagicMock, call
-from custom_components.simple_inventory.sensors.expiry_sensor import ExpiryNotificationSensor, GlobalExpiryNotificationSensor
+
+import pytest
+
+from custom_components.simple_inventory.sensors.expiry_sensor import (
+    ExpiryNotificationSensor,
+    GlobalExpiryNotificationSensor,
+)
 
 
 class TestExpiryNotificationSensor:
@@ -13,14 +19,18 @@ class TestExpiryNotificationSensor:
         mock_sensor_coordinator.get_items_expiring_soon.side_effect = None
         mock_sensor_coordinator.get_items_expiring_soon.return_value = []
         sensor = ExpiryNotificationSensor(
-            hass, mock_sensor_coordinator, "kitchen_inventory", "Kitchen")
+            hass, mock_sensor_coordinator, "kitchen_inventory", "Kitchen"
+        )
         mock_sensor_coordinator.get_items_expiring_soon.reset_mock()
         return sensor
 
     def test_init(self, expiry_sensor):
         """Test sensor initialization."""
         assert expiry_sensor._attr_name == "Kitchen Items Expiring Soon"
-        assert expiry_sensor._attr_unique_id == "simple_inventory_expiring_items_kitchen_inventory"
+        assert (
+            expiry_sensor._attr_unique_id
+            == "simple_inventory_expiring_items_kitchen_inventory"
+        )
         assert expiry_sensor._attr_native_unit_of_measurement == "items"
         assert expiry_sensor.inventory_id == "kitchen_inventory"
         assert expiry_sensor.inventory_name == "Kitchen"
@@ -33,8 +43,10 @@ class TestExpiryNotificationSensor:
         await expiry_sensor.async_added_to_hass()
 
         expected_calls = [
-            call("simple_inventory_updated_kitchen_inventory",
-                 expiry_sensor._handle_update),
+            call(
+                "simple_inventory_updated_kitchen_inventory",
+                expiry_sensor._handle_update,
+            ),
             call("simple_inventory_updated", expiry_sensor._handle_update),
         ]
 
@@ -70,7 +82,7 @@ class TestExpiryNotificationSensor:
                 "threshold": 7,
                 "quantity": 1,
                 "unit": "liter",
-                "category": "dairy"
+                "category": "dairy",
             },
             {
                 "inventory_id": "kitchen_inventory",
@@ -80,8 +92,8 @@ class TestExpiryNotificationSensor:
                 "threshold": 7,
                 "quantity": 1,
                 "unit": "cup",
-                "category": "dairy"
-            }
+                "category": "dairy",
+            },
         ]
 
         expiry_sensor.coordinator.get_items_expiring_soon.side_effect = None
@@ -132,7 +144,7 @@ class TestExpiryNotificationSensor:
                 "expiry_date": "2024-06-20",
                 "days_until_expiry": 5,
                 "threshold": 7,
-                "quantity": 1
+                "quantity": 1,
             }
         ]
 
@@ -152,7 +164,8 @@ class TestExpiryNotificationSensor:
         expiry_sensor._update_data()
 
         expiry_sensor.coordinator.get_items_expiring_soon.assert_called_once_with(
-            "kitchen_inventory")
+            "kitchen_inventory"
+        )
 
 
 class TestGlobalExpiryNotificationSensor:
@@ -172,7 +185,10 @@ class TestGlobalExpiryNotificationSensor:
     def test_init(self, global_expiry_sensor):
         """Test global sensor initialization."""
         assert global_expiry_sensor._attr_name == "All Items Expiring Soon"
-        assert global_expiry_sensor._attr_unique_id == "simple_inventory_all_expiring_items"
+        assert (
+            global_expiry_sensor._attr_unique_id
+            == "simple_inventory_all_expiring_items"
+        )
         assert global_expiry_sensor._attr_native_unit_of_measurement == "items"
 
     def test_update_data_multiple_inventories(self, global_expiry_sensor):
@@ -182,20 +198,23 @@ class TestGlobalExpiryNotificationSensor:
                 "inventory_id": "kitchen_inventory",
                 "name": "milk",
                 "days_until_expiry": 5,
-                "quantity": 1
+                "quantity": 1,
             },
             {
                 "inventory_id": "pantry_inventory",
                 "name": "cereal",
                 "days_until_expiry": -2,
-                "quantity": 1
-            }
+                "quantity": 1,
+            },
         ]
 
         global_expiry_sensor.coordinator.get_items_expiring_soon.side_effect = None
-        global_expiry_sensor.coordinator.get_items_expiring_soon.return_value = test_items
+        global_expiry_sensor.coordinator.get_items_expiring_soon.return_value = (
+            test_items
+        )
         global_expiry_sensor._get_inventory_name = MagicMock(
-            side_effect=lambda x: f"Inventory {x}")
+            side_effect=lambda x: f"Inventory {x}"
+        )
 
         global_expiry_sensor._update_data()
 
@@ -204,7 +223,7 @@ class TestGlobalExpiryNotificationSensor:
         attributes = global_expiry_sensor._attr_extra_state_attributes
         assert attributes["inventories_count"] == 2
         assert len(attributes["expiring_items"]) == 1  # days_until_expiry >= 0
-        assert len(attributes["expired_items"]) == 1   # days_until_expiry < 0
+        assert len(attributes["expired_items"]) == 1  # days_until_expiry < 0
 
     def test_coordinator_method_called_without_inventory_id(self, global_expiry_sensor):
         """Test that coordinator method is called without inventory ID for global sensor."""
@@ -212,15 +231,20 @@ class TestGlobalExpiryNotificationSensor:
         global_expiry_sensor._update_data()
         global_expiry_sensor.coordinator.get_items_expiring_soon.assert_called_once_with()
 
-    @pytest.mark.parametrize("most_urgent_days,expected_icon", [
-        (-1, "mdi:calendar-remove"),  # Has expired items
-        (0, "mdi:calendar-alert"),    # Most urgent expires today
-        (1, "mdi:calendar-alert"),    # Most urgent expires tomorrow
-        (2, "mdi:calendar-clock"),    # Most urgent expires in 2 days
-        (3, "mdi:calendar-clock"),    # Most urgent expires in 3 days
-        (4, "mdi:calendar-week"),     # Most urgent expires in 4+ days
-    ])
-    def test_global_icon_selection(self, global_expiry_sensor, most_urgent_days, expected_icon):
+    @pytest.mark.parametrize(
+        "most_urgent_days,expected_icon",
+        [
+            (-1, "mdi:calendar-remove"),  # Has expired items
+            (0, "mdi:calendar-alert"),  # Most urgent expires today
+            (1, "mdi:calendar-alert"),  # Most urgent expires tomorrow
+            (2, "mdi:calendar-clock"),  # Most urgent expires in 2 days
+            (3, "mdi:calendar-clock"),  # Most urgent expires in 3 days
+            (4, "mdi:calendar-week"),  # Most urgent expires in 4+ days
+        ],
+    )
+    def test_global_icon_selection(
+        self, global_expiry_sensor, most_urgent_days, expected_icon
+    ):
         """Test icon selection for global sensor based on most urgent item."""
         if most_urgent_days < 0:
             test_items = [
@@ -232,9 +256,10 @@ class TestGlobalExpiryNotificationSensor:
             ]
 
         global_expiry_sensor.coordinator.get_items_expiring_soon.side_effect = None
-        global_expiry_sensor.coordinator.get_items_expiring_soon.return_value = test_items
-        global_expiry_sensor._get_inventory_name = MagicMock(
-            return_value="Test")
+        global_expiry_sensor.coordinator.get_items_expiring_soon.return_value = (
+            test_items
+        )
+        global_expiry_sensor._get_inventory_name = MagicMock(return_value="Test")
 
         global_expiry_sensor._update_data()
         assert global_expiry_sensor._attr_icon == expected_icon

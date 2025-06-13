@@ -1,4 +1,5 @@
 """Service call validation schemas."""
+
 import voluptuous as vol
 from homeassistant.helpers import config_validation as cv
 
@@ -13,32 +14,35 @@ ITEM_SCHEMA = {
     vol.Optional("category"): cv.string,
     vol.Optional("expiry_date"): cv.string,
     vol.Optional("auto_add_enabled"): cv.boolean,
-    vol.Optional("expiry_alert_days"): vol.All(vol.Coerce(int), vol.Range(min=1, max=365)),
-    vol.Optional("auto_add_to_list_quantity"): vol.All(vol.Coerce(int), vol.Range(min=0)),
+    vol.Optional("expiry_alert_days"): vol.All(
+        vol.Coerce(int), vol.Range(min=1, max=365)
+    ),
+    vol.Optional("auto_add_to_list_quantity"): vol.All(
+        vol.Coerce(int), vol.Range(min=0)
+    ),
     vol.Optional("todo_list"): cv.string,
 }
 
-ADD_ITEM_SCHEMA = vol.Schema({
-    INVENTORY_ID: cv.string,
-    **ITEM_SCHEMA
-})
+ADD_ITEM_SCHEMA = vol.Schema({INVENTORY_ID: cv.string, **ITEM_SCHEMA})
 
-UPDATE_ITEM_SCHEMA = vol.Schema({
-    INVENTORY_ID: cv.string,
-    OLD_NAME: cv.string,
-    **ITEM_SCHEMA
-})
+UPDATE_ITEM_SCHEMA = vol.Schema(
+    {INVENTORY_ID: cv.string, OLD_NAME: cv.string, **ITEM_SCHEMA}
+)
 
-REMOVE_ITEM_SCHEMA = vol.Schema({
-    INVENTORY_ID: cv.string,
-    NAME: cv.string,
-})
+REMOVE_ITEM_SCHEMA = vol.Schema(
+    {
+        INVENTORY_ID: cv.string,
+        NAME: cv.string,
+    }
+)
 
-QUANTITY_UPDATE_SCHEMA = vol.Schema({
-    INVENTORY_ID: cv.string,
-    NAME: cv.string,
-    vol.Optional("amount", default=1): vol.All(vol.Coerce(int), vol.Range(min=1)),
-})
+QUANTITY_UPDATE_SCHEMA = vol.Schema(
+    {
+        INVENTORY_ID: cv.string,
+        NAME: cv.string,
+        vol.Optional("amount", default=1): vol.All(vol.Coerce(int), vol.Range(min=1)),
+    }
+)
 
 ALL_SCHEMAS = {
     "add_item": ADD_ITEM_SCHEMA,

@@ -1,4 +1,5 @@
 """Sensor platform for Simple Inventory."""
+
 import logging
 
 from homeassistant.config_entries import ConfigEntry
@@ -6,7 +7,11 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .const import DOMAIN
-from .sensors import InventorySensor, ExpiryNotificationSensor, GlobalExpiryNotificationSensor
+from .sensors import (
+    ExpiryNotificationSensor,
+    GlobalExpiryNotificationSensor,
+    InventorySensor,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -25,7 +30,8 @@ async def async_setup_entry(
     sensors_to_add = []
 
     inventory_sensor = InventorySensor(
-        hass, coordinator, inventory_name, icon, entry_id)
+        hass, coordinator, inventory_name, icon, entry_id
+    )
     sensors_to_add.append(inventory_sensor)
     per_inventory_expiry_sensor = ExpiryNotificationSensor(
         hass, coordinator, entry_id, inventory_name
@@ -36,8 +42,7 @@ async def async_setup_entry(
     # Create global expiry sensor (only once)
     all_entries = hass.config_entries.async_entries(DOMAIN)
     if entry_id == all_entries[0].entry_id:
-        global_expiry_sensor = GlobalExpiryNotificationSensor(
-            hass, coordinator)
+        global_expiry_sensor = GlobalExpiryNotificationSensor(hass, coordinator)
         sensors_to_add.append(global_expiry_sensor)
 
     async_add_entities(sensors_to_add)

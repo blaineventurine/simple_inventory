@@ -1,16 +1,29 @@
 """Tests for the SimpleInventoryCoordinator class."""
-import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
-from datetime import datetime, timedelta
 
-from custom_components.simple_inventory.coordinator import SimpleInventoryCoordinator
+from datetime import datetime, timedelta
+from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
+
 from custom_components.simple_inventory.const import (
-    FIELD_QUANTITY, FIELD_UNIT, FIELD_CATEGORY, FIELD_EXPIRY_DATE,
-    FIELD_AUTO_ADD_ENABLED, FIELD_TODO_LIST,
-    DEFAULT_QUANTITY, DEFAULT_UNIT, DEFAULT_CATEGORY,
-    DEFAULT_EXPIRY_DATE, DEFAULT_TODO_LIST, DEFAULT_AUTO_ADD_ENABLED,
-    INVENTORY_ITEMS, STORAGE_VERSION, STORAGE_KEY, DOMAIN
+    DEFAULT_AUTO_ADD_ENABLED,
+    DEFAULT_CATEGORY,
+    DEFAULT_EXPIRY_DATE,
+    DEFAULT_QUANTITY,
+    DEFAULT_TODO_LIST,
+    DEFAULT_UNIT,
+    DOMAIN,
+    FIELD_AUTO_ADD_ENABLED,
+    FIELD_CATEGORY,
+    FIELD_EXPIRY_DATE,
+    FIELD_QUANTITY,
+    FIELD_TODO_LIST,
+    FIELD_UNIT,
+    INVENTORY_ITEMS,
+    STORAGE_KEY,
+    STORAGE_VERSION,
 )
+from custom_components.simple_inventory.coordinator import SimpleInventoryCoordinator
 
 
 @pytest.fixture
@@ -39,7 +52,7 @@ def loaded_coordinator(hass):
                         "expiry_date": "2024-12-31",
                         "auto_add_enabled": True,
                         "auto_add_to_list_quantity": 1,
-                        "todo_list": "todo.shopping"
+                        "todo_list": "todo.shopping",
                     },
                     "bread": {
                         "quantity": 1,
@@ -48,14 +61,12 @@ def loaded_coordinator(hass):
                         "expiry_date": "2024-06-20",
                         "auto_add_enabled": False,
                         "auto_add_to_list_quantity": 0,
-                        "todo_list": ""
-                    }
+                        "todo_list": "",
+                    },
                 }
             }
         },
-        "config": {
-            "expiry_alert_days": 7
-        }
+        "config": {"expiry_alert_days": 7},
     }
 
     coordinator._store.async_load = AsyncMock(return_value=test_data)
@@ -72,7 +83,9 @@ class TestSimpleInventoryCoordinator:
         assert coordinator.hass is not None
         assert coordinator._store is not None
         assert coordinator._data == {
-            "inventories": {}, "config": {"expiry_alert_days": 7}}
+            "inventories": {},
+            "config": {"expiry_alert_days": 7},
+        }
         assert "config" in coordinator._data
         assert "expiry_alert_days" in coordinator._data["config"]
         assert coordinator._data["config"]["expiry_alert_days"] == 7
@@ -92,7 +105,7 @@ class TestSimpleInventoryCoordinator:
         """Test loading data with existing content."""
         test_data = {
             "inventories": {"kitchen": {"items": {"milk": {"quantity": 1}}}},
-            "config": {"expiry_alert_days": 14}
+            "config": {"expiry_alert_days": 14},
         }
         coordinator._store.async_load.return_value = test_data
 
@@ -116,33 +129,31 @@ class TestSimpleInventoryCoordinator:
         """Test saving data."""
         coordinator._data = {
             "inventories": {"kitchen": {"items": {}}},
-            "config": {"expiry_alert_days": 7}
+            "config": {"expiry_alert_days": 7},
         }
 
         await coordinator.async_save_data()
 
-        coordinator._store.async_save.assert_called_once_with(
-            coordinator._data)
+        coordinator._store.async_save.assert_called_once_with(coordinator._data)
         # Should fire events for all inventories
         # One for inventory, one for general update
         assert coordinator.hass.bus.async_fire.call_count == 2
-        coordinator.hass.bus.async_fire.assert_any_call(
-            f"{DOMAIN}_updated_kitchen")
+        coordinator.hass.bus.async_fire.assert_any_call(f"{DOMAIN}_updated_kitchen")
         coordinator.hass.bus.async_fire.assert_any_call(f"{DOMAIN}_updated")
 
     async def test_async_save_data_specific_inventory(self, coordinator):
         """Test saving data for a specific inventory."""
         coordinator._data = {
             "inventories": {"kitchen": {"items": {}}, "pantry": {"items": {}}},
-            "config": {"expiry_alert_days": 7}
+            "config": {"expiry_alert_days": 7},
         }
 
         await coordinator.async_save_data(inventory_id="kitchen")
 
-        coordinator._store.async_save.assert_called_once_with(
-            coordinator._data)
+        coordinator._store.async_save.assert_called_once_with(coordinator._data)
         coordinator.hass.bus.async_fire.assert_called_once_with(
-            f"{DOMAIN}_updated_kitchen")
+            f"{DOMAIN}_updated_kitchen"
+        )
 
     async def test_get_data(self, loaded_coordinator):
         """Test getting all data."""
@@ -175,7 +186,8 @@ class TestSimpleInventoryCoordinator:
 
         # Ensuring an existing inventory
         coordinator._data["inventories"]["kitchen"] = {
-            "items": {"milk": {"quantity": 1}}}
+            "items": {"milk": {"quantity": 1}}
+        }
         inventory = coordinator.ensure_inventory_exists("kitchen")
         assert inventory == {"items": {"milk": {"quantity": 1}}}
 
@@ -246,7 +258,7 @@ class TestSimpleInventoryCoordinator:
             expiry_date="2024-12-31",
             auto_add_enabled=True,
             auto_add_to_list_quantity=1,
-            todo_list="todo.shopping"
+            todo_list="todo.shopping",
         )
         assert result is True
 
@@ -295,7 +307,8 @@ class TestSimpleInventoryCoordinator:
     async def test_add_item_negative_auto_add_quantity(self, coordinator):
         """Test adding an item with negative auto add quantity."""
         result = coordinator.add_item(
-            "kitchen", "milk", quantity=1, auto_add_to_list_quantity=-2)
+            "kitchen", "milk", quantity=1, auto_add_to_list_quantity=-2
+        )
         assert result is True
 
         # Auto add quantity should be set to 0 (max of 0 and -2)
@@ -392,7 +405,7 @@ class TestSimpleInventoryCoordinator:
         result = loaded_coordinator.decrement_item("kitchen", "milk", -1)
         assert result is False
 
-    @patch('datetime.datetime')
+    @patch("datetime.datetime")
     async def test_get_items_expiring_soon(self, mock_datetime, loaded_coordinator):
         """Test getting items expiring soon."""
         # Set up a fixed current date for testing
@@ -404,12 +417,15 @@ class TestSimpleInventoryCoordinator:
         mock_datetime.strptime.side_effect = datetime.strptime
 
         # Calculate dates relative to the fixed date
-        date_1_day_ahead = (today + timedelta(days=1)
-                            ).strftime("%Y-%m-%d")  # 1 day from now
-        date_5_days_ahead = (today + timedelta(days=5)
-                             ).strftime("%Y-%m-%d")  # 5 days from now
-        date_15_days_ahead = (today + timedelta(days=15)
-                              ).strftime("%Y-%m-%d")  # 15 days from now
+        date_1_day_ahead = (today + timedelta(days=1)).strftime(
+            "%Y-%m-%d"
+        )  # 1 day from now
+        date_5_days_ahead = (today + timedelta(days=5)).strftime(
+            "%Y-%m-%d"
+        )  # 5 days from now
+        date_15_days_ahead = (today + timedelta(days=15)).strftime(
+            "%Y-%m-%d"
+        )  # 15 days from now
 
         # Set up test data with calculated dates
         loaded_coordinator._data = {
@@ -419,61 +435,69 @@ class TestSimpleInventoryCoordinator:
                         "milk": {
                             "quantity": 1,
                             "expiry_date": date_5_days_ahead,  # 5 days from now
-                            "expiry_alert_days": 7
+                            "expiry_alert_days": 7,
                         },
                         "yogurt": {
                             "quantity": 1,
                             "expiry_date": date_1_day_ahead,  # 1 day from now
-                            "expiry_alert_days": 7
+                            "expiry_alert_days": 7,
                         },
                         "cheese": {
                             "quantity": 1,
                             # 15 days from now (beyond default threshold)
                             "expiry_date": date_15_days_ahead,
-                            "expiry_alert_days": 7
+                            "expiry_alert_days": 7,
                         },
-                        "bread": {
-                            "quantity": 1,
-                            "expiry_date": ""  # No expiry date
-                        }
+                        "bread": {"quantity": 1, "expiry_date": ""},  # No expiry date
                     }
                 }
             },
-            "config": {
-                "expiry_alert_days": 7
-            }
+            "config": {"expiry_alert_days": 7},
         }
 
         # Patch the datetime in the method directly
-        with patch('custom_components.simple_inventory.coordinator.datetime') as patched_dt:
+        with patch(
+            "custom_components.simple_inventory.coordinator.datetime"
+        ) as patched_dt:
             patched_dt.now.return_value = fixed_date
             patched_dt.strptime = datetime.strptime
 
             # Call the method
-            expiring_items = loaded_coordinator.get_items_expiring_soon(
-                "kitchen")
+            expiring_items = loaded_coordinator.get_items_expiring_soon("kitchen")
 
         # Print debug info
         print(f"Fixed date: {fixed_date}")
         print(f"Found {len(expiring_items)} expiring items:")
         for item in expiring_items:
-            print(f"  - {item['name']}: expiry={item['expiry_date']
-                                                }, days={item['days_until_expiry']}")
+            print(
+                f"  - {item['name']}: expiry={item['expiry_date']
+                                                }, days={item['days_until_expiry']}"
+            )
 
         # Should include milk and yogurt (within 7 days), but not cheese (beyond threshold) or bread (no date)
-        assert len(expiring_items) == 2, f"Expected 2 items but found {
+        assert (
+            len(expiring_items) == 2
+        ), f"Expected 2 items but found {
             len(expiring_items)}: {[item['name'] for item in expiring_items]}"
 
         # Items should be sorted by days until expiry (soonest first)
-        assert expiring_items[0]["name"] == "yogurt", f"Expected yogurt but got {
+        assert (
+            expiring_items[0]["name"] == "yogurt"
+        ), f"Expected yogurt but got {
             expiring_items[0]['name']}"
-        assert expiring_items[1]["name"] == "milk", f"Expected milk but got {
+        assert (
+            expiring_items[1]["name"] == "milk"
+        ), f"Expected milk but got {
             expiring_items[1]['name']}"
 
         # Check days_until_expiry calculation
-        assert expiring_items[0]["days_until_expiry"] == 1, f"Expected 1 day but got {
+        assert (
+            expiring_items[0]["days_until_expiry"] == 1
+        ), f"Expected 1 day but got {
             expiring_items[0]['days_until_expiry']}"
-        assert expiring_items[1]["days_until_expiry"] == 5, f"Expected 5 days but got {
+        assert (
+            expiring_items[1]["days_until_expiry"] == 5
+        ), f"Expected 5 days but got {
             expiring_items[1]['days_until_expiry']}"
 
     async def test_async_add_listener(self, coordinator):
@@ -515,7 +539,7 @@ class TestSimpleInventoryCoordinator:
             "expiry_date": "2024-06-16",  # Expiring soon
             "auto_add_enabled": False,
             "auto_add_to_list_quantity": 2,  # Below threshold
-            "todo_list": ""
+            "todo_list": "",
         }
 
         loaded_coordinator._data["inventories"]["kitchen"]["items"]["rice"] = {
@@ -525,14 +549,16 @@ class TestSimpleInventoryCoordinator:
             "expiry_date": "2025-06-15",
             "auto_add_enabled": False,
             "auto_add_to_list_quantity": 2,
-            "todo_list": ""
+            "todo_list": "",
         }
 
         # Mock get_items_expiring_soon to return a fixed list
-        loaded_coordinator.get_items_expiring_soon = MagicMock(return_value=[
-            {"name": "yogurt", "days_until_expiry": 1},
-            {"name": "milk", "days_until_expiry": 5}
-        ])
+        loaded_coordinator.get_items_expiring_soon = MagicMock(
+            return_value=[
+                {"name": "yogurt", "days_until_expiry": 1},
+                {"name": "milk", "days_until_expiry": 5},
+            ]
+        )
 
         stats = loaded_coordinator.get_inventory_statistics("kitchen")
 

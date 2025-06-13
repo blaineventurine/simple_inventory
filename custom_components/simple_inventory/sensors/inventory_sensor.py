@@ -1,7 +1,10 @@
 """Individual inventory sensor for Simple Inventory."""
+
 import logging
+
 from homeassistant.components.sensor import SensorEntity
 from homeassistant.core import HomeAssistant, callback
+
 from ..const import DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
@@ -10,7 +13,14 @@ _LOGGER = logging.getLogger(__name__)
 class InventorySensor(SensorEntity):
     """Representation of an Inventory sensor."""
 
-    def __init__(self, hass: HomeAssistant, coordinator, inventory_name: str, icon: str, entry_id: str):
+    def __init__(
+        self,
+        hass: HomeAssistant,
+        coordinator,
+        inventory_name: str,
+        icon: str,
+        entry_id: str,
+    ):
         """Initialize the sensor."""
         self.hass = hass
         self.coordinator = coordinator
@@ -26,17 +36,16 @@ class InventorySensor(SensorEntity):
         """Register callbacks."""
         self.async_on_remove(
             self.hass.bus.async_listen(
-                f"{DOMAIN}_updated_{self._entry_id}", self._handle_update)
+                f"{DOMAIN}_updated_{self._entry_id}", self._handle_update
+            )
         )
 
         self.async_on_remove(
-            self.hass.bus.async_listen(
-                f"{DOMAIN}_updated", self._handle_update)
+            self.hass.bus.async_listen(f"{DOMAIN}_updated", self._handle_update)
         )
 
         self.async_on_remove(
-            self.coordinator.async_add_listener(
-                self._handle_coordinator_update)
+            self.coordinator.async_add_listener(self._handle_coordinator_update)
         )
 
     @callback
@@ -59,10 +68,7 @@ class InventorySensor(SensorEntity):
 
         self._attr_extra_state_attributes = {
             "inventory_id": self._entry_id,
-            "items": [{
-                "name": name,
-                **details
-            } for name, details in items.items()],
+            "items": [{"name": name, **details} for name, details in items.items()],
             "total_items": stats["total_items"],
             "total_quantity": stats["total_quantity"],
             "categories": stats["categories"],

@@ -1,6 +1,10 @@
 """Sensor components for Simple Inventory."""
-from .inventory_sensor import InventorySensor
-from .expiry_sensor import ExpiryNotificationSensor, GlobalExpiryNotificationSensor
 
-__all__ = ["InventorySensor", "ExpiryNotificationSensor",
-           "GlobalExpiryNotificationSensor"]
+from .expiry_sensor import ExpiryNotificationSensor, GlobalExpiryNotificationSensor
+from .inventory_sensor import InventorySensor
+
+__all__ = [
+    "InventorySensor",
+    "ExpiryNotificationSensor",
+    "GlobalExpiryNotificationSensor",
+]
