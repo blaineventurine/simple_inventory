@@ -51,8 +51,8 @@ jobs:
     strategy:
       matrix:
         python-version: [
-            "${{ env.MIN_PYTHON }}",
-            # "${{ env.DEFAULT_PYTHON }}",
+            # "${{ env.MIN_PYTHON }}",
+            "${{ env.DEFAULT_PYTHON }}",
             # "${{ env.MAX_PYTHON }}",
           ]
         home-assistant-version: ["2024.1.0", "2024.6.0", "2024.12.0"]
