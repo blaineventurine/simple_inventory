@@ -259,8 +259,7 @@ class TestGlobalExpiryNotificationSensor:
         global_expiry_sensor.coordinator.get_items_expiring_soon.return_value = (
             test_items
         )
-        global_expiry_sensor._get_inventory_name = MagicMock(
-            return_value="Test")
+        global_expiry_sensor._get_inventory_name = MagicMock(return_value="Test")
 
         global_expiry_sensor._update_data()
         assert global_expiry_sensor._attr_icon == expected_icon
