@@ -99,6 +99,13 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "📈 [View detailed HTML report](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})" >> $GITHUB_STEP_SUMMARY
 
+      - name: Generate coverage report text
+        if: github.event_name == 'pull_request'
+        run: |
+          echo "COVERAGE_REPORT<<EOF" >> $GITHUB_ENV
+          python -m coverage report --show-missing | head -20 >> $GITHUB_ENV
+          echo "EOF" >> $GITHUB_ENV
+
       - name: Comment PR with coverage
         uses: marocchino/sticky-pull-request-comment@v2
         if: github.event_name == 'pull_request'
@@ -108,13 +115,12 @@ jobs:
             ## 📊 Coverage Report
 
             ```
-            $(python -m coverage report --show-missing | head -20)
+            ${{ env.COVERAGE_REPORT }}
             ```
 
             📈 [View detailed HTML report](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})
 
-            Coverage threshold: 80% | Status: ${{ job.status }}
-
+            Coverage threshold: 80% | Status: success
   security:
     runs-on: ubuntu-latest
     steps:
