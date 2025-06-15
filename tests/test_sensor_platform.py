@@ -60,9 +60,6 @@ class TestSensorPlatform:
             patch(
                 "custom_components.simple_inventory.sensor.ExpiryNotificationSensor"
             ) as mock_expiry_sensor,
-            patch(
-                "custom_components.simple_inventory.sensor.GlobalExpiryNotificationSensor"
-            ) as mock_global_expiry_sensor,
         ):
 
             await async_setup_entry(
@@ -71,7 +68,6 @@ class TestSensorPlatform:
                 mock_add_entities,
             )
 
-            # Verify InventorySensor was created with correct parameters
             mock_inventory_sensor.assert_called_once_with(
                 mock_hass_with_coordinator,
                 mock_hass_with_coordinator.data["simple_inventory"]["coordinator"],
@@ -80,25 +76,17 @@ class TestSensorPlatform:
                 "test_entry_123",
             )
 
-            # Verify per-inventory ExpiryNotificationSensor was created
             mock_expiry_sensor.assert_called_once_with(
                 mock_hass_with_coordinator,
                 mock_hass_with_coordinator.data["simple_inventory"]["coordinator"],
-                "test_entry_123",  # entry_id
-                "Kitchen Inventory",  # inventory_name
-            )
-
-            # Verify GlobalExpiryNotificationSensor was created (first entry)
-            mock_global_expiry_sensor.assert_called_once_with(
-                mock_hass_with_coordinator,
-                mock_hass_with_coordinator.data["simple_inventory"]["coordinator"],
+                "test_entry_123",
+                "Kitchen Inventory",
             )
 
             mock_add_entities.assert_called_once_with(
                 [
                     mock_inventory_sensor.return_value,
                     mock_expiry_sensor.return_value,
-                    mock_global_expiry_sensor.return_value,
                 ]
             )
 
@@ -118,9 +106,6 @@ class TestSensorPlatform:
             patch(
                 "custom_components.simple_inventory.sensor.ExpiryNotificationSensor"
             ) as mock_expiry_sensor,
-            patch(
-                "custom_components.simple_inventory.sensor.GlobalExpiryNotificationSensor"
-            ) as mock_global_expiry_sensor,
         ):
 
             await async_setup_entry(
@@ -142,12 +127,6 @@ class TestSensorPlatform:
                 mock_hass_with_coordinator.data["simple_inventory"]["coordinator"],
                 "minimal_entry_456",  # entry_id
                 "Inventory",  # inventory_name (default)
-            )
-
-            # Verify GlobalExpiryNotificationSensor was created (first entry)
-            mock_global_expiry_sensor.assert_called_once_with(
-                mock_hass_with_coordinator,
-                mock_hass_with_coordinator.data["simple_inventory"]["coordinator"],
             )
 
     @pytest.mark.asyncio
@@ -234,9 +213,6 @@ class TestSensorPlatform:
             patch(
                 "custom_components.simple_inventory.sensor.ExpiryNotificationSensor"
             ) as mock_expiry_sensor,
-            patch(
-                "custom_components.simple_inventory.sensor.GlobalExpiryNotificationSensor"
-            ) as mock_global_expiry_sensor,
         ):
 
             # Test setup for first entry
@@ -244,15 +220,11 @@ class TestSensorPlatform:
                 mock_hass_with_coordinator, entry1, mock_add_entities
             )
 
-            # Should create global expiry sensor for first entry
-            mock_global_expiry_sensor.assert_called_once()
-            # Should also create per-inventory expiry sensor
             mock_expiry_sensor.assert_called_once()
 
             # Reset mocks
             mock_inventory_sensor.reset_mock()
             mock_expiry_sensor.reset_mock()
-            mock_global_expiry_sensor.reset_mock()
             mock_add_entities.reset_mock()
 
             # Test setup for second entry
@@ -262,7 +234,6 @@ class TestSensorPlatform:
 
             # Should create per-inventory expiry sensor but NOT global
             mock_expiry_sensor.assert_called_once()
-            mock_global_expiry_sensor.assert_not_called()
             # Should be called once with 2 sensors (inventory + per-inventory expiry)
             mock_add_entities.assert_called_once()
             # Get the list of sensors
@@ -293,9 +264,6 @@ class TestSensorPlatform:
             patch(
                 "custom_components.simple_inventory.sensor.ExpiryNotificationSensor"
             ) as mock_expiry_sensor,
-            patch(
-                "custom_components.simple_inventory.sensor.GlobalExpiryNotificationSensor"
-            ) as mock_global_expiry_sensor,
         ):
 
             await async_setup_entry(
@@ -307,11 +275,9 @@ class TestSensorPlatform:
             # Verify all sensors received the same coordinator instance
             inventory_coordinator = mock_inventory_sensor.call_args[0][1]
             expiry_coordinator = mock_expiry_sensor.call_args[0][1]
-            global_expiry_coordinator = mock_global_expiry_sensor.call_args[0][1]
 
             assert inventory_coordinator is expected_coordinator
             assert expiry_coordinator is expected_coordinator
-            assert global_expiry_coordinator is expected_coordinator
 
     @pytest.mark.asyncio
     async def test_async_setup_entry_sensor_creation_order(
@@ -333,9 +299,6 @@ class TestSensorPlatform:
             patch(
                 "custom_components.simple_inventory.sensor.ExpiryNotificationSensor"
             ) as mock_expiry_sensor,
-            patch(
-                "custom_components.simple_inventory.sensor.GlobalExpiryNotificationSensor"
-            ) as mock_global_expiry_sensor,
         ):
 
             await async_setup_entry(
@@ -349,7 +312,6 @@ class TestSensorPlatform:
                 [
                     mock_inventory_sensor.return_value,
                     mock_expiry_sensor.return_value,
-                    mock_global_expiry_sensor.return_value,
                 ]
             )
 

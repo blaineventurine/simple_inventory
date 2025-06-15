@@ -36,17 +36,6 @@ ICON_SUGGESTIONS = {
 DEFAULT_ICON = "mdi:package-variant"
 
 
-def suggest_icon_from_name(name: str) -> str:
-    """Suggest an icon based on inventory name."""
-    name_lower = name.lower().strip()
-
-    for keyword, icon in ICON_SUGGESTIONS.items():
-        if keyword in name_lower:
-            return icon
-
-    return DEFAULT_ICON
-
-
 class SimpleInventoryConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Handle a config flow for Simple Inventory."""
 
@@ -64,9 +53,7 @@ class SimpleInventoryConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             if await self._async_name_exists(user_input["name"]):
                 errors["name"] = "name_exists"
             else:
-                icon = user_input.get("icon") or suggest_icon_from_name(
-                    user_input["name"]
-                )
+                icon = user_input.get("icon") or DEFAULT_ICON
 
                 return self.async_create_entry(
                     title=user_input["name"],
@@ -81,11 +68,6 @@ class SimpleInventoryConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         # Preserve form data on errors
         defaults = user_input or {}
-        suggested_icon = (
-            suggest_icon_from_name(defaults.get("name", ""))
-            if defaults.get("name")
-            else DEFAULT_ICON
-        )
 
         return self.async_show_form(
             step_id="add_inventory",
@@ -93,7 +75,7 @@ class SimpleInventoryConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 {
                     vol.Required("name", default=defaults.get("name", "")): cv.string,
                     vol.Optional(
-                        "icon", default=defaults.get("icon", suggested_icon)
+                        "icon", default=defaults.get("icon", DEFAULT_ICON)
                     ): selector.IconSelector(),
                     vol.Optional(
                         "description", default=defaults.get("description", "")
