@@ -73,7 +73,7 @@ async def test_add_inventory_duplicate_name(hass: HomeAssistant):
 
     assert result["type"] == data_entry_flow.FlowResultType.FORM
     assert result["step_id"] == "add_inventory"
-    assert result["errors"] == {"name": "name_exists"}
+    assert result["errors"] == {"name": "Inventory name already exists"}
 
 
 async def test_add_inventory_with_existing_global_entry(
@@ -151,20 +151,24 @@ def test_name_exists_excluding_current_logic():
     # Simulate the logic from _async_name_exists_excluding_current
     name_exists = False
     for entry in entries:
-        if entry.entry_id != config_entry.entry_id:
-            if entry.data.get("name", "").lower() == test_name.lower():
-                name_exists = True
-                break
+        if (
+            entry.entry_id != config_entry.entry_id
+            and entry.data.get("name", "").lower() == test_name.lower()
+        ):
+            name_exists = True
+            break
 
     assert name_exists
 
     test_name = "New Name"
     name_exists = False
     for entry in entries:
-        if entry.entry_id != config_entry.entry_id:
-            if entry.data.get("name", "").lower() == test_name.lower():
-                name_exists = True
-                break
+        if (
+            entry.entry_id != config_entry.entry_id
+            and entry.data.get("name", "").lower() == test_name.lower()
+        ):
+            name_exists = True
+            break
 
     assert not name_exists
 

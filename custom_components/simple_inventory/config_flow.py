@@ -51,7 +51,7 @@ class SimpleInventoryConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         if user_input is not None:
             if await self._async_name_exists(user_input["name"]):
-                errors["name"] = "name_exists"
+                errors["name"] = "Inventory name already exists"
             else:
                 icon = user_input.get("icon") or DEFAULT_ICON
 
@@ -130,7 +130,7 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
 
         if user_input is not None:
             if await self._async_name_exists_excluding_current(user_input["name"]):
-                errors["name"] = "name_exists"
+                errors["name"] = "Inventory name already exists"
             else:
                 new_data = {
                     "name": user_input["name"],
@@ -178,8 +178,8 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
     async def _async_name_exists_excluding_current(self, name: str) -> bool:
         """Check if name exists in other entries."""
         all_entries = self.hass.config_entries.async_entries(DOMAIN)
-        for entry in all_entries:
-            if entry.entry_id != self.config_entry.entry_id:
-                if entry.data.get("name", "").lower() == name.lower():
-                    return True
-        return False
+        return any(
+            entry.entry_id != self.config_entry.entry_id
+            and entry.data.get("name", "").lower() == name.lower()
+            for entry in all_entries
+        )
