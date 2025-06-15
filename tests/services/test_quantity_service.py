@@ -111,7 +111,6 @@ class TestQuantityService:
         """Test decrement with default amount (1)."""
         await quantity_service.async_decrement_item(basic_service_call)
 
-        # Should use default amount of 1
         mock_coordinator.decrement_item.assert_called_once_with("kitchen", "milk", 1)
         mock_coordinator.get_item.assert_called_once_with("kitchen", "milk")
         mock_todo_manager.check_and_add_item.assert_called_once()
@@ -131,11 +130,7 @@ class TestQuantityService:
 
         mock_coordinator.decrement_item.assert_called_once()
         mock_coordinator.get_item.assert_called_once()
-
-        # Todo manager should not be called when no item data
         mock_todo_manager.check_and_add_item.assert_not_called()
-
-        # Save should still be called
         mock_coordinator.async_save_data.assert_called_once()
 
     @pytest.mark.asyncio
@@ -155,7 +150,6 @@ class TestQuantityService:
 
         mock_coordinator.decrement_item.assert_called_once_with("kitchen", "milk", 2)
 
-        # Should not check item data or call todo manager when item not found
         mock_coordinator.get_item.assert_not_called()
         mock_todo_manager.check_and_add_item.assert_not_called()
         mock_coordinator.async_save_data.assert_not_called()
@@ -185,7 +179,6 @@ class TestQuantityService:
             in caplog.text
         )
 
-        # Todo manager should not be called when exception occurs
         mock_todo_manager.check_and_add_item.assert_not_called()
         mock_coordinator.async_save_data.assert_not_called()
 
@@ -207,17 +200,14 @@ class TestQuantityService:
         with caplog.at_level(logging.ERROR):
             await quantity_service.async_decrement_item(quantity_service_call)
 
-        # Coordinator operations should have completed
         mock_coordinator.decrement_item.assert_called_once()
         mock_coordinator.get_item.assert_called_once()
 
-        # Exception should be logged, not raised
         assert (
             "Failed to decrement item milk in inventory kitchen: Todo check failed"
             in caplog.text
         )
 
-        # Save should not be called due to exception
         mock_coordinator.async_save_data.assert_not_called()
 
     @pytest.mark.parametrize("amount", [1, 5, 10, 100, 0])
@@ -255,11 +245,9 @@ class TestQuantityService:
             }
             calls.append(call)
 
-        # Execute concurrent decrement operations
         tasks = [quantity_service.async_decrement_item(call) for call in calls]
         await asyncio.gather(*tasks)
 
-        # Verify all operations completed
         assert mock_coordinator.decrement_item.call_count == 3
         assert mock_coordinator.get_item.call_count == 3
         assert mock_todo_manager.check_and_add_item.call_count == 3

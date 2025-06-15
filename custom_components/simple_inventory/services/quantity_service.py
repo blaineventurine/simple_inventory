@@ -39,7 +39,7 @@ class QuantityService(BaseServiceHandler):
         except Exception as e:
             _LOGGER.error(
                 f"Failed to increment item {
-                          name} in inventory {inventory_id}: {e}"
+                    name} in inventory {inventory_id}: {e}"
             )
 
     async def async_decrement_item(self, call: ServiceCall):
@@ -49,7 +49,6 @@ class QuantityService(BaseServiceHandler):
 
         try:
             if self.coordinator.decrement_item(inventory_id, name, amount):
-                # Check if item should be added to todo list
                 item_data = self.coordinator.get_item(inventory_id, name)
                 if item_data:
                     await self.todo_manager.check_and_add_item(name, item_data)
@@ -62,5 +61,5 @@ class QuantityService(BaseServiceHandler):
         except Exception as e:
             _LOGGER.error(
                 f"Failed to decrement item {
-                          name} in inventory {inventory_id}: {e}"
+                    name} in inventory {inventory_id}: {e}"
             )

@@ -18,7 +18,6 @@ class InventoryService(BaseServiceHandler):
         inventory_id = item_data["inventory_id"]
         name = item_data["name"]
 
-        # Extract kwargs excluding inventory_id and name
         item_kwargs = self._extract_item_kwargs(item_data, ["name", "inventory_id"])
 
         try:
@@ -27,7 +26,7 @@ class InventoryService(BaseServiceHandler):
         except Exception as e:
             _LOGGER.error(
                 f"Failed to add item {
-                          name} to inventory {inventory_id}: {e}"
+                    name} to inventory {inventory_id}: {e}"
             )
 
     async def async_remove_item(self, call: ServiceCall):
@@ -42,7 +41,7 @@ class InventoryService(BaseServiceHandler):
         except Exception as e:
             _LOGGER.error(
                 f"Failed to remove item {
-                          name} from inventory {inventory_id}: {e}"
+                    name} from inventory {inventory_id}: {e}"
             )
 
     async def async_update_item(self, call: ServiceCall):
@@ -77,12 +76,15 @@ class InventoryService(BaseServiceHandler):
                 inventory_id, old_name, new_name, **update_data
             ):
                 await self._save_and_log_success(
-                    inventory_id, f"Updated item: {old_name} -> {new_name}", new_name
+                    inventory_id,
+                    f"Updated item: {
+                        old_name} -> {new_name}",
+                    new_name,
                 )
             else:
                 self._log_operation_failed("Update item", old_name, inventory_id)
         except Exception as e:
             _LOGGER.error(
                 f"Failed to update item {
-                          old_name} in inventory {inventory_id}: {e}"
+                    old_name} in inventory {inventory_id}: {e}"
             )

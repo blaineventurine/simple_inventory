@@ -110,7 +110,8 @@ class SimpleInventoryCoordinator:
 
         if old_name not in inventory["items"]:
             _LOGGER.warning(
-                f"Cannot update non-existent item '{old_name}' in inventory '{inventory_id}'"
+                f"Cannot update non-existent item '{
+                    old_name}' in inventory '{inventory_id}'"
             )
             return False
 
@@ -155,21 +156,21 @@ class SimpleInventoryCoordinator:
                 if final_auto_add_quantity is None or final_auto_add_quantity <= 0:
                     _LOGGER.error(
                         f"Cannot enable auto-add without valid quantity for item '{
-                                  old_name}' in inventory '{inventory_id}'"
+                            old_name}' in inventory '{inventory_id}'"
                     )
                     return False
 
                 if not final_todo_list or not final_todo_list.strip():
                     _LOGGER.error(
                         f"Cannot enable auto-add without todo list for item '{
-                                  old_name}' in inventory '{inventory_id}'"
+                            old_name}' in inventory '{inventory_id}'"
                     )
                     return False
 
         if old_name != item_name:
             _LOGGER.info(
                 f"Renaming item '{old_name}' to '{
-                         item_name}' in inventory '{inventory_id}'"
+                    item_name}' in inventory '{inventory_id}'"
             )
             del inventory["items"][old_name]
             inventory["items"][item_name] = current_item
@@ -188,17 +189,15 @@ class SimpleInventoryCoordinator:
         inventory = self.ensure_inventory_exists(inventory_id)
 
         if name in inventory[INVENTORY_ITEMS]:
-            # Update existing item quantity
             _LOGGER.debug(
                 f"Updating quantity of existing item '{
-                          name}' in inventory '{inventory_id}'"
+                    name}' in inventory '{inventory_id}'"
             )
             inventory[INVENTORY_ITEMS][name][FIELD_QUANTITY] += quantity
         else:
-            # Add new item with all fields
             _LOGGER.info(
                 f"Adding new item '{
-                         name}' to inventory '{inventory_id}'"
+                    name}' to inventory '{inventory_id}'"
             )
 
             auto_add_quantity = kwargs.get(
@@ -233,7 +232,7 @@ class SimpleInventoryCoordinator:
                 ):
                     _LOGGER.error(
                         f"Auto-add enabled but no valid quantity specified for new item '{
-                                  name}' in inventory '{inventory_id}'"
+                            name}' in inventory '{inventory_id}'"
                     )
                     return False
 
@@ -241,7 +240,7 @@ class SimpleInventoryCoordinator:
                 if not todo_list or not todo_list.strip():
                     _LOGGER.error(
                         f"Auto-add enabled but no todo list specified for new item '{
-                                  name}' in inventory '{inventory_id}'"
+                            name}' in inventory '{inventory_id}'"
                     )
                     return False
 
@@ -253,7 +252,8 @@ class SimpleInventoryCoordinator:
         """Remove an item completely from a specific inventory."""
         if not name or not name.strip():
             _LOGGER.warning(
-                f"Cannot remove item with empty name from inventory '{inventory_id}'"
+                f"Cannot remove item with empty name from inventory '{
+                    inventory_id}'"
             )
             return False
 
@@ -261,13 +261,14 @@ class SimpleInventoryCoordinator:
         if name in inventory[INVENTORY_ITEMS]:
             _LOGGER.info(
                 f"Removing item '{
-                         name}' from inventory '{inventory_id}'"
+                    name}' from inventory '{inventory_id}'"
             )
             del inventory[INVENTORY_ITEMS][name]
             return True
 
         _LOGGER.warning(
-            f"Cannot remove non-existent item '{name}' from inventory '{inventory_id}'"
+            f"Cannot remove non-existent item '{
+                name}' from inventory '{inventory_id}'"
         )
         return False
 
@@ -276,7 +277,7 @@ class SimpleInventoryCoordinator:
         if not name or not name.strip() or amount < 0:
             _LOGGER.warning(
                 f"Cannot increment item with invalid parameters: name='{
-                            name}', amount={amount}"
+                    name}', amount={amount}"
             )
             return False
 
@@ -286,13 +287,14 @@ class SimpleInventoryCoordinator:
             new_quantity = current_quantity + amount
             _LOGGER.debug(
                 f"Incrementing item '{name}' in inventory '{
-                          inventory_id}' from {current_quantity} to {new_quantity}"
+                    inventory_id}' from {current_quantity} to {new_quantity}"
             )
             inventory[INVENTORY_ITEMS][name][FIELD_QUANTITY] = new_quantity
             return True
 
         _LOGGER.warning(
-            f"Cannot increment non-existent item '{name}' in inventory '{inventory_id}'"
+            f"Cannot increment non-existent item '{
+                name}' in inventory '{inventory_id}'"
         )
         return False
 
@@ -301,7 +303,7 @@ class SimpleInventoryCoordinator:
         if not name or not name.strip() or amount < 0:
             _LOGGER.warning(
                 f"Cannot decrement item with invalid parameters: name='{
-                            name}', amount={amount}"
+                    name}', amount={amount}"
             )
             return False
 
@@ -311,13 +313,14 @@ class SimpleInventoryCoordinator:
             new_quantity = max(0, current_quantity - amount)
             _LOGGER.debug(
                 f"Decrementing item '{name}' in inventory '{
-                          inventory_id}' from {current_quantity} to {new_quantity}"
+                    inventory_id}' from {current_quantity} to {new_quantity}"
             )
             inventory[INVENTORY_ITEMS][name][FIELD_QUANTITY] = new_quantity
             return True
 
         _LOGGER.warning(
-            f"Cannot decrement non-existent item '{name}' in inventory '{inventory_id}'"
+            f"Cannot decrement non-existent item '{
+                name}' in inventory '{inventory_id}'"
         )
         return False
 
@@ -372,10 +375,9 @@ class SimpleInventoryCoordinator:
                     except ValueError:
                         _LOGGER.warning(
                             f"Invalid expiry date format for {
-                                        item_name}: {expiry_date_str}"
+                                item_name}: {expiry_date_str}"
                         )
 
-        # Sort by expiry date (soonest first)
         expiring_items.sort(key=lambda x: x["days_until_expiry"])
         return expiring_items
 
@@ -412,7 +414,6 @@ class SimpleInventoryCoordinator:
                     categories[category] = 0
                 categories[category] += 1
 
-        # Get items below threshold
         below_threshold = []
         for name, item in items.items():
             quantity = item.get(FIELD_QUANTITY, 0)
@@ -428,7 +429,6 @@ class SimpleInventoryCoordinator:
                     }
                 )
 
-        # Get expiring items
         expiring_items = self.get_items_expiring_soon(inventory_id)
 
         return {

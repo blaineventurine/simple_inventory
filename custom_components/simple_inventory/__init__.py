@@ -37,10 +37,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         todo_manager = TodoManager(hass)
         service_handler = ServiceHandler(hass, coordinator, todo_manager)
 
-        # Load data
         await coordinator.async_load_data()
 
-        # Register services
         hass.services.async_register(
             DOMAIN,
             SERVICE_UPDATE_ITEM,
@@ -101,7 +99,6 @@ async def _create_global_entry(hass: HomeAssistant) -> None:
         "entry_type": "global",
     }
 
-    # Use the config flow to create the entry
     await hass.config_entries.flow.async_init(
         DOMAIN,
         context={"source": "internal"},

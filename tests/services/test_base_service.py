@@ -30,10 +30,8 @@ class TestBaseServiceHandler:
                 "kitchen", "Added item", "milk"
             )
 
-        # Verify coordinator method was called
         mock_coordinator.async_save_data.assert_called_once_with("kitchen")
 
-        # Verify log message
         assert "Added item: milk in inventory: kitchen" in caplog.text
         assert caplog.records[0].levelname == "INFO"
 
@@ -176,7 +174,6 @@ class TestBaseServiceHandler:
 
         child_handler = TestChildHandler(hass, mock_coordinator)
 
-        # Verify inheritance works
         assert hasattr(child_handler, "_save_and_log_success")
         assert hasattr(child_handler, "_extract_item_kwargs")
         assert child_handler.hass is hass

@@ -13,26 +13,6 @@ from .const import DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
 
-# Simple keyword-to-icon suggestions for auto-suggestion only
-ICON_SUGGESTIONS = {
-    "kitchen": "mdi:chef-hat",
-    "bathroom": "mdi:shower",
-    "garage": "mdi:garage",
-    "tool": "mdi:hammer-wrench",
-    "medicine": "mdi:pill",
-    "clean": "mdi:spray-bottle",
-    "office": "mdi:briefcase",
-    "pet": "mdi:paw",
-    "garden": "mdi:flower",
-    "food": "mdi:food",
-    "book": "mdi:book-open-page-variant",
-    "pantry": "mdi:food",
-    "fridge": "mdi:fridge",
-    "laundry": "mdi:washing-machine",
-    "craft": "mdi:palette",
-    "electronic": "mdi:memory",
-}
-
 DEFAULT_ICON = "mdi:package-variant"
 
 

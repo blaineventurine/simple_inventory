@@ -83,7 +83,6 @@ class TestTodoManager:
 
         result = await todo_manager._get_incomplete_items("todo.shopping_list")
 
-        # Should return only incomplete items
         expected_items = [
             {"summary": "milk", "status": "needs_action"},
             {"summary": "eggs", "completed": False},
@@ -100,7 +99,6 @@ class TestTodoManager:
 
     @pytest.mark.asyncio
     async def test_check_and_add_item_success(self, todo_manager, sample_item_data):
-        # Mock getting incomplete items (no duplicates)
         todo_manager._get_incomplete_items = AsyncMock(
             return_value=[{"summary": "milk", "status": "needs_action"}]
         )
@@ -114,7 +112,6 @@ class TestTodoManager:
 
     @pytest.mark.asyncio
     async def test_check_and_add_item_duplicate(self, todo_manager, sample_item_data):
-        # Mock getting incomplete items (with duplicate)
         todo_manager._get_incomplete_items = AsyncMock(
             return_value=[{"summary": "bread", "status": "needs_action"}]
         )
@@ -128,7 +125,6 @@ class TestTodoManager:
     async def test_check_and_add_item_case_insensitive_duplicate(
         self, todo_manager, sample_item_data
     ):
-        # Mock getting incomplete items (with case different duplicate)
         todo_manager._get_incomplete_items = AsyncMock(
             return_value=[{"summary": "BREAD", "status": "needs_action"}]
         )
@@ -218,7 +214,6 @@ class TestTodoManager:
             "todo_list": "todo.shopping_list",
         }
 
-        # Mock service responses
         todo_manager.hass.services.async_call.side_effect = [
             # First call: get_items
             {
