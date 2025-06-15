@@ -109,7 +109,7 @@ class SimpleInventoryConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     async def async_step_internal(self, user_input=None) -> FlowResult:
         """Handle internal creation of global entry."""
         return self.async_create_entry(
-            title="Global Items Expiring Soon",
+            title="All Items Expiring Soon",
             data=user_input,
         )
 
