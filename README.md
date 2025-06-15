@@ -25,38 +25,14 @@ This integration works best with the companion card:
 
 Add via Home Assistant UI: Configuration → Integrations → Add Integration → Simple Inventory
 
-## Sample Automation
+The integration will create the inventory you specify as a device with two sensors: `sensor.whatever_inventory` and `sensor.whatever_items_expiring_soon`, along with a second device with a single `sensor.all_items_expiring_soon`. Each additional inventory you create will be added as a device with a sensor for the items, and a sensor for the items expiring soon.
 
-Sample automation for notifying about expiration dates coming soon:
+### Expiration Dates
 
-```yaml
-automation:
-  - alias: "Notify about expiring inventory items"
-    trigger:
-      - platform: numeric_state
-        entity_id: sensor.items_expiring_soon
-        above: 0
-      - platform: time
-        at: "09:00:00"
-    condition:
-      - condition: numeric_state
-        entity_id: sensor.items_expiring_soon
-        above: 0
-    action:
-      - service: notify.mobile_app_your_phone
-        data:
-          title: "🗓️ Inventory Items Expiring Soon"
-          message: >
-            {% set expiring = state_attr('sensor.items_expiring_soon', 'expiring_items') %}
-            {% set expired = state_attr('sensor.items_expiring_soon', 'expired_items') %}
-            {% if expired %}
-              ⚠️ {{ expired | length }} expired items: {{ expired[:3] | map(attribute='name') | join(', ') }}
-            {% endif %}
-            {% if expiring %}
-              📅 {{ expiring | length }} expiring soon: {{ expiring[:3] | map(attribute='name') | join(', ') }}
-            {% endif %}
-          data:
-            actions:
-              - action: "view_inventory"
-                title: "View Inventory"
-```
+Each item you add to the inventory has a mandatory name, and several optional fields. You can set an expiration date, and an expiration date alert threshold. When the number of days left before expiration is equal to or below the threshold you set, the item will be added to the local inventory sensor for expiring items and to the global sensor.
+
+The companion frontend card will show you two badges, one for items expiring soon, and one for expired items in the local inventory the card is assigned to. For now there is no global expiring items card - that sensor is mostly intended to build automations around.
+
+### Auto-add to To-do List
+
+Each item has an option to add it to a specific to-do list when the quantity remaining reaches a certain amount. The item will be added to the list when below, and removed from the list when incremented above.

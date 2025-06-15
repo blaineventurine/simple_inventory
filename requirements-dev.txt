@@ -1,3 +1,5 @@
+-r requirements.txt
+
 # Code formatting
 black==25.1.0
 isort==6.0.1
@@ -11,8 +13,12 @@ flake8-simplify==0.22.0
 # Type checking
 mypy==1.16.0
 
-# Testing (for future use)
+# Testing
 pytest==8.3.5
 pytest-cov==6.0.0
-pytest-homeassistant-custom-component==0.13.249
+pytest-homeassistant-custom-component
 
+safety
+pre-commit
+bump2version
+types-setuptools

@@ -1,0 +1,17 @@
+name: Pre-commit
+
+on:
+  pull_request:
+
+env:
+  DEFAULT_PYTHON: "3.13.4"
+
+jobs:
+  pre-commit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.DEFAULT_PYTHON }}
+      - uses: pre-commit/action@v3.0.0
