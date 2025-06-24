@@ -70,7 +70,9 @@ class TestExpiryNotificationSensor:
         expiry_sensor._update_data.assert_called_once()
         expiry_sensor.async_write_ha_state.assert_called_once()
 
-    def test_update_data_with_items(self, expiry_sensor, mock_sensor_coordinator):
+    def test_update_data_with_items(
+        self, expiry_sensor, mock_sensor_coordinator
+    ):
         """Test data update with expiring and expired items."""
         test_items = [
             {
@@ -96,7 +98,9 @@ class TestExpiryNotificationSensor:
         ]
 
         expiry_sensor.coordinator.get_items_expiring_soon.side_effect = None
-        expiry_sensor.coordinator.get_items_expiring_soon.return_value = test_items
+        expiry_sensor.coordinator.get_items_expiring_soon.return_value = (
+            test_items
+        )
         expiry_sensor._update_data()
 
         # Should have found 2 items total (1 expired + 1 expiring)
@@ -148,7 +152,9 @@ class TestExpiryNotificationSensor:
         ]
 
         expiry_sensor.coordinator.get_items_expiring_soon.side_effect = None
-        expiry_sensor.coordinator.get_items_expiring_soon.return_value = test_items
+        expiry_sensor.coordinator.get_items_expiring_soon.return_value = (
+            test_items
+        )
         expiry_sensor._update_data()
 
         assert expiry_sensor._attr_native_value == 1

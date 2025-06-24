@@ -12,29 +12,35 @@ _LOGGER = logging.getLogger(__name__)
 class BaseServiceHandler:
     """Base class for service handlers with common functionality."""
 
-    def __init__(self, hass: HomeAssistant, coordinator: SimpleInventoryCoordinator):
+    def __init__(
+        self, hass: HomeAssistant, coordinator: SimpleInventoryCoordinator
+    ) -> None:
         """Initialize the base service handler."""
         self.hass = hass
         self.coordinator = coordinator
 
     async def _save_and_log_success(
         self, inventory_id: str, operation: str, item_name: str
-    ):
+    ) -> None:
         """Save data and log successful operation."""
         await self.coordinator.async_save_data(inventory_id)
         _LOGGER.info(f"{operation}: {item_name} in inventory: {inventory_id}")
 
-    def _log_item_not_found(self, operation: str, item_name: str, inventory_id: str):
+    def _log_item_not_found(
+        self, operation: str, item_name: str, inventory_id: str
+    ) -> None:
         """Log when an item is not found."""
         _LOGGER.warning(
             f"{operation} failed - Item not found: {item_name} in inventory: {inventory_id}"
         )
 
-    def _log_operation_failed(self, operation: str, item_name: str, inventory_id: str):
+    def _log_operation_failed(
+        self, operation: str, item_name: str, inventory_id: str
+    ) -> None:
         """Log when an operation fails."""
         _LOGGER.error(
             f"{operation} failed for item: {
-                      item_name} in inventory: {inventory_id}"
+                item_name} in inventory: {inventory_id}"
         )
 
     def _extract_item_kwargs(self, data: dict, exclude_keys: list) -> dict:

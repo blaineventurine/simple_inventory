@@ -6,6 +6,7 @@ from homeassistant.components.sensor import SensorEntity
 from homeassistant.core import HomeAssistant, callback
 
 from ..const import DOMAIN
+from ..coordinator import SimpleInventoryCoordinator
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -16,11 +17,11 @@ class InventorySensor(SensorEntity):
     def __init__(
         self,
         hass: HomeAssistant,
-        coordinator,
+        coordinator: SimpleInventoryCoordinator,
         inventory_name: str,
         icon: str,
         entry_id: str,
-    ):
+    ) -> None:
         """Initialize the sensor."""
         self.hass = hass
         self.coordinator = coordinator
@@ -53,18 +54,18 @@ class InventorySensor(SensorEntity):
         )
 
     @callback
-    def _handle_update(self, _event):
+    def _handle_update(self, _event) -> None:
         """Handle inventory updates."""
         self._update_data()
         self.async_write_ha_state()
 
     @callback
-    def _handle_coordinator_update(self):
+    def _handle_coordinator_update(self) -> None:
         """Handle coordinator updates."""
         self._update_data()
         self.async_write_ha_state()
 
-    def _update_data(self):
+    def _update_data(self) -> None:
         """update sensor data."""
         items = self.coordinator.get_all_items(self._entry_id)
         stats = self.coordinator.get_inventory_statistics(self._entry_id)
@@ -72,7 +73,9 @@ class InventorySensor(SensorEntity):
 
         description = ""
         try:
-            config_entry = self.hass.config_entries.async_get_entry(self._entry_id)
+            config_entry = self.hass.config_entries.async_get_entry(
+                self._entry_id
+            )
             if config_entry:
                 description = config_entry.data.get("description", "")
         except Exception:
@@ -81,7 +84,9 @@ class InventorySensor(SensorEntity):
         self._attr_extra_state_attributes = {
             "inventory_id": self._entry_id,
             "description": description,
-            "items": [{"name": name, **details} for name, details in items.items()],
+            "items": [
+                {"name": name, **details} for name, details in items.items()
+            ],
             "total_items": stats["total_items"],
             "total_quantity": stats["total_quantity"],
             "categories": stats["categories"],

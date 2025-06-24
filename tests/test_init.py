@@ -50,18 +50,27 @@ class TestSimpleInventoryInit:
         hass.services.async_register = MagicMock()
         hass.services.async_remove = MagicMock()
         hass.config_entries = MagicMock()
-        hass.config_entries.async_forward_entry_setups = AsyncMock(return_value=True)
-        hass.config_entries.async_unload_platforms = AsyncMock(return_value=True)
+        hass.config_entries.async_forward_entry_setups = AsyncMock(
+            return_value=True
+        )
+        hass.config_entries.async_unload_platforms = AsyncMock(
+            return_value=True
+        )
+        hass.config_entries.async_entries = MagicMock(return_value=[])
         return hass
 
     @pytest.mark.asyncio
-    async def test_async_setup_entry_first_entry(self, mock_hass, mock_config_entry):
+    async def test_async_setup_entry_first_entry(
+        self, mock_hass, mock_config_entry
+    ):
         """Test setting up the first config entry."""
         with (
             patch(
                 "custom_components.simple_inventory.SimpleInventoryCoordinator"
             ) as mock_coord_class,
-            patch("custom_components.simple_inventory.TodoManager") as mock_todo_class,
+            patch(
+                "custom_components.simple_inventory.TodoManager"
+            ) as mock_todo_class,
             patch(
                 "custom_components.simple_inventory.ServiceHandler"
             ) as mock_service_class,
@@ -165,7 +174,9 @@ class TestSimpleInventoryInit:
             patch(
                 "custom_components.simple_inventory.SimpleInventoryCoordinator"
             ) as mock_coord_class,
-            patch("custom_components.simple_inventory.TodoManager") as mock_todo_class,
+            patch(
+                "custom_components.simple_inventory.TodoManager"
+            ) as mock_todo_class,
             patch(
                 "custom_components.simple_inventory.ServiceHandler"
             ) as mock_service_class,
@@ -200,7 +211,9 @@ class TestSimpleInventoryInit:
             patch(
                 "custom_components.simple_inventory.SimpleInventoryCoordinator"
             ) as mock_coord_class,
-            patch("custom_components.simple_inventory.TodoManager") as mock_todo_class,
+            patch(
+                "custom_components.simple_inventory.TodoManager"
+            ) as mock_todo_class,
             patch(
                 "custom_components.simple_inventory.ServiceHandler"
             ) as mock_service_class,
@@ -233,7 +246,9 @@ class TestSimpleInventoryInit:
             patch(
                 "custom_components.simple_inventory.SimpleInventoryCoordinator"
             ) as mock_coord_class,
-            patch("custom_components.simple_inventory.TodoManager") as mock_todo_class,
+            patch(
+                "custom_components.simple_inventory.TodoManager"
+            ) as mock_todo_class,
             patch(
                 "custom_components.simple_inventory.ServiceHandler"
             ) as mock_service_class,
@@ -247,8 +262,8 @@ class TestSimpleInventoryInit:
             mock_service_handler = MagicMock()
             mock_service_class.return_value = mock_service_handler
 
-            mock_hass.config_entries.async_forward_entry_setups.side_effect = Exception(
-                "Platform setup failed"
+            mock_hass.config_entries.async_forward_entry_setups.side_effect = (
+                Exception("Platform setup failed")
             )
 
             with pytest.raises(Exception, match="Platform setup failed"):
@@ -284,7 +299,9 @@ class TestSimpleInventoryInit:
         mock_hass.services.async_remove.assert_not_called()
 
     @pytest.mark.asyncio
-    async def test_async_unload_entry_last_entry(self, mock_hass, mock_config_entry):
+    async def test_async_unload_entry_last_entry(
+        self, mock_hass, mock_config_entry
+    ):
         """Test unloading the last entry."""
         mock_coordinator = MagicMock()
         mock_todo_manager = MagicMock()
@@ -368,13 +385,17 @@ class TestSimpleInventoryInit:
         assert result is True
 
     @pytest.mark.asyncio
-    async def test_service_registration_schemas(self, mock_hass, mock_config_entry):
+    async def test_service_registration_schemas(
+        self, mock_hass, mock_config_entry
+    ):
         """Test that services are registered with correct schemas."""
         with (
             patch(
                 "custom_components.simple_inventory.SimpleInventoryCoordinator"
             ) as mock_coord_class,
-            patch("custom_components.simple_inventory.TodoManager") as mock_todo_class,
+            patch(
+                "custom_components.simple_inventory.TodoManager"
+            ) as mock_todo_class,
             patch(
                 "custom_components.simple_inventory.ServiceHandler"
             ) as mock_service_class,
@@ -416,7 +437,9 @@ class TestSimpleInventoryInit:
             patch(
                 "custom_components.simple_inventory.SimpleInventoryCoordinator"
             ) as mock_coord_class,
-            patch("custom_components.simple_inventory.TodoManager") as mock_todo_class,
+            patch(
+                "custom_components.simple_inventory.TodoManager"
+            ) as mock_todo_class,
             patch(
                 "custom_components.simple_inventory.ServiceHandler"
             ) as mock_service_class,
@@ -451,7 +474,9 @@ class TestSimpleInventoryInit:
             patch(
                 "custom_components.simple_inventory.SimpleInventoryCoordinator"
             ) as mock_coord_class,
-            patch("custom_components.simple_inventory.TodoManager") as mock_todo_class,
+            patch(
+                "custom_components.simple_inventory.TodoManager"
+            ) as mock_todo_class,
             patch(
                 "custom_components.simple_inventory.ServiceHandler"
             ) as mock_service_class,
@@ -480,3 +505,120 @@ class TestSimpleInventoryInit:
 
             assert entry1_data["coordinator"] is entry2_data["coordinator"]
             assert entry1_data["todo_manager"] is entry2_data["todo_manager"]
+
+    @pytest.mark.asyncio
+    async def test_async_setup_entry_creates_global_when_needed(
+        self, mock_hass, mock_config_entry
+    ):
+        """Test that global entry is created when create_global is True and no global exists."""
+        mock_config_entry.data = {
+            "name": "Test Inventory",
+            "icon": "mdi:package",
+            "create_global": True,
+        }
+
+        # Mock no existing global entries
+        mock_hass.config_entries.async_entries.return_value = []
+
+        with (
+            patch(
+                "custom_components.simple_inventory.SimpleInventoryCoordinator"
+            ) as mock_coord_class,
+            patch(
+                "custom_components.simple_inventory.TodoManager"
+            ) as mock_todo_class,
+            patch(
+                "custom_components.simple_inventory.ServiceHandler"
+            ) as mock_service_class,
+            patch(
+                "custom_components.simple_inventory._create_global_entry"
+            ) as mock_create_global,
+        ):
+            mock_coordinator = MagicMock()
+            mock_coordinator.async_load_data = AsyncMock()
+            mock_coord_class.return_value = mock_coordinator
+            mock_todo_class.return_value = MagicMock()
+            mock_service_class.return_value = MagicMock()
+            mock_create_global.return_value = AsyncMock()
+
+            result = await async_setup_entry(mock_hass, mock_config_entry)
+
+            assert result is True
+            mock_create_global.assert_called_once_with(mock_hass)
+
+    @pytest.mark.asyncio
+    async def test_async_setup_entry_skips_global_when_exists(
+        self, mock_hass, mock_config_entry
+    ):
+        """Test that global entry is not created when create_global is True but global already exists."""
+        mock_config_entry.data = {
+            "name": "Test Inventory",
+            "icon": "mdi:package",
+            "create_global": True,
+        }
+
+        # Mock existing global entry
+        existing_global = MagicMock()
+        existing_global.data = {"entry_type": "global"}
+        mock_hass.config_entries.async_entries.return_value = [existing_global]
+
+        with (
+            patch(
+                "custom_components.simple_inventory.SimpleInventoryCoordinator"
+            ) as mock_coord_class,
+            patch(
+                "custom_components.simple_inventory.TodoManager"
+            ) as mock_todo_class,
+            patch(
+                "custom_components.simple_inventory.ServiceHandler"
+            ) as mock_service_class,
+            patch(
+                "custom_components.simple_inventory._create_global_entry"
+            ) as mock_create_global,
+        ):
+            mock_coordinator = MagicMock()
+            mock_coordinator.async_load_data = AsyncMock()
+            mock_coord_class.return_value = mock_coordinator
+            mock_todo_class.return_value = MagicMock()
+            mock_service_class.return_value = MagicMock()
+
+            result = await async_setup_entry(mock_hass, mock_config_entry)
+
+            assert result is True
+            mock_create_global.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_async_setup_entry_no_global_when_flag_false(
+        self, mock_hass, mock_config_entry
+    ):
+        """Test that global entry is not created when create_global is False."""
+        mock_config_entry.data = {
+            "name": "Test Inventory",
+            "icon": "mdi:package",
+            "create_global": False,
+        }
+
+        with (
+            patch(
+                "custom_components.simple_inventory.SimpleInventoryCoordinator"
+            ) as mock_coord_class,
+            patch(
+                "custom_components.simple_inventory.TodoManager"
+            ) as mock_todo_class,
+            patch(
+                "custom_components.simple_inventory.ServiceHandler"
+            ) as mock_service_class,
+            patch(
+                "custom_components.simple_inventory._create_global_entry"
+            ) as mock_create_global,
+        ):
+            mock_coordinator = MagicMock()
+            mock_coordinator.async_load_data = AsyncMock()
+            mock_coord_class.return_value = mock_coordinator
+            mock_todo_class.return_value = MagicMock()
+            mock_service_class.return_value = MagicMock()
+
+            result = await async_setup_entry(mock_hass, mock_config_entry)
+
+            assert result is True
+            mock_create_global.assert_not_called()

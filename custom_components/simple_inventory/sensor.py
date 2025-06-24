@@ -35,6 +35,8 @@ async def async_setup_entry(
 
         sensors_to_add = [
             InventorySensor(hass, coordinator, inventory_name, icon, entry_id),
-            ExpiryNotificationSensor(hass, coordinator, entry_id, inventory_name),
+            ExpiryNotificationSensor(
+                hass, coordinator, entry_id, inventory_name
+            ),
         ]
         async_add_entities(sensors_to_add)

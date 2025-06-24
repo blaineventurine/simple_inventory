@@ -4,6 +4,7 @@ from homeassistant.components.sensor import SensorEntity
 from homeassistant.core import HomeAssistant, callback
 
 from ..const import DOMAIN
+from ..coordinator import SimpleInventoryCoordinator
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -11,7 +12,9 @@ _LOGGER = logging.getLogger(__name__)
 class GlobalExpiryNotificationSensor(SensorEntity):
     """Sensor to track items nearing expiry across all inventories."""
 
-    def __init__(self, hass: HomeAssistant, coordinator):
+    def __init__(
+        self, hass: HomeAssistant, coordinator: SimpleInventoryCoordinator
+    ) -> None:
         """Initialize the global sensor."""
         self.hass = hass
         self.coordinator = coordinator
@@ -43,34 +46,42 @@ class GlobalExpiryNotificationSensor(SensorEntity):
 
         if hasattr(self.coordinator, "async_add_listener"):
             self.async_on_remove(
-                self.coordinator.async_add_listener(self._handle_coordinator_update)
+                self.coordinator.async_add_listener(
+                    self._handle_coordinator_update
+                )
             )
 
     @callback
-    def _handle_update(self, _event):
+    def _handle_update(self, _event) -> None:
         """Handle inventory updates."""
         self._update_data()
         self.async_write_ha_state()
 
     @callback
-    def _handle_coordinator_update(self):
+    def _handle_coordinator_update(self) -> None:
         """Handle coordinator updates."""
         self._update_data()
         self.async_write_ha_state()
 
-    def _update_data(self):
+    def _update_data(self) -> None:
         """Update sensor data aggregating all inventories."""
         all_items = self.coordinator.get_items_expiring_soon()
 
         for item in all_items:
             item["inventory"] = self._get_inventory_name(item["inventory_id"])
 
-        expired_items = [item for item in all_items if item["days_until_expiry"] < 0]
-        expiring_items = [item for item in all_items if item["days_until_expiry"] >= 0]
+        expired_items = [
+            item for item in all_items if item["days_until_expiry"] < 0
+        ]
+        expiring_items = [
+            item for item in all_items if item["days_until_expiry"] >= 0
+        ]
 
         total_items = len(all_items)
         inventories_count = (
-            len({item["inventory_id"] for item in all_items}) if all_items else 0
+            len({item["inventory_id"] for item in all_items})
+            if all_items
+            else 0
         )
 
         self._attr_native_value = total_items
@@ -99,7 +110,7 @@ class GlobalExpiryNotificationSensor(SensorEntity):
         else:
             self._attr_icon = "mdi:calendar-check"
 
-    def _get_inventory_name(self, inventory_id):
+    def _get_inventory_name(self, inventory_id: str) -> str:
         """Get the friendly name of an inventory by its ID."""
         try:
             config_entries = self.hass.config_entries.async_entries(DOMAIN)

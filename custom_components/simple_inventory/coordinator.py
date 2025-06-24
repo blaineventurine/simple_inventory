@@ -36,11 +36,14 @@ _LOGGER = logging.getLogger(__name__)
 class SimpleInventoryCoordinator:
     """Manage inventory data and storage."""
 
-    def __init__(self, hass: HomeAssistant):
+    def __init__(self, hass: HomeAssistant) -> None:
         """Initialize the coordinator."""
         self.hass = hass
         self._store = Store(hass, STORAGE_VERSION, STORAGE_KEY)
-        self._data = {"inventories": {}, "config": {"expiry_alert_days": 7}}
+        self._data = {
+            "inventories": {},
+            "config": {"expiry_alert_days": DEFAULT_EXPIRY_ALERT_DAYS},
+        }
         self._listeners = []
 
     async def async_load_data(self) -> Dict[str, Any]:
@@ -62,7 +65,9 @@ class SimpleInventoryCoordinator:
             # Notify sensors to update - either specific inventory or all
             if inventory_id:
                 self.hass.bus.async_fire(f"{DOMAIN}_updated_{inventory_id}")
-                _LOGGER.debug(f"Fired update event for inventory: {inventory_id}")
+                _LOGGER.debug(
+                    f"Fired update event for inventory: {inventory_id}"
+                )
             else:
                 # Notify all inventories
                 for inv_id in self._data["inventories"]:
@@ -92,7 +97,9 @@ class SimpleInventoryCoordinator:
             self._data["inventories"][inventory_id] = {"items": {}}
         return self._data["inventories"][inventory_id]
 
-    def get_item(self, inventory_id: str, name: str) -> Optional[Dict[str, Any]]:
+    def get_item(
+        self, inventory_id: str, name: str
+    ) -> Optional[Dict[str, Any]]:
         """Get a specific item from an inventory."""
         inventory = self.get_inventory(inventory_id)
         return inventory["items"].get(name)
@@ -132,14 +139,15 @@ class SimpleInventoryCoordinator:
             _LOGGER.warning(f"updating '{key}' to '{value}'")
             if key in allowed_fields:
                 if key == FIELD_QUANTITY:
-                    current_item[key] = max(0, int(value)) if value is not None else 0
-                elif key == FIELD_AUTO_ADD_TO_LIST_QUANTITY:
+                    current_item[key] = (
+                        max(0, int(value)) if value is not None else 0
+                    )
+                elif key in (
+                    FIELD_AUTO_ADD_TO_LIST_QUANTITY,
+                    FIELD_EXPIRY_ALERT_DAYS,
+                ):
                     current_item[key] = (
                         max(0, int(value)) if value is not None else None
-                    )
-                elif key == FIELD_EXPIRY_ALERT_DAYS:
-                    current_item[key] = (
-                        max(1, int(value)) if value is not None else None
                     )
                 elif key == FIELD_AUTO_ADD_ENABLED:
                     current_item[key] = bool(value)
@@ -148,12 +156,17 @@ class SimpleInventoryCoordinator:
 
         final_auto_add_enabled = current_item.get(FIELD_AUTO_ADD_ENABLED, False)
         if final_auto_add_enabled:
-            final_auto_add_quantity = current_item.get(FIELD_AUTO_ADD_TO_LIST_QUANTITY)
+            final_auto_add_quantity = current_item.get(
+                FIELD_AUTO_ADD_TO_LIST_QUANTITY
+            )
             final_todo_list = current_item.get(FIELD_TODO_LIST, "")
             auto_add_being_enabled = kwargs.get(FIELD_AUTO_ADD_ENABLED) is True
 
             if auto_add_being_enabled:
-                if final_auto_add_quantity is None or final_auto_add_quantity <= 0:
+                if (
+                    final_auto_add_quantity is None
+                    or final_auto_add_quantity < 0
+                ):
                     _LOGGER.error(
                         f"Cannot enable auto-add without valid quantity for item '{
                             old_name}' in inventory '{inventory_id}'"
@@ -180,7 +193,11 @@ class SimpleInventoryCoordinator:
         return True
 
     def add_item(
-        self, inventory_id: str, name: str, quantity: int = DEFAULT_QUANTITY, **kwargs
+        self,
+        inventory_id: str,
+        name: str,
+        quantity: int = DEFAULT_QUANTITY,
+        **kwargs,
     ) -> bool:
         """Add or update an item in a specific inventory."""
         if not name or not name.strip():
@@ -201,7 +218,8 @@ class SimpleInventoryCoordinator:
             )
 
             auto_add_quantity = kwargs.get(
-                FIELD_AUTO_ADD_TO_LIST_QUANTITY, DEFAULT_AUTO_ADD_TO_LIST_QUANTITY
+                FIELD_AUTO_ADD_TO_LIST_QUANTITY,
+                DEFAULT_AUTO_ADD_TO_LIST_QUANTITY,
             )
             if auto_add_quantity is not None:
                 auto_add_quantity = max(0, int(auto_add_quantity))
@@ -210,7 +228,7 @@ class SimpleInventoryCoordinator:
                 FIELD_EXPIRY_ALERT_DAYS, DEFAULT_EXPIRY_ALERT_DAYS
             )
             if expiry_alert_days is not None:
-                expiry_alert_days = max(1, int(expiry_alert_days))
+                expiry_alert_days = max(0, int(expiry_alert_days))
 
             new_item = {
                 FIELD_AUTO_ADD_ENABLED: kwargs.get(
@@ -219,7 +237,9 @@ class SimpleInventoryCoordinator:
                 FIELD_AUTO_ADD_TO_LIST_QUANTITY: auto_add_quantity,
                 FIELD_CATEGORY: kwargs.get(FIELD_CATEGORY, DEFAULT_CATEGORY),
                 FIELD_EXPIRY_ALERT_DAYS: expiry_alert_days,
-                FIELD_EXPIRY_DATE: kwargs.get(FIELD_EXPIRY_DATE, DEFAULT_EXPIRY_DATE),
+                FIELD_EXPIRY_DATE: kwargs.get(
+                    FIELD_EXPIRY_DATE, DEFAULT_EXPIRY_DATE
+                ),
                 FIELD_QUANTITY: max(0, quantity),
                 FIELD_TODO_LIST: kwargs.get(FIELD_TODO_LIST, DEFAULT_TODO_LIST),
                 FIELD_UNIT: kwargs.get(FIELD_UNIT, DEFAULT_UNIT),
@@ -272,7 +292,9 @@ class SimpleInventoryCoordinator:
         )
         return False
 
-    def increment_item(self, inventory_id: str, name: str, amount: int = 1) -> bool:
+    def increment_item(
+        self, inventory_id: str, name: str, amount: int = 1
+    ) -> bool:
         """Increment item quantity in a specific inventory."""
         if not name or not name.strip() or amount < 0:
             _LOGGER.warning(
@@ -298,7 +320,9 @@ class SimpleInventoryCoordinator:
         )
         return False
 
-    def decrement_item(self, inventory_id: str, name: str, amount: int = 1) -> bool:
+    def decrement_item(
+        self, inventory_id: str, name: str, amount: int = 1
+    ) -> bool:
         """Decrement item quantity in a specific inventory."""
         if not name or not name.strip() or amount < 0:
             _LOGGER.warning(
@@ -343,8 +367,10 @@ class SimpleInventoryCoordinator:
         for inv_id, inventory in inventories_to_check.items():
             for item_name, item_data in inventory.get("items", {}).items():
                 expiry_date_str = item_data.get(FIELD_EXPIRY_DATE, "")
-                item_threshold = item_data.get(FIELD_EXPIRY_ALERT_DAYS, 7)
-                quantity = item_data.get(FIELD_QUANTITY, 0)
+                item_threshold = item_data.get(
+                    FIELD_EXPIRY_ALERT_DAYS, DEFAULT_EXPIRY_ALERT_DAYS
+                )
+                quantity = item_data.get(FIELD_QUANTITY, DEFAULT_QUANTITY)
 
                 if (
                     expiry_date_str
@@ -356,7 +382,9 @@ class SimpleInventoryCoordinator:
                         expiry_date = datetime.strptime(
                             expiry_date_str, "%Y-%m-%d"
                         ).date()
-                        days_until_expiry = (expiry_date - current_datetime.date()).days
+                        days_until_expiry = (
+                            expiry_date - current_datetime.date()
+                        ).days
                         threshold_date = current_datetime.date() + timedelta(
                             days=item_threshold
                         )
@@ -386,7 +414,7 @@ class SimpleInventoryCoordinator:
         """Add a listener for data updates."""
         self._listeners.append(listener_func)
 
-        def remove_listener():
+        def remove_listener() -> None:
             """Remove the listener."""
             if listener_func in self._listeners:
                 self._listeners.remove(listener_func)
@@ -404,11 +432,14 @@ class SimpleInventoryCoordinator:
         items = inventory.get("items", {})
 
         total_items = len(items)
-        total_quantity = sum(item.get(FIELD_QUANTITY, 0) for item in items.values())
+        total_quantity = sum(
+            item.get(FIELD_QUANTITY, DEFAULT_QUANTITY)
+            for item in items.values()
+        )
 
         categories = {}
         for item in items.values():
-            category = item.get(FIELD_CATEGORY, "")
+            category = item.get(FIELD_CATEGORY, DEFAULT_CATEGORY)
             if category:
                 if category not in categories:
                     categories[category] = 0
@@ -417,15 +448,18 @@ class SimpleInventoryCoordinator:
         below_threshold = []
         for name, item in items.items():
             quantity = item.get(FIELD_QUANTITY, 0)
-            threshold = item.get(FIELD_AUTO_ADD_TO_LIST_QUANTITY, 0)
+            threshold = item.get(
+                FIELD_AUTO_ADD_TO_LIST_QUANTITY,
+                DEFAULT_AUTO_ADD_TO_LIST_QUANTITY,
+            )
             if threshold > 0 and quantity <= threshold:
                 below_threshold.append(
                     {
                         "name": name,
                         "quantity": quantity,
                         "threshold": threshold,
-                        "unit": item.get(FIELD_UNIT, ""),
-                        "category": item.get(FIELD_CATEGORY, ""),
+                        "unit": item.get(FIELD_UNIT, DEFAULT_UNIT),
+                        "category": item.get(FIELD_CATEGORY, DEFAULT_CATEGORY),
                     }
                 )
 

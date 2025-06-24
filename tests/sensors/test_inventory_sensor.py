@@ -23,7 +23,11 @@ class TestInventorySensor:
         }
 
         return InventorySensor(
-            hass, mock_sensor_coordinator, "Kitchen", "mdi:fridge", "kitchen_123"
+            hass,
+            mock_sensor_coordinator,
+            "Kitchen",
+            "mdi:fridge",
+            "kitchen_123",
         )
 
     def test_init(self, inventory_sensor):
@@ -59,7 +63,9 @@ class TestInventorySensor:
         inventory_sensor._update_data.assert_called_once()
         inventory_sensor.async_write_ha_state.assert_called_once()
 
-    def test_update_data_comprehensive(self, inventory_sensor, sample_inventory_data):
+    def test_update_data_comprehensive(
+        self, inventory_sensor, sample_inventory_data
+    ):
         """Test comprehensive data update."""
         kitchen_items = sample_inventory_data["kitchen"]["items"]
         inventory_sensor.coordinator.get_all_items.return_value = kitchen_items
@@ -70,7 +76,11 @@ class TestInventorySensor:
             "categories": ["dairy", "bakery"],
             "below_threshold": [],
             "expiring_items": [
-                {"name": "milk", "expiry_date": "2024-06-20", "days_until_expiry": 5},
+                {
+                    "name": "milk",
+                    "expiry_date": "2024-06-20",
+                    "days_until_expiry": 5,
+                },
                 {
                     "name": "expired_yogurt",
                     "expiry_date": "2024-06-14",
@@ -78,7 +88,9 @@ class TestInventorySensor:
                 },
             ],
         }
-        inventory_sensor.coordinator.get_inventory_statistics.return_value = mock_stats
+        inventory_sensor.coordinator.get_inventory_statistics.return_value = (
+            mock_stats
+        )
 
         inventory_sensor._update_data()
 
@@ -136,7 +148,9 @@ class TestInventorySensor:
             "kitchen_123"
         )
 
-    def test_update_data_called_during_init(self, hass, mock_sensor_coordinator):
+    def test_update_data_called_during_init(
+        self, hass, mock_sensor_coordinator
+    ):
         """Test that _update_data is called during initialization."""
         mock_sensor_coordinator.get_inventory_statistics.return_value = {
             "total_quantity": 0,
@@ -174,7 +188,11 @@ class TestInventorySensor:
         }
 
         sensor = InventorySensor(
-            hass, mock_sensor_coordinator, inventory_name, "mdi:test", "test_123"
+            hass,
+            mock_sensor_coordinator,
+            inventory_name,
+            "mdi:test",
+            "test_123",
         )
 
         assert sensor._attr_name == expected_attr_name

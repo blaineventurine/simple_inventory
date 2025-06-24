@@ -12,13 +12,15 @@ _LOGGER = logging.getLogger(__name__)
 class InventoryService(BaseServiceHandler):
     """Handle inventory-specific operations (add, remove, update items)."""
 
-    async def async_add_item(self, call: ServiceCall):
+    async def async_add_item(self, call: ServiceCall) -> None:
         """Add an item to the inventory."""
         item_data = call.data
         inventory_id = item_data["inventory_id"]
         name = item_data["name"]
 
-        item_kwargs = self._extract_item_kwargs(item_data, ["name", "inventory_id"])
+        item_kwargs = self._extract_item_kwargs(
+            item_data, ["name", "inventory_id"]
+        )
 
         try:
             self.coordinator.add_item(inventory_id, name, **item_kwargs)
@@ -29,13 +31,15 @@ class InventoryService(BaseServiceHandler):
                     name} to inventory {inventory_id}: {e}"
             )
 
-    async def async_remove_item(self, call: ServiceCall):
+    async def async_remove_item(self, call: ServiceCall) -> None:
         """Remove an item from the inventory."""
         inventory_id, name = self._get_inventory_and_name(call)
 
         try:
             if self.coordinator.remove_item(inventory_id, name):
-                await self._save_and_log_success(inventory_id, "Removed item", name)
+                await self._save_and_log_success(
+                    inventory_id, "Removed item", name
+                )
             else:
                 self._log_item_not_found("Remove item", name, inventory_id)
         except Exception as e:
@@ -44,7 +48,7 @@ class InventoryService(BaseServiceHandler):
                     name} from inventory {inventory_id}: {e}"
             )
 
-    async def async_update_item(self, call: ServiceCall):
+    async def async_update_item(self, call: ServiceCall) -> None:
         """Update an existing item with new values."""
         data = call.data
         inventory_id = data["inventory_id"]
@@ -82,7 +86,9 @@ class InventoryService(BaseServiceHandler):
                     new_name,
                 )
             else:
-                self._log_operation_failed("Update item", old_name, inventory_id)
+                self._log_operation_failed(
+                    "Update item", old_name, inventory_id
+                )
         except Exception as e:
             _LOGGER.error(
                 f"Failed to update item {

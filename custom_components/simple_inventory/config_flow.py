@@ -1,4 +1,4 @@
-"""Config flow with proper Home Assistant icon picker support."""
+"""Config flow."""
 
 import logging
 
@@ -53,7 +53,9 @@ class SimpleInventoryConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             step_id="add_inventory",
             data_schema=vol.Schema(
                 {
-                    vol.Required("name", default=defaults.get("name", "")): cv.string,
+                    vol.Required(
+                        "name", default=defaults.get("name", "")
+                    ): cv.string,
                     vol.Optional(
                         "icon", default=defaults.get("icon", DEFAULT_ICON)
                     ): selector.IconSelector(),
@@ -79,7 +81,8 @@ class SimpleInventoryConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         """Check if global config entry already exists."""
         existing_entries = self._async_current_entries()
         return any(
-            entry.data.get("entry_type") == "global" for entry in existing_entries
+            entry.data.get("entry_type") == "global"
+            for entry in existing_entries
         )
 
     async def _async_name_exists(self, name: str) -> bool:
@@ -109,7 +112,9 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
         errors = {}
 
         if user_input is not None:
-            if await self._async_name_exists_excluding_current(user_input["name"]):
+            if await self._async_name_exists_excluding_current(
+                user_input["name"]
+            ):
                 errors["name"] = "Inventory name already exists"
             else:
                 new_data = {
@@ -140,7 +145,9 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                     ): cv.string,
                     vol.Optional(
                         "icon",
-                        default=self.config_entry.data.get("icon", DEFAULT_ICON),
+                        default=self.config_entry.data.get(
+                            "icon", DEFAULT_ICON
+                        ),
                     ): selector.IconSelector(),
                     vol.Optional(
                         "description",

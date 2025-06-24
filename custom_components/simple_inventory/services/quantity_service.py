@@ -24,7 +24,7 @@ class QuantityService(BaseServiceHandler):
         super().__init__(hass, coordinator)
         self.todo_manager = todo_manager
 
-    async def async_increment_item(self, call: ServiceCall):
+    async def async_increment_item(self, call: ServiceCall) -> None:
         """Increment item quantity."""
         inventory_id, name = self._get_inventory_and_name(call)
         amount = call.data.get("amount", 1)
@@ -42,7 +42,7 @@ class QuantityService(BaseServiceHandler):
                     name} in inventory {inventory_id}: {e}"
             )
 
-    async def async_decrement_item(self, call: ServiceCall):
+    async def async_decrement_item(self, call: ServiceCall) -> None:
         """Decrement item quantity and check if it should be added to todo list."""
         inventory_id, name = self._get_inventory_and_name(call)
         amount = call.data.get("amount", 1)

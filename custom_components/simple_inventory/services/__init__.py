@@ -28,23 +28,23 @@ class ServiceHandler:
         self.inventory_service = InventoryService(hass, coordinator)
         self.quantity_service = QuantityService(hass, coordinator, todo_manager)
 
-    async def async_add_item(self, call: ServiceCall):
+    async def async_add_item(self, call: ServiceCall) -> None:
         """Add an item to the inventory."""
         await self.inventory_service.async_add_item(call)
 
-    async def async_remove_item(self, call: ServiceCall):
+    async def async_remove_item(self, call: ServiceCall) -> None:
         """Remove an item from the inventory."""
         await self.inventory_service.async_remove_item(call)
 
-    async def async_update_item(self, call: ServiceCall):
+    async def async_update_item(self, call: ServiceCall) -> None:
         """Update an existing item with new values."""
         await self.inventory_service.async_update_item(call)
 
-    async def async_increment_item(self, call: ServiceCall):
+    async def async_increment_item(self, call: ServiceCall) -> None:
         """Increment item quantity."""
         await self.quantity_service.async_increment_item(call)
 
-    async def async_decrement_item(self, call: ServiceCall):
+    async def async_decrement_item(self, call: ServiceCall) -> None:
         """Decrement item quantity."""
         await self.quantity_service.async_decrement_item(call)
 

@@ -46,7 +46,9 @@ class TestBaseServiceHandler:
             )
 
         mock_coordinator.async_save_data.assert_called_once_with("my-pantry_01")
-        assert "Updated item: café-latte in inventory: my-pantry_01" in caplog.text
+        assert (
+            "Updated item: café-latte in inventory: my-pantry_01" in caplog.text
+        )
 
     @pytest.mark.asyncio
     async def test_save_and_log_success_coordinator_exception(
@@ -65,7 +67,9 @@ class TestBaseServiceHandler:
     def test_log_item_not_found(self, base_service_handler, caplog):
         """Test logging when item is not found."""
         with caplog.at_level(logging.WARNING):
-            base_service_handler._log_item_not_found("Remove item", "milk", "kitchen")
+            base_service_handler._log_item_not_found(
+                "Remove item", "milk", "kitchen"
+            )
 
         assert (
             "Remove item failed - Item not found: milk in inventory: kitchen"
@@ -76,9 +80,14 @@ class TestBaseServiceHandler:
     def test_log_operation_failed(self, base_service_handler, caplog):
         """Test logging when operation fails."""
         with caplog.at_level(logging.ERROR):
-            base_service_handler._log_operation_failed("Update item", "milk", "kitchen")
+            base_service_handler._log_operation_failed(
+                "Update item", "milk", "kitchen"
+            )
 
-        assert "Update item failed for item: milk in inventory: kitchen" in caplog.text
+        assert (
+            "Update item failed for item: milk in inventory: kitchen"
+            in caplog.text
+        )
         assert caplog.records[0].levelname == "ERROR"
 
     def test_extract_item_kwargs_basic(self, base_service_handler):
@@ -126,7 +135,9 @@ class TestBaseServiceHandler:
         assert inventory_id == "kitchen"
         assert name == "milk"
 
-    def test_get_inventory_and_name_missing_inventory_id(self, base_service_handler):
+    def test_get_inventory_and_name_missing_inventory_id(
+        self, base_service_handler
+    ):
         """Test extracting when inventory_id is missing."""
         call = MagicMock()
         call.data = {"name": "milk"}

@@ -6,9 +6,12 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from custom_components.simple_inventory.const import (
+    DEFAULT_EXPIRY_ALERT_DAYS,
     DOMAIN,
 )
-from custom_components.simple_inventory.coordinator import SimpleInventoryCoordinator
+from custom_components.simple_inventory.coordinator import (
+    SimpleInventoryCoordinator,
+)
 
 
 @pytest.fixture
@@ -69,11 +72,14 @@ class TestSimpleInventoryCoordinator:
         assert coordinator._store is not None
         assert coordinator._data == {
             "inventories": {},
-            "config": {"expiry_alert_days": 7},
+            "config": {"expiry_alert_days": DEFAULT_EXPIRY_ALERT_DAYS},
         }
         assert "config" in coordinator._data
         assert "expiry_alert_days" in coordinator._data["config"]
-        assert coordinator._data["config"]["expiry_alert_days"] == 7
+        assert (
+            coordinator._data["config"]["expiry_alert_days"]
+            == DEFAULT_EXPIRY_ALERT_DAYS
+        )
 
     async def test_async_load_data_empty(self, coordinator):
         """Test loading data when storage is empty."""
@@ -123,7 +129,9 @@ class TestSimpleInventoryCoordinator:
         # Should fire events for all inventories
         # One for inventory, one for general update
         assert coordinator.hass.bus.async_fire.call_count == 2
-        coordinator.hass.bus.async_fire.assert_any_call(f"{DOMAIN}_updated_kitchen")
+        coordinator.hass.bus.async_fire.assert_any_call(
+            f"{DOMAIN}_updated_kitchen"
+        )
         coordinator.hass.bus.async_fire.assert_any_call(f"{DOMAIN}_updated")
 
     async def test_async_save_data_specific_inventory(self, coordinator):
@@ -391,7 +399,9 @@ class TestSimpleInventoryCoordinator:
         assert result is False
 
     @patch("datetime.datetime")
-    async def test_get_items_expiring_soon(self, mock_datetime, loaded_coordinator):
+    async def test_get_items_expiring_soon(
+        self, mock_datetime, loaded_coordinator
+    ):
         """Test getting items expiring soon."""
         # Set up a fixed current date for testing
         fixed_date = datetime(2024, 6, 15)
@@ -449,7 +459,9 @@ class TestSimpleInventoryCoordinator:
             patched_dt.strptime = datetime.strptime
 
             # Call the method
-            expiring_items = loaded_coordinator.get_items_expiring_soon("kitchen")
+            expiring_items = loaded_coordinator.get_items_expiring_soon(
+                "kitchen"
+            )
 
         # Print debug info
         print(f"Fixed date: {fixed_date}")
@@ -492,13 +504,10 @@ class TestSimpleInventoryCoordinator:
 
         remove_listener = coordinator.async_add_listener(listener)
 
-        # Verify listener was added
         assert listener in coordinator._listeners
 
-        # Test removing listener
         remove_listener()
 
-        # Verify listener was removed
         assert listener not in coordinator._listeners
 
     async def test_notify_listeners(self, coordinator):
@@ -511,14 +520,14 @@ class TestSimpleInventoryCoordinator:
 
         coordinator.notify_listeners()
 
-        # Verify both listeners were called
         listener1.assert_called_once()
         listener2.assert_called_once()
 
     async def test_get_inventory_statistics(self, loaded_coordinator):
         """Test getting inventory statistics."""
-        # Add some items with different categories and auto add quantities
-        loaded_coordinator._data["inventories"]["kitchen"]["items"]["yogurt"] = {
+        loaded_coordinator._data["inventories"]["kitchen"]["items"][
+            "yogurt"
+        ] = {
             "quantity": 1,
             "unit": "cup",
             "category": "dairy",
@@ -538,7 +547,6 @@ class TestSimpleInventoryCoordinator:
             "todo_list": "",
         }
 
-        # Mock get_items_expiring_soon to return a fixed list
         loaded_coordinator.get_items_expiring_soon = MagicMock(
             return_value=[
                 {"name": "yogurt", "days_until_expiry": 1},

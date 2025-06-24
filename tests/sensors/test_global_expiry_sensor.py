@@ -47,7 +47,9 @@ class TestGlobalExpiryNotificationSensor:
             },
         ]
 
-        global_expiry_sensor.coordinator.get_items_expiring_soon.side_effect = None
+        global_expiry_sensor.coordinator.get_items_expiring_soon.side_effect = (
+            None
+        )
         global_expiry_sensor.coordinator.get_items_expiring_soon.return_value = (
             test_items
         )
@@ -64,7 +66,9 @@ class TestGlobalExpiryNotificationSensor:
         assert len(attributes["expiring_items"]) == 1  # days_until_expiry >= 0
         assert len(attributes["expired_items"]) == 1  # days_until_expiry < 0
 
-    def test_coordinator_method_called_without_inventory_id(self, global_expiry_sensor):
+    def test_coordinator_method_called_without_inventory_id(
+        self, global_expiry_sensor
+    ):
         """Test that coordinator method is called without inventory ID for global sensor."""
         global_expiry_sensor.coordinator.get_items_expiring_soon.reset_mock()
         global_expiry_sensor._update_data()
@@ -94,11 +98,15 @@ class TestGlobalExpiryNotificationSensor:
                 {"days_until_expiry": most_urgent_days, "inventory_id": "test"}
             ]
 
-        global_expiry_sensor.coordinator.get_items_expiring_soon.side_effect = None
+        global_expiry_sensor.coordinator.get_items_expiring_soon.side_effect = (
+            None
+        )
         global_expiry_sensor.coordinator.get_items_expiring_soon.return_value = (
             test_items
         )
-        global_expiry_sensor._get_inventory_name = MagicMock(return_value="Test")
+        global_expiry_sensor._get_inventory_name = MagicMock(
+            return_value="Test"
+        )
 
         global_expiry_sensor._update_data()
         assert global_expiry_sensor._attr_icon == expected_icon

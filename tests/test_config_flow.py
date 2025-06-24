@@ -15,7 +15,8 @@ from custom_components.simple_inventory.config_flow import (
 def mock_setup_entry():
     """Mock setting up a config entry."""
     with patch(
-        "custom_components.simple_inventory.async_setup_entry", return_value=True
+        "custom_components.simple_inventory.async_setup_entry",
+        return_value=True,
     ) as mock_setup:
         yield mock_setup
 
@@ -184,7 +185,9 @@ def test_global_entry_exists():
 
     global_entry = MagicMock()
     global_entry.data = {"entry_type": "global"}
-    flow._async_current_entries = MagicMock(return_value=[regular_entry, global_entry])
+    flow._async_current_entries = MagicMock(
+        return_value=[regular_entry, global_entry]
+    )
     assert flow._global_entry_exists()
 
 

@@ -103,7 +103,9 @@ class TestInventoryService:
         self, inventory_service, basic_service_call, mock_coordinator, caplog
     ):
         """Test handling coordinator exception during remove."""
-        mock_coordinator.remove_item.side_effect = Exception("Database connection lost")
+        mock_coordinator.remove_item.side_effect = Exception(
+            "Database connection lost"
+        )
 
         with caplog.at_level(logging.ERROR):
             await inventory_service.async_remove_item(basic_service_call)
@@ -123,14 +125,23 @@ class TestInventoryService:
 
         mock_coordinator.get_item.assert_called_once_with("kitchen", "milk")
         mock_coordinator.update_item.assert_called_once_with(
-            "kitchen", "milk", "whole_milk", quantity=3, unit="liters", category="dairy"
+            "kitchen",
+            "milk",
+            "whole_milk",
+            quantity=3,
+            unit="liters",
+            category="dairy",
         )
 
         mock_coordinator.async_save_data.assert_called_once_with("kitchen")
 
     @pytest.mark.asyncio
     async def test_async_update_item_not_found(
-        self, inventory_service, update_item_service_call, mock_coordinator, caplog
+        self,
+        inventory_service,
+        update_item_service_call,
+        mock_coordinator,
+        caplog,
     ):
         """Test updating item that doesn't exist."""
         mock_coordinator.get_item.return_value = None
@@ -150,7 +161,11 @@ class TestInventoryService:
 
     @pytest.mark.asyncio
     async def test_async_update_item_coordinator_update_fails(
-        self, inventory_service, update_item_service_call, mock_coordinator, caplog
+        self,
+        inventory_service,
+        update_item_service_call,
+        mock_coordinator,
+        caplog,
     ):
         """Test when coordinator update returns False."""
         mock_coordinator.update_item.return_value = False
@@ -161,11 +176,18 @@ class TestInventoryService:
         mock_coordinator.update_item.assert_called_once()
         mock_coordinator.async_save_data.assert_not_called()
 
-        assert "Update item failed for item: milk in inventory: kitchen" in caplog.text
+        assert (
+            "Update item failed for item: milk in inventory: kitchen"
+            in caplog.text
+        )
 
     @pytest.mark.asyncio
     async def test_async_update_item_coordinator_exception(
-        self, inventory_service, update_item_service_call, mock_coordinator, caplog
+        self,
+        inventory_service,
+        update_item_service_call,
+        mock_coordinator,
+        caplog,
     ):
         """Test handling coordinator exception during update."""
         mock_coordinator.update_item.side_effect = Exception("Update failed")
@@ -180,7 +202,9 @@ class TestInventoryService:
         mock_coordinator.async_save_data.assert_not_called()
 
     @pytest.mark.asyncio
-    async def test_concurrent_operations(self, inventory_service, mock_coordinator):
+    async def test_concurrent_operations(
+        self, inventory_service, mock_coordinator
+    ):
         """Test concurrent inventory operations."""
         import asyncio
 

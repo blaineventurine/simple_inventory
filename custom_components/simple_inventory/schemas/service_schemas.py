@@ -3,6 +3,12 @@
 import voluptuous as vol
 from homeassistant.helpers import config_validation as cv
 
+from ..const import (
+    DEFAULT_AUTO_ADD_TO_LIST_QUANTITY,
+    DEFAULT_EXPIRY_ALERT_DAYS,
+    DEFAULT_QUANTITY,
+)
+
 INVENTORY_ID = vol.Required("inventory_id")
 NAME = vol.Required("name")
 OLD_NAME = vol.Required("old_name")
@@ -15,10 +21,10 @@ ITEM_SCHEMA = {
     vol.Optional("expiry_date"): cv.string,
     vol.Optional("auto_add_enabled"): cv.boolean,
     vol.Optional("expiry_alert_days"): vol.All(
-        vol.Coerce(int), vol.Range(min=1, max=365)
+        vol.Coerce(int), vol.Range(min=DEFAULT_EXPIRY_ALERT_DAYS, max=365)
     ),
     vol.Optional("auto_add_to_list_quantity"): vol.All(
-        vol.Coerce(int), vol.Range(min=0)
+        vol.Coerce(int), vol.Range(min=DEFAULT_AUTO_ADD_TO_LIST_QUANTITY)
     ),
     vol.Optional("todo_list"): cv.string,
 }
@@ -40,7 +46,9 @@ QUANTITY_UPDATE_SCHEMA = vol.Schema(
     {
         INVENTORY_ID: cv.string,
         NAME: cv.string,
-        vol.Optional("amount", default=1): vol.All(vol.Coerce(int), vol.Range(min=1)),
+        vol.Optional("amount", default=DEFAULT_QUANTITY): vol.All(
+            vol.Coerce(int), vol.Range(min=1)
+        ),
     }
 )
 

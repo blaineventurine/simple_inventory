@@ -7,11 +7,15 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from custom_components.simple_inventory.services.base_service import BaseServiceHandler
+from custom_components.simple_inventory.services.base_service import (
+    BaseServiceHandler,
+)
 from custom_components.simple_inventory.services.inventory_service import (
     InventoryService,
 )
-from custom_components.simple_inventory.services.quantity_service import QuantityService
+from custom_components.simple_inventory.services.quantity_service import (
+    QuantityService,
+)
 from custom_components.simple_inventory.todo_manager import TodoManager
 
 project_root = Path(__file__).parent.parent
@@ -201,7 +205,9 @@ def sample_inventory_data():
                     "auto_add_to_list_quantity": 1,
                     "category": "dairy",
                     "expiry_alert_days": 7,
-                    "expiry_date": (today + timedelta(days=5)).strftime("%Y-%m-%d"),
+                    "expiry_date": (today + timedelta(days=5)).strftime(
+                        "%Y-%m-%d"
+                    ),
                     "quantity": 2,
                     "todo_list": "todo.shopping",
                     "unit": "liters",
@@ -211,7 +217,9 @@ def sample_inventory_data():
                     "auto_add_to_list_quantity": None,
                     "category": "bakery",
                     "expiry_alert_days": None,
-                    "expiry_date": (today + timedelta(days=2)).strftime("%Y-%m-%d"),
+                    "expiry_date": (today + timedelta(days=2)).strftime(
+                        "%Y-%m-%d"
+                    ),
                     "quantity": 1,
                     "todo_list": "",
                     "unit": "loaf",
@@ -221,7 +229,9 @@ def sample_inventory_data():
                     "auto_add_to_list_quantity": None,
                     "category": "dairy",
                     "expiry_alert_days": 7,
-                    "expiry_date": (today - timedelta(days=1)).strftime("%Y-%m-%d"),
+                    "expiry_date": (today - timedelta(days=1)).strftime(
+                        "%Y-%m-%d"
+                    ),
                     "quantity": 1,
                     "todo_list": "",
                     "unit": "cup",
@@ -235,7 +245,9 @@ def sample_inventory_data():
                     "auto_add_to_list_quantity": None,
                     "category": "grains",
                     "expiry_alert_days": None,
-                    "expiry_date": (today + timedelta(days=365)).strftime("%Y-%m-%d"),
+                    "expiry_date": (today + timedelta(days=365)).strftime(
+                        "%Y-%m-%d"
+                    ),
                     "quantity": 5,
                     "todo_list": "",
                     "unit": "kg",
@@ -298,7 +310,9 @@ def mock_sensor_coordinator(sample_inventory_data):
             for item_name, item_data in inventory.get("items", {}).items():
                 expiry_date_str = item_data.get("expiry_date", "")
                 if expiry_date_str:
-                    expiry_date = datetime.strptime(expiry_date_str, "%Y-%m-%d").date()
+                    expiry_date = datetime.strptime(
+                        expiry_date_str, "%Y-%m-%d"
+                    ).date()
                     days_until_expiry = (expiry_date - today).days
                     item_threshold = item_data.get("expiry_alert_days", 7)
 
@@ -367,9 +381,13 @@ def full_service_setup(hass, mock_coordinator, mock_todo_manager):
         "hass": hass,
         "coordinator": mock_coordinator,
         "todo_manager": mock_todo_manager,
-        "service_handler": ServiceHandler(hass, mock_coordinator, mock_todo_manager),
+        "service_handler": ServiceHandler(
+            hass, mock_coordinator, mock_todo_manager
+        ),
         "inventory_service": InventoryService(hass, mock_coordinator),
-        "quantity_service": QuantityService(hass, mock_coordinator, mock_todo_manager),
+        "quantity_service": QuantityService(
+            hass, mock_coordinator, mock_todo_manager
+        ),
     }
 
 

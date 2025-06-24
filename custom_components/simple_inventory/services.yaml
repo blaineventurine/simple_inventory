@@ -33,7 +33,7 @@ add_item:
       description: Number of days in advance to warn about expiring items
       example: 7
       require: false
-      default: 7
+      default: 0
     auto_add_enabled:
       description: Enable automatic adding to todo list
       example: true

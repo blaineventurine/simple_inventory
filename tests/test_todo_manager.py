@@ -76,7 +76,9 @@ class TestTodoManager:
     async def test_get_incomplete_items_service_fallback(
         self, todo_manager, sample_todo_items
     ):
-        todo_manager.hass.services.async_call.side_effect = Exception("Service error")
+        todo_manager.hass.services.async_call.side_effect = Exception(
+            "Service error"
+        )
         mock_state = MagicMock()
         mock_state.attributes = {"items": sample_todo_items}
         todo_manager.hass.states.get.return_value = mock_state
@@ -91,32 +93,44 @@ class TestTodoManager:
 
     @pytest.mark.asyncio
     async def test_get_incomplete_items_no_entity(self, todo_manager):
-        todo_manager.hass.services.async_call.side_effect = Exception("Service error")
+        todo_manager.hass.services.async_call.side_effect = Exception(
+            "Service error"
+        )
         todo_manager.hass.states.get.return_value = None
 
         result = await todo_manager._get_incomplete_items("todo.nonexistent")
         assert result == []
 
     @pytest.mark.asyncio
-    async def test_check_and_add_item_success(self, todo_manager, sample_item_data):
+    async def test_check_and_add_item_success(
+        self, todo_manager, sample_item_data
+    ):
         todo_manager._get_incomplete_items = AsyncMock(
             return_value=[{"summary": "milk", "status": "needs_action"}]
         )
 
-        result = await todo_manager.check_and_add_item("bread", sample_item_data)
+        result = await todo_manager.check_and_add_item(
+            "bread", sample_item_data
+        )
 
         assert result is True
         todo_manager.hass.services.async_call.assert_called_with(
-            "todo", "add_item", {"item": "bread", "entity_id": "todo.shopping_list"}
+            "todo",
+            "add_item",
+            {"item": "bread", "entity_id": "todo.shopping_list"},
         )
 
     @pytest.mark.asyncio
-    async def test_check_and_add_item_duplicate(self, todo_manager, sample_item_data):
+    async def test_check_and_add_item_duplicate(
+        self, todo_manager, sample_item_data
+    ):
         todo_manager._get_incomplete_items = AsyncMock(
             return_value=[{"summary": "bread", "status": "needs_action"}]
         )
 
-        result = await todo_manager.check_and_add_item("bread", sample_item_data)
+        result = await todo_manager.check_and_add_item(
+            "bread", sample_item_data
+        )
 
         assert result is False
         todo_manager.hass.services.async_call.assert_not_called()
@@ -129,7 +143,9 @@ class TestTodoManager:
             return_value=[{"summary": "BREAD", "status": "needs_action"}]
         )
 
-        result = await todo_manager.check_and_add_item("bread", sample_item_data)
+        result = await todo_manager.check_and_add_item(
+            "bread", sample_item_data
+        )
 
         assert result is False
         todo_manager.hass.services.async_call.assert_not_called()
@@ -187,9 +203,13 @@ class TestTodoManager:
         self, todo_manager, sample_item_data
     ):
         todo_manager._get_incomplete_items = AsyncMock(return_value=[])
-        todo_manager.hass.services.async_call.side_effect = Exception("Service error")
+        todo_manager.hass.services.async_call.side_effect = Exception(
+            "Service error"
+        )
 
-        result = await todo_manager.check_and_add_item("Buy bread", sample_item_data)
+        result = await todo_manager.check_and_add_item(
+            "Buy bread", sample_item_data
+        )
 
         assert result is False
 
@@ -201,7 +221,9 @@ class TestTodoManager:
             side_effect=Exception("Get items error")
         )
 
-        result = await todo_manager.check_and_add_item("Buy bread", sample_item_data)
+        result = await todo_manager.check_and_add_item(
+            "Buy bread", sample_item_data
+        )
 
         assert result is False
 
