@@ -1,3 +1,7 @@
+
+
+[![hacs_badge](https://img.shields.io/badge/HACS-Custom-41BDF5.svg?style=for-the-badge)](https://github.com/hacs/integration)
+
 # Simple Inventory Integration
 
 A Home Assistant integration for managing household inventories.
