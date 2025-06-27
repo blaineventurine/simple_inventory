@@ -3,7 +3,7 @@
 import logging
 
 from homeassistant.components.sensor import SensorEntity
-from homeassistant.core import HomeAssistant, callback
+from homeassistant.core import Event, HomeAssistant, callback
 
 from ..const import DOMAIN
 from ..coordinator import SimpleInventoryCoordinator
@@ -57,7 +57,7 @@ class ExpiryNotificationSensor(SensorEntity):
             )
 
     @callback
-    def _handle_update(self, _event) -> None:
+    def _handle_update(self, _event: Event) -> None:
         """Handle inventory updates."""
         self._update_data()
         self.async_write_ha_state()

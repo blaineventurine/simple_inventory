@@ -3,8 +3,12 @@
 from unittest.mock import MagicMock, patch
 
 import pytest
+from homeassistant.core import HomeAssistant
 
 from custom_components.simple_inventory.const import DOMAIN
+from custom_components.simple_inventory.coordinator import (
+    SimpleInventoryCoordinator,
+)
 from custom_components.simple_inventory.sensors import InventorySensor
 
 
@@ -12,7 +16,11 @@ class TestInventorySensor:
     """Test InventorySensor class."""
 
     @pytest.fixture
-    def inventory_sensor(self, hass, mock_sensor_coordinator):
+    def inventory_sensor(
+        self,
+        hass: HomeAssistant,
+        mock_sensor_coordinator: SimpleInventoryCoordinator,
+    ) -> InventorySensor:
         """Create an inventory sensor."""
         mock_sensor_coordinator.get_inventory_statistics.return_value = {
             "total_quantity": 0,
@@ -30,7 +38,7 @@ class TestInventorySensor:
             "kitchen_123",
         )
 
-    def test_init(self, inventory_sensor):
+    def test_init(self, inventory_sensor: InventorySensor) -> None:
         """Test sensor initialization."""
         assert inventory_sensor._attr_name == "Kitchen Inventory"
         assert inventory_sensor._attr_unique_id == "inventory_kitchen_123"

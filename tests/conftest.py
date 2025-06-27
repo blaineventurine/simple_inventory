@@ -6,7 +6,13 @@ from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from homeassistant import config_entries
+from homeassistant.components.todo import TodoItem, TodoItemStatus
+from homeassistant.core import HomeAssistant, ServiceCall
 
+from custom_components.simple_inventory.coordinator import (
+    SimpleInventoryCoordinator,
+)
 from custom_components.simple_inventory.services.base_service import (
     BaseServiceHandler,
 )
@@ -17,13 +23,16 @@ from custom_components.simple_inventory.services.quantity_service import (
     QuantityService,
 )
 from custom_components.simple_inventory.todo_manager import TodoManager
+from custom_components.simple_inventory.types import (
+    InventoryItem,
+)
 
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
 
 @pytest.fixture
-def hass():
+def hass() -> HomeAssistant:
     """Create a mock Home Assistant instance."""
     hass_mock = MagicMock()
     hass_mock.services = MagicMock()
@@ -54,7 +63,7 @@ def hass():
 
 
 @pytest.fixture
-def mock_coordinator():
+def mock_coordinator() -> SimpleInventoryCoordinator:
     """Create a mock coordinator with common methods."""
     coordinator = MagicMock()
     coordinator.async_save_data = AsyncMock()
@@ -81,7 +90,7 @@ def mock_coordinator():
 
 
 @pytest.fixture
-def mock_todo_manager():
+def mock_todo_manager() -> TodoManager:
     """Create a mock todo manager."""
     todo_manager = MagicMock()
     todo_manager.check_and_add_item = AsyncMock(return_value=True)
@@ -89,31 +98,39 @@ def mock_todo_manager():
 
 
 @pytest.fixture
-def todo_manager(hass):
+def todo_manager(hass: HomeAssistant) -> TodoManager:
     """Create a TodoManager instance with mocked hass."""
     return TodoManager(hass)
 
 
 @pytest.fixture
-def base_service_handler(hass, mock_coordinator):
+def base_service_handler(
+    hass: HomeAssistant, mock_coordinator: SimpleInventoryCoordinator
+) -> BaseServiceHandler:
     """Create a BaseServiceHandler instance."""
     return BaseServiceHandler(hass, mock_coordinator)
 
 
 @pytest.fixture
-def inventory_service(hass, mock_coordinator):
+def inventory_service(
+    hass: HomeAssistant, mock_coordinator: SimpleInventoryCoordinator
+) -> InventoryService:
     """Create an InventoryService instance."""
     return InventoryService(hass, mock_coordinator)
 
 
 @pytest.fixture
-def quantity_service(hass, mock_coordinator, mock_todo_manager):
+def quantity_service(
+    hass: HomeAssistant,
+    mock_coordinator: SimpleInventoryCoordinator,
+    mock_todo_manager: TodoManager,
+) -> QuantityService:
     """Create a QuantityService instance."""
     return QuantityService(hass, mock_coordinator, mock_todo_manager)
 
 
 @pytest.fixture
-def basic_service_call():
+def basic_service_call() -> ServiceCall:
     """Create a basic service call with inventory_id and name."""
     call = MagicMock()
     call.data = {"inventory_id": "kitchen", "name": "milk"}
@@ -121,7 +138,7 @@ def basic_service_call():
 
 
 @pytest.fixture
-def add_item_service_call():
+def add_item_service_call() -> ServiceCall:
     """Create a service call for adding items."""
     call = MagicMock()
     call.data = {
@@ -140,7 +157,7 @@ def add_item_service_call():
 
 
 @pytest.fixture
-def update_item_service_call():
+def update_item_service_call() -> ServiceCall:
     """Create a service call for updating items."""
     call = MagicMock()
     call.data = {
@@ -155,7 +172,7 @@ def update_item_service_call():
 
 
 @pytest.fixture
-def quantity_service_call():
+def quantity_service_call() -> ServiceCall:
     """Create a service call for quantity operations."""
     call = MagicMock()
     call.data = {"inventory_id": "kitchen", "name": "milk", "amount": 2}
@@ -163,7 +180,7 @@ def quantity_service_call():
 
 
 @pytest.fixture
-def threshold_service_call():
+def threshold_service_call() -> ServiceCall:
     """Create a service call for setting expiry threshold."""
     call = MagicMock()
     call.data = {"threshold_days": 7}
@@ -171,19 +188,19 @@ def threshold_service_call():
 
 
 @pytest.fixture
-def sample_todo_items():
+def sample_todo_items() -> list[TodoItem]:
     """Sample todo items for testing."""
     return [
-        {"summary": "milk", "status": "needs_action"},
-        {"summary": "bread", "status": "completed"},
-        {"summary": "eggs", "completed": False},
-        {"summary": "cheese", "done": True},
-        {"summary": "butter", "state": "completed"},
+        TodoItem(summary="milk", status=TodoItemStatus.NEEDS_ACTION),
+        TodoItem(summary="bread", status=TodoItemStatus.COMPLETED),
+        TodoItem(summary="eggs", status=TodoItemStatus.NEEDS_ACTION),
+        TodoItem(summary="cheese", status=TodoItemStatus.COMPLETED),
+        TodoItem(summary="butter", status=TodoItemStatus.COMPLETED),
     ]
 
 
 @pytest.fixture
-def sample_item_data():
+def sample_item_data() -> InventoryItem:
     """Sample item data for testing."""
     return {
         "auto_add_enabled": True,
@@ -258,7 +275,7 @@ def sample_inventory_data():
 
 
 @pytest.fixture
-def mock_config_entry():
+def mock_config_entry() -> config_entries.ConfigEntry:
     """Create a mock config entry."""
     config_entry = MagicMock()
     config_entry.entry_id = "test_entry_123"
@@ -268,7 +285,9 @@ def mock_config_entry():
 
 
 @pytest.fixture
-def mock_config_entries(mock_config_entry):
+def mock_config_entries(
+    mock_config_entry: config_entries.ConfigEntry,
+) -> list[config_entries.ConfigEntry]:
     """Create a list of mock config entries."""
     return [mock_config_entry]
 
@@ -373,7 +392,11 @@ def async_mock():
 
 
 @pytest.fixture
-def full_service_setup(hass, mock_coordinator, mock_todo_manager):
+def full_service_setup(
+    hass: HomeAssistant,
+    mock_coordinator: SimpleInventoryCoordinator,
+    mock_todo_manager: TodoManager,
+):
     """Create a complete service setup for integration testing."""
     from custom_components.simple_inventory.services import ServiceHandler
 
@@ -392,7 +415,7 @@ def full_service_setup(hass, mock_coordinator, mock_todo_manager):
 
 
 @pytest.fixture
-def domain():
+def domain() -> str:
     """Return the domain constant."""
     return "simple_inventory"
 

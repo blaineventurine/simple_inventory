@@ -4,12 +4,20 @@ import logging
 from unittest.mock import MagicMock
 
 import pytest
+from homeassistant.core import ServiceCall
+
+from custom_components.simple_inventory.coordinator import (
+    SimpleInventoryCoordinator,
+)
+from custom_components.simple_inventory.services.inventory_service import (
+    InventoryService,
+)
 
 
 class TestInventoryService:
     """Test InventoryService class."""
 
-    def test_inheritance(self, inventory_service):
+    def test_inheritance(self, inventory_service: InventoryService) -> None:
         """Test that InventoryService properly inherits from BaseServiceHandler."""
         from custom_components.simple_inventory.services.base_service import (
             BaseServiceHandler,
@@ -22,14 +30,17 @@ class TestInventoryService:
 
     @pytest.mark.asyncio
     async def test_async_add_item_success(
-        self, inventory_service, add_item_service_call, mock_coordinator
-    ):
+        self,
+        inventory_service: InventoryService,
+        add_item_service_call: ServiceCall,
+        mock_coordinator: SimpleInventoryCoordinator,
+    ) -> None:
         """Test successful item addition."""
         await inventory_service.async_add_item(add_item_service_call)
 
         mock_coordinator.add_item.assert_called_once_with(
             "kitchen",
-            "milk",
+            name="milk",
             auto_add_enabled=True,
             auto_add_to_list_quantity=1,
             category="dairy",
@@ -44,18 +55,27 @@ class TestInventoryService:
 
     @pytest.mark.asyncio
     async def test_async_add_item_minimal_data(
-        self, inventory_service, basic_service_call, mock_coordinator
-    ):
+        self,
+        inventory_service: InventoryService,
+        basic_service_call: ServiceCall,
+        mock_coordinator,
+    ) -> None:
         """Test adding item with minimal required data."""
         await inventory_service.async_add_item(basic_service_call)
 
-        mock_coordinator.add_item.assert_called_once_with("kitchen", "milk")
+        mock_coordinator.add_item.assert_called_once_with(
+            "kitchen", name="milk"
+        )
         mock_coordinator.async_save_data.assert_called_once_with("kitchen")
 
     @pytest.mark.asyncio
     async def test_async_add_item_coordinator_exception(
-        self, inventory_service, add_item_service_call, mock_coordinator, caplog
-    ):
+        self,
+        inventory_service: InventoryService,
+        add_item_service_call: ServiceCall,
+        mock_coordinator: SimpleInventoryCoordinator,
+        caplog,
+    ) -> None:
         """Test handling coordinator exception during add."""
         mock_coordinator.add_item.side_effect = Exception("Database error")
 
@@ -70,8 +90,11 @@ class TestInventoryService:
 
     @pytest.mark.asyncio
     async def test_async_remove_item_success(
-        self, inventory_service, basic_service_call, mock_coordinator
-    ):
+        self,
+        inventory_service: InventoryService,
+        basic_service_call: ServiceCall,
+        mock_coordinator,
+    ) -> None:
         """Test successful item removal."""
         mock_coordinator.remove_item.return_value = True
 
