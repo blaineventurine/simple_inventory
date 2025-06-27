@@ -1,7 +1,9 @@
 """Todo list management for Simple Inventory."""
 
 import logging
+from typing import cast
 
+from homeassistant.components.todo import TodoItem, TodoItemStatus
 from homeassistant.core import HomeAssistant
 
 from .const import (
@@ -11,6 +13,7 @@ from .const import (
     FIELD_QUANTITY,
     FIELD_TODO_LIST,
 )
+from .types import InventoryItem
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -22,17 +25,19 @@ class TodoManager:
         """Initialize the todo manager."""
         self.hass = hass
 
-    def _is_item_completed(self, item) -> bool:
-        """Check if a todo item is completed using various possible field names."""
-        return (
-            item.get("status") == "completed"
-            or item.get("status") == "done"
-            or item.get("completed", False)
-            or item.get("done", False)
-            or item.get("state") == "completed"
-        )
+    def _is_item_completed(self, item: TodoItem) -> bool:
+        """Check if a todo item is completed."""
+        return item.status == TodoItemStatus.COMPLETED
 
-    async def _get_incomplete_items(self, todo_list_entity: str):
+    def _filter_incomplete_items(
+        self, all_items: list[TodoItem]
+    ) -> list[TodoItem]:
+        """Filter and convert items to incomplete TodoItems."""
+        return [item for item in all_items if not self._is_item_completed(item)]
+
+    async def _get_incomplete_items(
+        self, todo_list_entity: str
+    ) -> list[TodoItem]:
         """Get incomplete items from a todo list."""
         try:
             response = await self.hass.services.async_call(
@@ -43,31 +48,28 @@ class TodoManager:
                 return_response=True,
             )
 
-            if todo_list_entity in response:
-                all_items = response[todo_list_entity].get("items", [])
-                incomplete_items = [
-                    item
-                    for item in all_items
-                    if not self._is_item_completed(item)
-                ]
-                return incomplete_items
+            if response and todo_list_entity in response:
+                entity_data = response[todo_list_entity]
+                if isinstance(entity_data, dict):
+                    all_items = entity_data.get("items", [])
+                    return self._filter_incomplete_items(
+                        cast(list[TodoItem], all_items)
+                    )
 
         except Exception as service_error:
             _LOGGER.warning(f"Could not use get_items service: {service_error}")
             todo_state = self.hass.states.get(todo_list_entity)
-            if todo_state:
+            if todo_state and todo_state.attributes:
                 all_items = todo_state.attributes.get("items", [])
-                incomplete_items = [
-                    item
-                    for item in all_items
-                    if not self._is_item_completed(item)
-                ]
-                return incomplete_items
+                return self._filter_incomplete_items(all_items)
 
         return []
 
-    async def check_and_add_item(self, item_name: str, item_data: dict) -> bool:
+    async def check_and_add_item(
+        self, item_name: str, item_data: InventoryItem
+    ) -> bool:
         """Check if item should be added to todo list and add it."""
+        print(f"Checking if {item_name} is valid...")
         if not (
             item_data.get(FIELD_AUTO_ADD_ENABLED, False)
             and item_data[FIELD_QUANTITY]
@@ -78,7 +80,7 @@ class TodoManager:
             and item_data.get(FIELD_TODO_LIST)
         ):
             return False
-
+        print(f"Checking if {item_name} should be added to todo list...")
         try:
             todo_list_entity = item_data["todo_list"]
             incomplete_items = await self._get_incomplete_items(
@@ -86,10 +88,8 @@ class TodoManager:
             )
 
             for item in incomplete_items:
-                if (
-                    item.get("summary", "").lower().strip()
-                    == item_name.lower().strip()
-                ):
+                item_summary = item.summary or ""
+                if item_summary.lower().strip() == item_name.lower().strip():
                     _LOGGER.info(
                         f"Item {
                             item_name} already exists in todo list (incomplete)"
