@@ -1,5 +1,3 @@
-
-
 [![hacs_badge](https://img.shields.io/badge/HACS-Custom-41BDF5.svg?style=for-the-badge)](https://github.com/hacs/integration)
 
 # Simple Inventory Integration
@@ -9,6 +7,10 @@ A Home Assistant integration for managing household inventories.
 ## Installation
 
 ### Via HACS (Recommended)
+
+[![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=blaineventurine&repository=simple_inventory)
+
+or:
 
 1. Add this repository to HACS
 2. Install "Simple Inventory"
@@ -27,7 +29,7 @@ This integration works best with the companion card:
 
 ## Configuration
 
-Add via Home Assistant UI: Configuration → Integrations → Add Integration → Simple Inventory
+Add via Home Assistant UI: Settings → Devices & Services → Add Integration → Simple Inventory
 
 The integration will create the inventory you specify as a device with two sensors: `sensor.whatever_inventory` and `sensor.whatever_items_expiring_soon`, along with a second device with a single `sensor.all_items_expiring_soon`. Each additional inventory you create will be added as a device with a sensor for the items, and a sensor for the items expiring soon.
 
