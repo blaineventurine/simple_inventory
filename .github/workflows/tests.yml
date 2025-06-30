@@ -5,6 +5,7 @@ on:
     branches: [master]
   pull_request:
     branches: [master]
+  workflow_call:
 
 env:
   DEFAULT_PYTHON: "3.13.4"
