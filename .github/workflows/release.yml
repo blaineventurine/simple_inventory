@@ -11,6 +11,10 @@ on:
         required: true
         type: string
 
+permissions:
+  contents: read
+  pull-requests: write
+
 env:
   DEFAULT_PYTHON: "3.13.4"
 
