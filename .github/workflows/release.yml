@@ -10,7 +10,6 @@ on:
         description: "Release version (e.g., v1.2.3)"
         required: true
         type: string
-  workflow_call:
 
 env:
   DEFAULT_PYTHON: "3.13.4"
