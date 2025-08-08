@@ -1,9 +1,15 @@
 """Inventory management service handler."""
 
 import logging
+from typing import Any, cast
 
 from homeassistant.core import ServiceCall
 
+from ..types import (
+    AddItemServiceData,
+    RemoveItemServiceData,
+    UpdateItemServiceData,
+)
 from .base_service import BaseServiceHandler
 
 _LOGGER = logging.getLogger(__name__)
@@ -14,26 +20,25 @@ class InventoryService(BaseServiceHandler):
 
     async def async_add_item(self, call: ServiceCall) -> None:
         """Add an item to the inventory."""
-        item_data = call.data
+        item_data: AddItemServiceData = cast(AddItemServiceData, call.data)
         inventory_id = item_data["inventory_id"]
         name = item_data["name"]
 
-        item_kwargs = self._extract_item_kwargs(
-            item_data, ["name", "inventory_id"]
-        )
+        item_kwargs = self._extract_item_kwargs(item_data, ["inventory_id"])
 
         try:
-            self.coordinator.add_item(inventory_id, name, **item_kwargs)
+            self.coordinator.add_item(inventory_id, **item_kwargs)
             await self._save_and_log_success(inventory_id, "Added item", name)
         except Exception as e:
             _LOGGER.error(
-                f"Failed to add item {
-                    name} to inventory {inventory_id}: {e}"
+                f"Failed to add item {name} to inventory {inventory_id}: {e}"
             )
 
     async def async_remove_item(self, call: ServiceCall) -> None:
         """Remove an item from the inventory."""
-        inventory_id, name = self._get_inventory_and_name(call)
+        data: RemoveItemServiceData = cast(RemoveItemServiceData, call.data)
+        inventory_id = data["inventory_id"]
+        name = data["name"]
 
         try:
             if self.coordinator.remove_item(inventory_id, name):
@@ -50,7 +55,7 @@ class InventoryService(BaseServiceHandler):
 
     async def async_update_item(self, call: ServiceCall) -> None:
         """Update an existing item with new values."""
-        data = call.data
+        data: UpdateItemServiceData = cast(UpdateItemServiceData, call.data)
         inventory_id = data["inventory_id"]
         old_name = data["old_name"]
         new_name = data["name"]
@@ -59,7 +64,7 @@ class InventoryService(BaseServiceHandler):
             self._log_item_not_found("Update item", old_name, inventory_id)
             return
 
-        update_data = {}
+        update_data: dict[str, Any] = {}
 
         optional_fields = [
             "quantity",
@@ -73,7 +78,7 @@ class InventoryService(BaseServiceHandler):
         ]
         for field in optional_fields:
             if field in data:
-                update_data[field] = data[field]
+                update_data[field] = data.get(field)
 
         try:
             if self.coordinator.update_item(
@@ -81,8 +86,7 @@ class InventoryService(BaseServiceHandler):
             ):
                 await self._save_and_log_success(
                     inventory_id,
-                    f"Updated item: {
-                        old_name} -> {new_name}",
+                    f"Updated item: {old_name} -> {new_name}",
                     new_name,
                 )
             else:

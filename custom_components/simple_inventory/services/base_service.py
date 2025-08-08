@@ -1,10 +1,16 @@
 """Base service handler with common functionality."""
 
 import logging
+from typing import Any, cast
 
 from homeassistant.core import HomeAssistant, ServiceCall
 
 from ..coordinator import SimpleInventoryCoordinator
+from ..types import (
+    AddItemServiceData,
+    RemoveItemServiceData,
+    UpdateItemServiceData,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -43,10 +49,15 @@ class BaseServiceHandler:
                 item_name} in inventory: {inventory_id}"
         )
 
-    def _extract_item_kwargs(self, data: dict, exclude_keys: list) -> dict:
+    def _extract_item_kwargs(
+        self,
+        data: AddItemServiceData | UpdateItemServiceData,
+        exclude_keys: list[str],
+    ) -> dict[str, Any]:
         """Extract item data excluding specified keys."""
         return {k: v for k, v in data.items() if k not in exclude_keys}
 
     def _get_inventory_and_name(self, call: ServiceCall) -> tuple[str, str]:
         """Extract inventory_id and name from service call."""
-        return call.data["inventory_id"], call.data["name"]
+        data: RemoveItemServiceData = cast(RemoveItemServiceData, call.data)
+        return data["inventory_id"], data["name"]

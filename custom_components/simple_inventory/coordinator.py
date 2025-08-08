@@ -2,7 +2,7 @@
 
 import logging
 from datetime import datetime, timedelta
-from typing import Any, Dict, List, Optional
+from typing import Any, Callable, Dict, Optional, Unpack, cast
 
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.storage import Store
@@ -22,6 +22,7 @@ from .const import (
     FIELD_CATEGORY,
     FIELD_EXPIRY_ALERT_DAYS,
     FIELD_EXPIRY_DATE,
+    FIELD_NAME,
     FIELD_QUANTITY,
     FIELD_TODO_LIST,
     FIELD_UNIT,
@@ -29,6 +30,7 @@ from .const import (
     STORAGE_KEY,
     STORAGE_VERSION,
 )
+from .types import InventoryData, InventoryItem
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -39,19 +41,25 @@ class SimpleInventoryCoordinator:
     def __init__(self, hass: HomeAssistant) -> None:
         """Initialize the coordinator."""
         self.hass = hass
-        self._store = Store(hass, STORAGE_VERSION, STORAGE_KEY)
-        self._data = {
+        self._store: Store[InventoryData] = Store(
+            hass, STORAGE_VERSION, STORAGE_KEY
+        )
+        self._data: InventoryData = {
             "inventories": {},
             "config": {"expiry_alert_days": DEFAULT_EXPIRY_ALERT_DAYS},
         }
-        self._listeners = []
+        self._listeners: list[Callable[[], None]] = []
 
-    async def async_load_data(self) -> Dict[str, Any]:
+    async def async_load_data(self) -> InventoryData:
         """Load data from storage and handle migrations if needed."""
-        data = await self._store.async_load() or {"inventories": {}}
+        loaded_data = await self._store.async_load()
 
-        if "config" not in data:
-            data["config"] = {}
+        if loaded_data is None:
+            data: InventoryData = {"inventories": {}, "config": {}}
+        else:
+            data = loaded_data
+            if "config" not in data:
+                data["config"] = {}
 
         self._data = data
         return data
@@ -83,7 +91,7 @@ class SimpleInventoryCoordinator:
             _LOGGER.error(f"Failed to save inventory data: {ex}")
             raise
 
-    def get_data(self) -> Dict[str, Any]:
+    def get_data(self) -> InventoryData:
         """Get all data."""
         return self._data
 
@@ -97,20 +105,23 @@ class SimpleInventoryCoordinator:
             self._data["inventories"][inventory_id] = {"items": {}}
         return self._data["inventories"][inventory_id]
 
-    def get_item(
-        self, inventory_id: str, name: str
-    ) -> Optional[Dict[str, Any]]:
+    def get_item(self, inventory_id: str, name: str) -> InventoryItem | None:
         """Get a specific item from an inventory."""
         inventory = self.get_inventory(inventory_id)
-        return inventory["items"].get(name)
+        item = inventory["items"].get(name)
+        return cast(InventoryItem, item) if item is not None else None
 
-    def get_all_items(self, inventory_id: str) -> Dict[str, Dict[str, Any]]:
+    def get_all_items(self, inventory_id: str) -> Dict[str, InventoryItem]:
         """Get all items from a specific inventory."""
         inventory = self.get_inventory(inventory_id)
-        return inventory["items"]
+        return cast(dict[str, InventoryItem], inventory["items"])
 
     def update_item(
-        self, inventory_id: str, old_name: str, new_name: str, **kwargs
+        self,
+        inventory_id: str,
+        old_name: str,
+        new_name: str,
+        **kwargs: Unpack[InventoryItem],
     ) -> bool:
         """Update an existing item with new values."""
         inventory = self.get_inventory(inventory_id)
@@ -138,16 +149,16 @@ class SimpleInventoryCoordinator:
         for key, value in kwargs.items():
             _LOGGER.warning(f"updating '{key}' to '{value}'")
             if key in allowed_fields:
-                if key == FIELD_QUANTITY:
-                    current_item[key] = (
-                        max(0, int(value)) if value is not None else 0
-                    )
-                elif key in (
+                if key in (
+                    FIELD_QUANTITY,
                     FIELD_AUTO_ADD_TO_LIST_QUANTITY,
                     FIELD_EXPIRY_ALERT_DAYS,
                 ):
                     current_item[key] = (
-                        max(0, int(value)) if value is not None else None
+                        max(0, int(value))
+                        if value is not None
+                        and isinstance(value, (int, str, bool))
+                        else 0
                     )
                 elif key == FIELD_AUTO_ADD_ENABLED:
                     current_item[key] = bool(value)
@@ -193,17 +204,17 @@ class SimpleInventoryCoordinator:
         return True
 
     def add_item(
-        self,
-        inventory_id: str,
-        name: str,
-        quantity: int = DEFAULT_QUANTITY,
-        **kwargs,
+        self, inventory_id: str, **kwargs: Unpack[InventoryItem]
     ) -> bool:
         """Add or update an item in a specific inventory."""
+        name = kwargs.get(FIELD_NAME)
+
         if not name or not name.strip():
             raise ValueError("Item name cannot be empty")
 
+        name = str(name).strip()
         inventory = self.ensure_inventory_exists(inventory_id)
+        quantity = kwargs.get(FIELD_QUANTITY, DEFAULT_QUANTITY)
 
         if name in inventory[INVENTORY_ITEMS]:
             _LOGGER.debug(
@@ -230,7 +241,7 @@ class SimpleInventoryCoordinator:
             if expiry_alert_days is not None:
                 expiry_alert_days = max(0, int(expiry_alert_days))
 
-            new_item = {
+            new_item: InventoryItem = {
                 FIELD_AUTO_ADD_ENABLED: kwargs.get(
                     FIELD_AUTO_ADD_ENABLED, DEFAULT_AUTO_ADD_ENABLED
                 ),
@@ -248,7 +259,7 @@ class SimpleInventoryCoordinator:
             if new_item[FIELD_AUTO_ADD_ENABLED]:
                 if (
                     new_item[FIELD_AUTO_ADD_TO_LIST_QUANTITY] is None
-                    or new_item[FIELD_AUTO_ADD_TO_LIST_QUANTITY] <= 0
+                    or new_item[FIELD_AUTO_ADD_TO_LIST_QUANTITY] < 0
                 ):
                     _LOGGER.error(
                         f"Auto-add enabled but no valid quantity specified for new item '{
@@ -349,8 +360,8 @@ class SimpleInventoryCoordinator:
         return False
 
     def get_items_expiring_soon(
-        self, inventory_id: Optional[str] = None
-    ) -> List[Dict[str, Any]]:
+        self, inventory_id: str | None = None
+    ) -> list[dict[str, Any]]:
         """Get items expiring within their individual threshold periods."""
         current_datetime = datetime.now()
         expiring_items = []
@@ -410,7 +421,9 @@ class SimpleInventoryCoordinator:
         return expiring_items
 
     @callback
-    def async_add_listener(self, listener_func) -> callable:
+    def async_add_listener(
+        self, listener_func: Callable[[], None]
+    ) -> Callable[[], None]:
         """Add a listener for data updates."""
         self._listeners.append(listener_func)
 

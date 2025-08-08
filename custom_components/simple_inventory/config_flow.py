@@ -1,12 +1,15 @@
 """Config flow."""
 
+from __future__ import annotations
+
 import logging
+from typing import Any
 
 import homeassistant.helpers.config_validation as cv
 import voluptuous as vol
 from homeassistant import config_entries
+from homeassistant.config_entries import ConfigFlowResult
 from homeassistant.core import callback
-from homeassistant.data_entry_flow import FlowResult
 from homeassistant.helpers import selector
 
 from .const import DOMAIN
@@ -16,29 +19,46 @@ _LOGGER = logging.getLogger(__name__)
 DEFAULT_ICON = "mdi:package-variant"
 
 
+def clean_inventory_name(name: str) -> str:
+    """Remove the word 'inventory' from the name, unless it's the only word."""
+    import re
+
+    if name.strip().lower() == "inventory":
+        return name.strip()
+
+    cleaned = re.sub(r"\binventory\b", "", name, flags=re.IGNORECASE)
+    return " ".join(cleaned.split()).strip()
+
+
 class SimpleInventoryConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Handle a config flow for Simple Inventory."""
 
     VERSION = 1
 
-    async def async_step_user(self, user_input=None) -> FlowResult:
+    async def async_step_user(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
         """Handle the initial step."""
         return await self.async_step_add_inventory(user_input)
 
-    async def async_step_add_inventory(self, user_input=None) -> FlowResult:
+    async def async_step_add_inventory(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
         """Handle adding a new inventory."""
         errors = {}
 
         if user_input is not None:
-            if await self._async_name_exists(user_input["name"]):
+            cleaned_name = clean_inventory_name(user_input["name"])
+
+            if await self._async_name_exists(cleaned_name):
                 errors["name"] = "Inventory name already exists"
             else:
                 icon = user_input.get("icon") or DEFAULT_ICON
 
                 return self.async_create_entry(
-                    title=user_input["name"],
+                    title=cleaned_name,
                     data={
-                        "name": user_input["name"],
+                        "name": cleaned_name,
                         "icon": icon,
                         "description": user_input.get("description", ""),
                         "entry_type": "inventory",
@@ -70,11 +90,13 @@ class SimpleInventoryConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             },
         )
 
-    async def async_step_internal(self, user_input=None) -> FlowResult:
+    async def async_step_internal(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
         """Handle internal creation of global entry."""
         return self.async_create_entry(
             title="All Items Expiring Soon",
-            data=user_input,
+            data=user_input or {},
         )
 
     def _global_entry_exists(self) -> bool:
@@ -95,7 +117,9 @@ class SimpleInventoryConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
     @staticmethod
     @callback
-    def async_get_options_flow(config_entry):
+    def async_get_options_flow(
+        config_entry: config_entries.ConfigEntry,
+    ) -> OptionsFlowHandler:
         """Get the options flow for this handler."""
         return OptionsFlowHandler(config_entry)
 
@@ -103,22 +127,24 @@ class SimpleInventoryConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 class OptionsFlowHandler(config_entries.OptionsFlow):
     """Handle options flow for inventory configuration."""
 
-    def __init__(self, config_entry):
+    def __init__(self, config_entry: config_entries.ConfigEntry) -> None:
         """Initialize options flow."""
         self.config_entry = config_entry
 
-    async def async_step_init(self, user_input=None):
+    async def async_step_init(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
         """Manage the options."""
         errors = {}
 
         if user_input is not None:
-            if await self._async_name_exists_excluding_current(
-                user_input["name"]
-            ):
+            cleaned_name = clean_inventory_name(user_input["name"])
+
+            if await self._async_name_exists_excluding_current(cleaned_name):
                 errors["name"] = "Inventory name already exists"
             else:
                 new_data = {
-                    "name": user_input["name"],
+                    "name": cleaned_name,
                     "icon": user_input.get("icon", DEFAULT_ICON),
                     "description": user_input.get("description", ""),
                 }
@@ -126,12 +152,12 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                 self.hass.config_entries.async_update_entry(
                     self.config_entry,
                     data=new_data,
-                    title=user_input["name"],
+                    title=cleaned_name,
                 )
 
                 self.hass.bus.async_fire(
                     f"{DOMAIN}_updated_{self.config_entry.entry_id}",
-                    {"action": "renamed", "new_name": user_input["name"]},
+                    {"action": "renamed", "new_name": cleaned_name},
                 )
 
                 return self.async_create_entry(title="", data={})

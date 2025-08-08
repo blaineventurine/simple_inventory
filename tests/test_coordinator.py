@@ -244,7 +244,7 @@ class TestSimpleInventoryCoordinator:
         # Add new item
         result = coordinator.add_item(
             "kitchen",
-            "milk",
+            name="milk",
             quantity=2,
             unit="liters",
             category="dairy",
@@ -266,6 +266,39 @@ class TestSimpleInventoryCoordinator:
         assert item["auto_add_to_list_quantity"] == 1
         assert item["todo_list"] == "todo.shopping"
 
+    async def test_add_item_with_zero_auto_add_quantity(self, coordinator):
+        """Test adding item with auto-add quantity set to 0."""
+        result = coordinator.add_item(
+            "kitchen",
+            name="bread",
+            quantity=3,
+            auto_add_enabled=True,
+            auto_add_to_list_quantity=0,
+            todo_list="todo.shopping",
+        )
+        assert result is True
+
+        item = coordinator.get_item("kitchen", "bread")
+        assert item is not None
+        assert item["auto_add_to_list_quantity"] == 0
+
+    async def test_add_item_auto_add_with_none_todo_list_fails(
+        self, coordinator
+    ):
+        """Test that auto-add enabled with None todo list fails."""
+        result = coordinator.add_item(
+            "kitchen",
+            name="butter",
+            quantity=1,
+            auto_add_enabled=True,
+            auto_add_to_list_quantity=0,
+            todo_list=None,  # None todo list should fail
+        )
+        assert result is False
+
+        item = coordinator.get_item("kitchen", "butter")
+        assert item is None
+
     async def test_add_item_existing(self, loaded_coordinator):
         """Test adding an existing item (should update quantity)."""
         # Initial quantity is 2
@@ -273,7 +306,7 @@ class TestSimpleInventoryCoordinator:
         assert initial_item["quantity"] == 2
 
         # Add 3 more
-        result = loaded_coordinator.add_item("kitchen", "milk", quantity=3)
+        result = loaded_coordinator.add_item("kitchen", name="milk", quantity=3)
         assert result is True
 
         # Verify quantity was updated
@@ -283,14 +316,14 @@ class TestSimpleInventoryCoordinator:
     async def test_add_item_empty_name(self, coordinator):
         """Test adding an item with empty name."""
         with pytest.raises(ValueError, match="Item name cannot be empty"):
-            coordinator.add_item("kitchen", "", quantity=1)
+            coordinator.add_item("kitchen", name="", quantity=1)
 
         with pytest.raises(ValueError, match="Item name cannot be empty"):
-            coordinator.add_item("kitchen", "  ", quantity=1)
+            coordinator.add_item("kitchen", name="  ", quantity=1)
 
     async def test_add_item_negative_quantity(self, coordinator):
         """Test adding an item with negative quantity."""
-        result = coordinator.add_item("kitchen", "milk", quantity=-3)
+        result = coordinator.add_item("kitchen", name="milk", quantity=-3)
         assert result is True
 
         # Quantity should be set to 0 (max of 0 and -3)
@@ -300,7 +333,7 @@ class TestSimpleInventoryCoordinator:
     async def test_add_item_negative_auto_add_quantity(self, coordinator):
         """Test adding an item with negative auto add quantity."""
         result = coordinator.add_item(
-            "kitchen", "milk", quantity=1, auto_add_to_list_quantity=-2
+            "kitchen", name="milk", quantity=1, auto_add_to_list_quantity=-2
         )
         assert result is True
 
