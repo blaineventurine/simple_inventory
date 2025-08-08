@@ -81,7 +81,7 @@ class TodoManager:
         self, item_name: str, item_data: InventoryItem
     ) -> bool:
         """Check if item should be added to todo list and add it."""
-        print(f"Checking if {item_name} is valid...")
+        _LOGGER.debug(f"Checking if {item_name} is valid...")
         if not (
             item_data.get(FIELD_AUTO_ADD_ENABLED, False)
             and item_data[FIELD_QUANTITY]
@@ -92,7 +92,9 @@ class TodoManager:
             and item_data.get(FIELD_TODO_LIST)
         ):
             return False
-        print(f"Checking if {item_name} should be added to todo list...")
+        _LOGGER.debug(
+            f"Checking if {item_name} should be added to todo list..."
+        )
         try:
             todo_list_entity = item_data["todo_list"]
             incomplete_items = await self._get_incomplete_items(
