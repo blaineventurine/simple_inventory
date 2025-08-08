@@ -207,10 +207,12 @@ class SimpleInventoryCoordinator:
         self, inventory_id: str, **kwargs: Unpack[InventoryItem]
     ) -> bool:
         """Add or update an item in a specific inventory."""
-        name = kwargs[FIELD_NAME].strip()
+        name = kwargs.get(FIELD_NAME)
+
         if not name or not name.strip():
             raise ValueError("Item name cannot be empty")
 
+        name = str(name).strip()
         inventory = self.ensure_inventory_exists(inventory_id)
         quantity = kwargs.get(FIELD_QUANTITY, DEFAULT_QUANTITY)
 
