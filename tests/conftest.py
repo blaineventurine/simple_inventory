@@ -7,7 +7,6 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from homeassistant import config_entries
-from homeassistant.components.todo import TodoItem, TodoItemStatus
 from homeassistant.core import HomeAssistant, ServiceCall
 
 from custom_components.simple_inventory.coordinator import (
@@ -188,14 +187,14 @@ def threshold_service_call() -> ServiceCall:
 
 
 @pytest.fixture
-def sample_todo_items() -> list[TodoItem]:
+def sample_todo_items() -> list[dict]:
     """Sample todo items for testing."""
     return [
-        TodoItem(summary="milk", status=TodoItemStatus.NEEDS_ACTION),
-        TodoItem(summary="bread", status=TodoItemStatus.COMPLETED),
-        TodoItem(summary="eggs", status=TodoItemStatus.NEEDS_ACTION),
-        TodoItem(summary="cheese", status=TodoItemStatus.COMPLETED),
-        TodoItem(summary="butter", status=TodoItemStatus.COMPLETED),
+        {"summary": "milk", "status": "needs_action", "uid": "1"},
+        {"summary": "bread", "status": "completed", "uid": "2"},
+        {"summary": "eggs", "status": "needs_action", "uid": "3"},
+        {"summary": "cheese", "status": "completed", "uid": "4"},
+        {"summary": "butter", "status": "completed", "uid": "5"},
     ]
 
 

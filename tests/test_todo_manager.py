@@ -1,5 +1,6 @@
 """Tests for TodoManager."""
 
+from typing import Any
 from unittest.mock import AsyncMock
 
 import pytest
@@ -18,32 +19,32 @@ class TestTodoManager:
         "item,expected",
         [
             (
-                TodoItem(summary="milk", status=TodoItemStatus.NEEDS_ACTION),
+                {"summary": "milk", "status": "needs_action"},
                 False,
             ),
             (
-                TodoItem(summary="bread", status=TodoItemStatus.COMPLETED),
+                {"summary": "bread", "status": "completed"},
                 True,
             ),
             (
-                TodoItem(summary="eggs", status=TodoItemStatus.NEEDS_ACTION),
+                {"summary": "eggs", "status": "needs_action"},
                 False,
             ),
             (
-                TodoItem(summary="cheese", status=TodoItemStatus.COMPLETED),
+                {"summary": "cheese", "status": "completed"},
                 True,
             ),
         ],
     )
     def test_is_item_completed(
-        self, todo_manager: TodoManager, item: TodoItem, expected: bool
+        self, todo_manager: TodoManager, item: dict[str, Any], expected: bool
     ) -> None:
         result = todo_manager._is_item_completed(item)
         assert result == expected
 
     @pytest.mark.asyncio
     async def test_get_incomplete_items_service_success(
-        self, todo_manager: TodoManager, sample_todo_items: list[TodoItem]
+        self, todo_manager: TodoManager, sample_todo_items: list[dict[str, Any]]
     ) -> None:
         todo_manager.hass.services.async_call.return_value = {
             "todo.shopping_list": {"items": sample_todo_items}
@@ -52,8 +53,8 @@ class TestTodoManager:
         result = await todo_manager._get_incomplete_items("todo.shopping_list")
 
         expected_items = [
-            TodoItem(summary="milk", status=TodoItemStatus.NEEDS_ACTION),
-            TodoItem(summary="eggs", status=TodoItemStatus.NEEDS_ACTION),
+            {"summary": "milk", "status": "needs_action", "uid": "1"},
+            {"summary": "eggs", "status": "needs_action", "uid": "3"},
         ]
         assert result == expected_items
 
@@ -74,9 +75,7 @@ class TestTodoManager:
         self, todo_manager, sample_item_data
     ) -> None:
         todo_manager._get_incomplete_items = AsyncMock(
-            return_value=[
-                TodoItem(summary="milk", status=TodoItemStatus.NEEDS_ACTION)
-            ]
+            return_value=[{"summary": "milk", "status": "needs_action"}]
         )
 
         result = await todo_manager.check_and_add_item(

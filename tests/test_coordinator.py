@@ -266,6 +266,39 @@ class TestSimpleInventoryCoordinator:
         assert item["auto_add_to_list_quantity"] == 1
         assert item["todo_list"] == "todo.shopping"
 
+    async def test_add_item_with_zero_auto_add_quantity(self, coordinator):
+        """Test adding item with auto-add quantity set to 0."""
+        result = coordinator.add_item(
+            "kitchen",
+            name="bread",
+            quantity=3,
+            auto_add_enabled=True,
+            auto_add_to_list_quantity=0,
+            todo_list="todo.shopping",
+        )
+        assert result is True
+
+        item = coordinator.get_item("kitchen", "bread")
+        assert item is not None
+        assert item["auto_add_to_list_quantity"] == 0
+
+    async def test_add_item_auto_add_with_none_todo_list_fails(
+        self, coordinator
+    ):
+        """Test that auto-add enabled with None todo list fails."""
+        result = coordinator.add_item(
+            "kitchen",
+            name="butter",
+            quantity=1,
+            auto_add_enabled=True,
+            auto_add_to_list_quantity=0,
+            todo_list=None,  # None todo list should fail
+        )
+        assert result is False
+
+        item = coordinator.get_item("kitchen", "butter")
+        assert item is None
+
     async def test_add_item_existing(self, loaded_coordinator):
         """Test adding an existing item (should update quantity)."""
         # Initial quantity is 2

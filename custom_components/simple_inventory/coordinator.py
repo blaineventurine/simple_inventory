@@ -257,7 +257,7 @@ class SimpleInventoryCoordinator:
             if new_item[FIELD_AUTO_ADD_ENABLED]:
                 if (
                     new_item[FIELD_AUTO_ADD_TO_LIST_QUANTITY] is None
-                    or new_item[FIELD_AUTO_ADD_TO_LIST_QUANTITY] <= 0
+                    or new_item[FIELD_AUTO_ADD_TO_LIST_QUANTITY] < 0
                 ):
                     _LOGGER.error(
                         f"Auto-add enabled but no valid quantity specified for new item '{

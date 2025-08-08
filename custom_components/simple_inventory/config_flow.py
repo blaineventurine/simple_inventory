@@ -19,6 +19,17 @@ _LOGGER = logging.getLogger(__name__)
 DEFAULT_ICON = "mdi:package-variant"
 
 
+def clean_inventory_name(name: str) -> str:
+    """Remove the word 'inventory' from the name, unless it's the only word."""
+    import re
+
+    if name.strip().lower() == "inventory":
+        return name.strip()
+
+    cleaned = re.sub(r"\binventory\b", "", name, flags=re.IGNORECASE)
+    return " ".join(cleaned.split()).strip()
+
+
 class SimpleInventoryConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Handle a config flow for Simple Inventory."""
 
@@ -37,15 +48,17 @@ class SimpleInventoryConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         errors = {}
 
         if user_input is not None:
-            if await self._async_name_exists(user_input["name"]):
+            cleaned_name = clean_inventory_name(user_input["name"])
+
+            if await self._async_name_exists(cleaned_name):
                 errors["name"] = "Inventory name already exists"
             else:
                 icon = user_input.get("icon") or DEFAULT_ICON
 
                 return self.async_create_entry(
-                    title=user_input["name"],
+                    title=cleaned_name,
                     data={
-                        "name": user_input["name"],
+                        "name": cleaned_name,
                         "icon": icon,
                         "description": user_input.get("description", ""),
                         "entry_type": "inventory",
@@ -125,13 +138,13 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
         errors = {}
 
         if user_input is not None:
-            if await self._async_name_exists_excluding_current(
-                user_input["name"]
-            ):
+            cleaned_name = clean_inventory_name(user_input["name"])
+
+            if await self._async_name_exists_excluding_current(cleaned_name):
                 errors["name"] = "Inventory name already exists"
             else:
                 new_data = {
-                    "name": user_input["name"],
+                    "name": cleaned_name,
                     "icon": user_input.get("icon", DEFAULT_ICON),
                     "description": user_input.get("description", ""),
                 }
@@ -139,12 +152,12 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                 self.hass.config_entries.async_update_entry(
                     self.config_entry,
                     data=new_data,
-                    title=user_input["name"],
+                    title=cleaned_name,
                 )
 
                 self.hass.bus.async_fire(
                     f"{DOMAIN}_updated_{self.config_entry.entry_id}",
-                    {"action": "renamed", "new_name": user_input["name"]},
+                    {"action": "renamed", "new_name": cleaned_name},
                 )
 
                 return self.async_create_entry(title="", data={})
