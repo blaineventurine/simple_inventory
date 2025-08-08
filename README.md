@@ -31,7 +31,14 @@ This integration works best with the companion card:
 
 Add via Home Assistant UI: Settings → Devices & Services → Add Integration → Simple Inventory
 
-The integration will create the inventory you specify as a device with two sensors: `sensor.whatever_inventory` and `sensor.whatever_items_expiring_soon`, along with a second device with a single `sensor.all_items_expiring_soon`. Each additional inventory you create will be added as a device with a sensor for the items, and a sensor for the items expiring soon.
+The integration will create the inventory you specify as a device with two sensors:
+
+- `sensor.whatever_inventory`
+- `sensor.whatever_items_expiring_soon`
+
+along with a second device with a single `sensor.all_items_expiring_soon`.
+
+Each additional inventory you create will be added as a device with a sensor for the items, and a sensor for the items expiring soon.
 
 ### Expiration Dates
 
@@ -42,3 +49,22 @@ The companion frontend card will show you two badges, one for items expiring soo
 ### Auto-add to To-do List
 
 Each item has an option to add it to a specific to-do list when the quantity remaining reaches a certain amount. The item will be added to the list when below, and removed from the list when incremented above.
+
+### Automations
+This integration exposes the following actions:
+
+- `add_item`
+- `remove_item`
+- `update_item`
+- `increment_item`
+- `decrement_item`
+
+which can be used in automations. For example, if I call `simple_inventory.increment_item` with:
+
+```yaml
+inventory_id: "01JYFPCDMBRBRK4MB3C26S2FKH"
+name: "frozen pizzas"
+amount: 1
+```
+
+it will increment the amount by 1. The amount field is how much you want to increment it by. You can get the inventory ID by going to Developer Tools → States, then filtering on “inventory” and you will see a list of your inventories and their IDs in the Attributes column.
