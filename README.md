@@ -67,4 +67,7 @@ name: "frozen pizzas"
 amount: 1
 ```
 
+<img width="1085" height="506" alt="image" src="https://github.com/user-attachments/assets/5e1c2411-4d5e-46f9-abc3-2c8dcb639305" />
+
+
 it will increment the amount by 1. The amount field is how much you want to increment it by. You can get the inventory ID by going to Developer Tools → States, then filtering on “inventory” and you will see a list of your inventories and their IDs in the Attributes column.
