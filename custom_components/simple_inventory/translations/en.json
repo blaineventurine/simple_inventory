@@ -23,7 +23,7 @@
     "step": {
       "init": {
         "title": "Configure Inventory",
-        "description": "Update the settings for '{current_name}'.",
+        "description": "Update the settings for {current_name}",
         "data": {
           "name": "Inventory Name",
           "icon": "Icon",

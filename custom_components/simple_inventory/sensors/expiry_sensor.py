@@ -26,8 +26,7 @@ class ExpiryNotificationSensor(SensorEntity):
         self.coordinator = coordinator
         self.inventory_id = inventory_id
         self.inventory_name = inventory_name
-        self._attr_translation_key = "expiring_items"
-        self._attr_translation_placeholders = {"inventory_name": inventory_name}
+        self._attr_name = f"{inventory_name} Items Expiring Soon"
         self._attr_unique_id = f"simple_inventory_expiring_items_{
             inventory_id}"
         self._attr_icon = "mdi:calendar-alert"

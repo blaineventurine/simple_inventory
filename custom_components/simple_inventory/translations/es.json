@@ -23,7 +23,7 @@
     "step": {
       "init": {
         "title": "Configurar Inventario",
-        "description": "Actualizar la configuración de '{current_name}'.",
+        "description": "Actualizar la configuración de {current_name}",
         "data": {
           "name": "Nombre del Inventario",
           "icon": "Icono",

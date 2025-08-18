@@ -26,8 +26,7 @@ class InventorySensor(SensorEntity):
         self.hass = hass
         self.coordinator = coordinator
         self._entry_id = entry_id
-        self._attr_translation_key = "inventory"
-        self._attr_translation_placeholders = {"inventory_name": inventory_name}
+        self._attr_name = f"{inventory_name} Inventory"
         self._attr_unique_id = f"inventory_{entry_id}"
         self._attr_icon = icon
         self._attr_native_unit_of_measurement = "items"

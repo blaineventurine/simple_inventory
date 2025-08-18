@@ -24,15 +24,13 @@ async def clean_inventory_name(hass: HomeAssistant, name: str) -> str:
     import re
 
     try:
-        # Get translations for the current language
+        current_lang = hass.config.language
         translations = await translation.async_get_translations(
-            hass, hass.config.language, "config", {DOMAIN}
+            hass, current_lang, "common", {DOMAIN}
         )
-        inventory_word = translations.get(
-            f"{DOMAIN}.common.inventory_word", "inventory"
-        ).lower()
+        full_key = f"component.{DOMAIN}.common.inventory_word"
+        inventory_word = translations.get(full_key, "inventory").lower()
     except Exception:
-        # Fallback to English if translation fails
         inventory_word = "inventory"
 
     if name.strip().lower() == inventory_word:
@@ -141,7 +139,7 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
 
     def __init__(self, config_entry: config_entries.ConfigEntry) -> None:
         """Initialize options flow."""
-        self.config_entry = config_entry
+        pass
 
     async def async_step_init(
         self, user_input: dict[str, Any] | None = None
