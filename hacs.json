@@ -1,10 +1,5 @@
 {
   "content_in_root": false,
-  "country": [
-    "US",
-    "CA",
-    "GB"
-  ],
   "name": "Simple Inventory",
   "render_readme": true
 }

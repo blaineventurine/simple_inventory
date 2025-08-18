@@ -1,0 +1,206 @@
+{
+  "config": {
+    "step": {
+      "add_inventory": {
+        "title": "Add Inventory",
+        "description": "Create a new inventory to track your items.",
+        "data": {
+          "name": "Inventory Name",
+          "icon": "Icon",
+          "description": "Description"
+        },
+        "data_description": {
+          "icon": "Click the icon field to open the icon picker with all Material Design Icons",
+          "description": "Optional description for this inventory"
+        }
+      }
+    },
+    "error": {
+      "name_exists": "Inventory name already exists"
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Configure Inventory",
+        "description": "Update the settings for '{current_name}'.",
+        "data": {
+          "name": "Inventory Name",
+          "icon": "Icon",
+          "description": "Description"
+        },
+        "data_description": {
+          "icon": "Click the icon field to browse all available icons",
+          "description": "Optional description for this inventory"
+        }
+      }
+    },
+    "error": {
+      "name_exists": "Inventory name already exists"
+    }
+  },
+  "entity": {
+    "sensor": {
+      "expiring_items": {
+        "name": "{inventory_name} Items Expiring Soon"
+      },
+      "all_expiring_items": {
+        "name": "All Items Expiring Soon"
+      },
+      "inventory": {
+        "name": "{inventory_name} Inventory"
+      }
+    }
+  },
+  "services": {
+    "add_item": {
+      "name": "Add Item",
+      "description": "Add an item to an inventory",
+      "fields": {
+        "inventory_id": {
+          "name": "Inventory ID",
+          "description": "ID of the inventory to add to"
+        },
+        "name": {
+          "name": "Item Name",
+          "description": "Name of the item"
+        },
+        "quantity": {
+          "name": "Quantity",
+          "description": "Quantity of the item"
+        },
+        "unit": {
+          "name": "Unit",
+          "description": "Unit of measurement"
+        },
+        "category": {
+          "name": "Category",
+          "description": "Category of the item"
+        },
+        "expiry_date": {
+          "name": "Expiry Date",
+          "description": "Expiration date"
+        },
+        "expiry_alert_days": {
+          "name": "Alert Days",
+          "description": "Number of days in advance to warn about expiring items"
+        },
+        "auto_add_enabled": {
+          "name": "Auto Add Enabled",
+          "description": "Enable automatic adding to todo list"
+        },
+        "auto_add_to_list_quantity": {
+          "name": "Auto Add Threshold",
+          "description": "Quantity threshold for auto-adding"
+        },
+        "todo_list": {
+          "name": "Todo List",
+          "description": "Todo list entity to add to"
+        }
+      }
+    },
+    "remove_item": {
+      "name": "Remove Item",
+      "description": "Remove an item from an inventory",
+      "fields": {
+        "inventory_id": {
+          "name": "Inventory ID",
+          "description": "ID of the inventory to remove from"
+        },
+        "name": {
+          "name": "Item Name",
+          "description": "Name of the item to remove"
+        }
+      }
+    },
+    "increment_item": {
+      "name": "Increment Item",
+      "description": "Increment the quantity of an item",
+      "fields": {
+        "inventory_id": {
+          "name": "Inventory ID",
+          "description": "ID of the inventory"
+        },
+        "name": {
+          "name": "Item Name",
+          "description": "Name of the item"
+        },
+        "amount": {
+          "name": "Amount",
+          "description": "Amount to increment by"
+        }
+      }
+    },
+    "decrement_item": {
+      "name": "Decrement Item",
+      "description": "Decrement the quantity of an item",
+      "fields": {
+        "inventory_id": {
+          "name": "Inventory ID",
+          "description": "ID of the inventory"
+        },
+        "name": {
+          "name": "Item Name",
+          "description": "Name of the item"
+        },
+        "amount": {
+          "name": "Amount",
+          "description": "Amount to decrement by"
+        }
+      }
+    },
+    "update_item": {
+      "name": "Update Item",
+      "description": "Update an existing inventory item",
+      "fields": {
+        "inventory_id": {
+          "name": "Inventory ID",
+          "description": "ID of the inventory"
+        },
+        "old_name": {
+          "name": "Current Name",
+          "description": "Current name of the item"
+        },
+        "name": {
+          "name": "New Name",
+          "description": "New name of the item"
+        },
+        "quantity": {
+          "name": "Quantity",
+          "description": "New quantity"
+        },
+        "unit": {
+          "name": "Unit",
+          "description": "Unit of measurement"
+        },
+        "category": {
+          "name": "Category",
+          "description": "Category"
+        },
+        "expiry_date": {
+          "name": "Expiry Date",
+          "description": "Expiration date"
+        },
+        "auto_add_enabled": {
+          "name": "Auto Add Enabled",
+          "description": "Enable auto-add to todo list"
+        },
+        "auto_add_to_list_quantity": {
+          "name": "Auto Add Threshold",
+          "description": "Threshold for auto-add"
+        },
+        "todo_list": {
+          "name": "Todo List",
+          "description": "Todo list entity"
+        },
+        "expiry_alert_days": {
+          "name": "Alert Days",
+          "description": "Number of days in advance to warn about expiring items"
+        }
+      }
+    }
+  },
+  "common": {
+    "inventory_word": "inventory"
+  }
+}
