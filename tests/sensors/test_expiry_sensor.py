@@ -1,9 +1,10 @@
 """Tests for ExpiryNotificationSensor."""
 
-from unittest.mock import MagicMock, Mock, call
+from unittest.mock import MagicMock, call, patch
 
 import pytest
 from homeassistant.core import HomeAssistant
+from typing_extensions import Self
 
 from custom_components.simple_inventory.sensors import (
     ExpiryNotificationSensor,
@@ -15,7 +16,7 @@ class TestExpiryNotificationSensor:
 
     @pytest.fixture
     def expiry_sensor(
-        self, hass: HomeAssistant, mock_sensor_coordinator: Mock
+        self, hass: HomeAssistant, mock_sensor_coordinator: MagicMock
     ) -> ExpiryNotificationSensor:
         """Create an expiry sensor."""
         mock_sensor_coordinator.get_items_expiring_soon.side_effect = None
@@ -39,45 +40,61 @@ class TestExpiryNotificationSensor:
 
     @pytest.mark.asyncio
     async def test_async_added_to_hass(
-        self, expiry_sensor: ExpiryNotificationSensor, hass: HomeAssistant
+        self, expiry_sensor: ExpiryNotificationSensor, hass: MagicMock
     ) -> None:
         """Test sensor registration with Home Assistant."""
-        expiry_sensor.async_on_remove = MagicMock()
+        with patch.object(expiry_sensor, "async_on_remove"):
+            await expiry_sensor.async_added_to_hass()
 
-        await expiry_sensor.async_added_to_hass()
+            expected_calls = [
+                call(
+                    "simple_inventory_updated_kitchen_inventory",
+                    expiry_sensor._handle_update,
+                ),
+                call("simple_inventory_updated", expiry_sensor._handle_update),
+            ]
 
-        expected_calls = [
-            call(
-                "simple_inventory_updated_kitchen_inventory",
-                expiry_sensor._handle_update,
-            ),
-            call("simple_inventory_updated", expiry_sensor._handle_update),
-        ]
+            hass.bus.async_listen.assert_has_calls(
+                expected_calls, any_order=True
+            )
 
-        hass.bus.async_listen.assert_has_calls(expected_calls, any_order=True)
-
-    def test_handle_update(self, expiry_sensor):
+    def test_handle_update(
+        self: Self, expiry_sensor: ExpiryNotificationSensor
+    ) -> None:
         """Test inventory update handling."""
-        expiry_sensor._update_data = MagicMock()
-        expiry_sensor.async_write_ha_state = MagicMock()
+        with (
+            patch.object(expiry_sensor, "_update_data") as mock_update_data,
+            patch.object(
+                expiry_sensor, "async_write_ha_state"
+            ) as mock_write_state,
+        ):
 
-        expiry_sensor._handle_update(None)
+            expiry_sensor._handle_update(None)
 
-        expiry_sensor._update_data.assert_called_once()
-        expiry_sensor.async_write_ha_state.assert_called_once()
+            mock_update_data.assert_called_once()
+            mock_write_state.assert_called_once()
 
-    def test_handle_coordinator_update(self, expiry_sensor):
+    def test_handle_coordinator_update(
+        self: Self, expiry_sensor: ExpiryNotificationSensor
+    ) -> None:
         """Test coordinator update handling."""
-        expiry_sensor._update_data = MagicMock()
-        expiry_sensor.async_write_ha_state = MagicMock()
+        with (
+            patch.object(expiry_sensor, "_update_data") as mock_update_data,
+            patch.object(
+                expiry_sensor, "async_write_ha_state"
+            ) as mock_write_state,
+        ):
 
-        expiry_sensor._handle_coordinator_update()
-        expiry_sensor._update_data.assert_called_once()
-        expiry_sensor.async_write_ha_state.assert_called_once()
+            expiry_sensor._handle_coordinator_update()
+
+            mock_update_data.assert_called_once()
+            mock_write_state.assert_called_once()
 
     def test_update_data_with_items(
-        self, expiry_sensor, mock_sensor_coordinator
-    ):
+        self: Self,
+        expiry_sensor: ExpiryNotificationSensor,
+        mock_sensor_coordinator: MagicMock,
+    ) -> None:
         """Test data update with expiring and expired items."""
         test_items = [
             {
@@ -130,7 +147,9 @@ class TestExpiryNotificationSensor:
         # Icon should be "remove" because there are expired items
         assert expiry_sensor._attr_icon == "mdi:calendar-remove"
 
-    def test_update_data_no_items(self, expiry_sensor):
+    def test_update_data_no_items(
+        self: Self, expiry_sensor: ExpiryNotificationSensor
+    ) -> None:
         """Test data update with no expiring items."""
         expiry_sensor.coordinator.get_items_expiring_soon.side_effect = None
         expiry_sensor.coordinator.get_items_expiring_soon.return_value = []
@@ -143,7 +162,9 @@ class TestExpiryNotificationSensor:
         assert len(attributes["expiring_items"]) == 0
         assert len(attributes["expired_items"]) == 0
 
-    def test_update_data_only_expiring(self, expiry_sensor):
+    def test_update_data_only_expiring(
+        self: Self, expiry_sensor: ExpiryNotificationSensor
+    ) -> None:
         """Test data update with only expiring items (no expired)."""
         test_items = [
             {
@@ -169,7 +190,9 @@ class TestExpiryNotificationSensor:
         assert len(attributes["expiring_items"]) == 1
         assert len(attributes["expired_items"]) == 0
 
-    def test_coordinator_method_called_with_inventory_id(self, expiry_sensor):
+    def test_coordinator_method_called_with_inventory_id(
+        self: Self, expiry_sensor: ExpiryNotificationSensor
+    ) -> None:
         """Test that coordinator method is called with correct inventory ID."""
         expiry_sensor._update_data()
 

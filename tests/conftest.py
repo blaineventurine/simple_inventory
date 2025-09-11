@@ -3,7 +3,7 @@
 import sys
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Any
+from typing import Any, Generator
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -291,9 +291,7 @@ def mock_config_entries(
 
 
 @pytest.fixture
-def mock_sensor_coordinator(
-    sample_inventory_data,
-) -> SimpleInventoryCoordinator:
+def mock_sensor_coordinator(sample_inventory_data: dict[str, Any]) -> MagicMock:
     """Create a mock coordinator specifically for sensor testing."""
     coordinator = MagicMock()
     coordinator.get_data.return_value = {"inventories": sample_inventory_data}
@@ -360,7 +358,7 @@ def mock_sensor_coordinator(
 
 # Utility fixtures
 @pytest.fixture
-def mock_datetime():
+def mock_datetime() -> Generator[MagicMock, None, None]:
     """Create a mock datetime for consistent testing."""
     fixed_datetime = datetime(2024, 6, 15, 12, 0, 0)
     with patch("datetime.datetime") as mock_dt:
@@ -370,7 +368,7 @@ def mock_datetime():
 
 
 @pytest.fixture
-def caplog_info(caplog):
+def caplog_info(caplog: pytest.LogCaptureFixture) -> pytest.LogCaptureFixture:
     """Set caplog to INFO level for testing."""
     import logging
 
@@ -379,7 +377,7 @@ def caplog_info(caplog):
 
 
 @pytest.fixture
-def caplog_debug(caplog):
+def caplog_debug(caplog: pytest.LogCaptureFixture) -> pytest.LogCaptureFixture:
     """Set caplog to DEBUG level for testing."""
     import logging
 
@@ -388,7 +386,7 @@ def caplog_debug(caplog):
 
 
 @pytest.fixture
-def async_mock():
+def async_mock() -> AsyncMock:
     """Create a simple AsyncMock for general use."""
     return AsyncMock()
 
@@ -396,9 +394,9 @@ def async_mock():
 @pytest.fixture
 def full_service_setup(
     hass: HomeAssistant,
-    mock_coordinator: SimpleInventoryCoordinator,
+    mock_coordinator: MagicMock,
     mock_todo_manager: TodoManager,
-):
+) -> dict[str, Any]:
     """Create a complete service setup for integration testing."""
     from custom_components.simple_inventory.services import ServiceHandler
 
@@ -424,8 +422,8 @@ def domain() -> str:
 
 @pytest.fixture
 def coordinator_with_errors(
-    mock_coordinator: SimpleInventoryCoordinator,
-) -> SimpleInventoryCoordinator:
+    mock_coordinator: MagicMock,
+) -> MagicMock:
     """Create a coordinator that simulates various error conditions."""
     coordinator = mock_coordinator
 
@@ -446,7 +444,7 @@ def coordinator_with_errors(
 
 
 @pytest.fixture
-def mock_expiry_sensor_state():
+def mock_expiry_sensor_state() -> MagicMock:
     """Create a mock expiry sensor state."""
     state = MagicMock()
     state.attributes = {"unique_id": "simple_inventory_expiring_items"}
@@ -454,7 +452,7 @@ def mock_expiry_sensor_state():
 
 
 @pytest.fixture
-def mock_entity_registry_with_expiry_sensor():
+def mock_entity_registry_with_expiry_sensor() -> MagicMock:
     """Create a mock entity registry with expiry sensor."""
     entity_registry = MagicMock()
     expiry_entity = MagicMock()
@@ -467,11 +465,11 @@ def mock_entity_registry_with_expiry_sensor():
 
 @pytest.fixture
 def hass_with_expiry_sensor(
-    hass: HomeAssistant,
-    mock_config_entries,
-    mock_expiry_sensor_state,
-    mock_entity_registry_with_expiry_sensor,
-) -> HomeAssistant:
+    hass: MagicMock,
+    mock_config_entries: list[MagicMock],
+    mock_expiry_sensor_state: MagicMock,
+    mock_entity_registry_with_expiry_sensor: MagicMock,
+) -> MagicMock:
     """Enhanced hass fixture with expiry sensor setup."""
     hass.config_entries.async_entries.return_value = mock_config_entries
     hass.states.async_entity_ids.return_value = ["sensor.items_expiring_soon"]
