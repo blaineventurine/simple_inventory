@@ -3,6 +3,7 @@
 import sys
 from datetime import datetime, timedelta
 from pathlib import Path
+from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -22,9 +23,7 @@ from custom_components.simple_inventory.services.quantity_service import (
     QuantityService,
 )
 from custom_components.simple_inventory.todo_manager import TodoManager
-from custom_components.simple_inventory.types import (
-    InventoryItem,
-)
+from custom_components.simple_inventory.types import InventoryItem
 
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
@@ -210,7 +209,7 @@ def sample_item_data() -> InventoryItem:
 
 
 @pytest.fixture
-def sample_inventory_data():
+def sample_inventory_data() -> dict[str, Any]:
     """Sample inventory data for testing."""
     today = datetime.now().date()
     return {
@@ -292,7 +291,9 @@ def mock_config_entries(
 
 
 @pytest.fixture
-def mock_sensor_coordinator(sample_inventory_data):
+def mock_sensor_coordinator(
+    sample_inventory_data,
+) -> SimpleInventoryCoordinator:
     """Create a mock coordinator specifically for sensor testing."""
     coordinator = MagicMock()
     coordinator.get_data.return_value = {"inventories": sample_inventory_data}
@@ -311,7 +312,9 @@ def mock_sensor_coordinator(sample_inventory_data):
         }
     )
 
-    def mock_get_items_expiring_soon(inventory_id=None):
+    def mock_get_items_expiring_soon(
+        inventory_id: str | None = None,
+    ) -> list[dict[Any, Any]]:
         """Mock implementation of get_items_expiring_soon."""
         today = datetime.now().date()
         items = []
@@ -420,17 +423,19 @@ def domain() -> str:
 
 
 @pytest.fixture
-def coordinator_with_errors(mock_coordinator):
+def coordinator_with_errors(
+    mock_coordinator: SimpleInventoryCoordinator,
+) -> SimpleInventoryCoordinator:
     """Create a coordinator that simulates various error conditions."""
     coordinator = mock_coordinator
 
-    def simulate_save_error():
+    def simulate_save_error() -> None:
         coordinator.async_save_data.side_effect = Exception("Save failed")
 
-    def simulate_get_error():
+    def simulate_get_error() -> None:
         coordinator.get_item.side_effect = Exception("Get failed")
 
-    def simulate_update_error():
+    def simulate_update_error() -> None:
         coordinator.update_item.side_effect = Exception("Update failed")
 
     coordinator.simulate_save_error = simulate_save_error
@@ -462,11 +467,11 @@ def mock_entity_registry_with_expiry_sensor():
 
 @pytest.fixture
 def hass_with_expiry_sensor(
-    hass,
+    hass: HomeAssistant,
     mock_config_entries,
     mock_expiry_sensor_state,
     mock_entity_registry_with_expiry_sensor,
-):
+) -> HomeAssistant:
     """Enhanced hass fixture with expiry sensor setup."""
     hass.config_entries.async_entries.return_value = mock_config_entries
     hass.states.async_entity_ids.return_value = ["sensor.items_expiring_soon"]

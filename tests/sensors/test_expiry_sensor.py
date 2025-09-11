@@ -1,8 +1,9 @@
 """Tests for ExpiryNotificationSensor."""
 
-from unittest.mock import MagicMock, call
+from unittest.mock import MagicMock, Mock, call
 
 import pytest
+from homeassistant.core import HomeAssistant
 
 from custom_components.simple_inventory.sensors import (
     ExpiryNotificationSensor,
@@ -13,7 +14,9 @@ class TestExpiryNotificationSensor:
     """Test ExpiryNotificationSensor class."""
 
     @pytest.fixture
-    def expiry_sensor(self, hass, mock_sensor_coordinator):
+    def expiry_sensor(
+        self, hass: HomeAssistant, mock_sensor_coordinator: Mock
+    ) -> ExpiryNotificationSensor:
         """Create an expiry sensor."""
         mock_sensor_coordinator.get_items_expiring_soon.side_effect = None
         mock_sensor_coordinator.get_items_expiring_soon.return_value = []
@@ -23,7 +26,7 @@ class TestExpiryNotificationSensor:
         mock_sensor_coordinator.get_items_expiring_soon.reset_mock()
         return sensor
 
-    def test_init(self, expiry_sensor):
+    def test_init(self, expiry_sensor: ExpiryNotificationSensor) -> None:
         """Test sensor initialization."""
         assert expiry_sensor._attr_name == "Kitchen Items Expiring Soon"
         assert (
@@ -35,7 +38,9 @@ class TestExpiryNotificationSensor:
         assert expiry_sensor.inventory_name == "Kitchen"
 
     @pytest.mark.asyncio
-    async def test_async_added_to_hass(self, expiry_sensor, hass):
+    async def test_async_added_to_hass(
+        self, expiry_sensor: ExpiryNotificationSensor, hass: HomeAssistant
+    ) -> None:
         """Test sensor registration with Home Assistant."""
         expiry_sensor.async_on_remove = MagicMock()
 

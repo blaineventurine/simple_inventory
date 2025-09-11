@@ -1,10 +1,12 @@
 """Tests for the Simple Inventory config flow."""
 
+from typing import Generator
 from unittest.mock import MagicMock, patch
 
 import pytest
 from homeassistant import data_entry_flow
 from homeassistant.core import HomeAssistant
+from typing_extensions import Self
 
 from custom_components.simple_inventory.config_flow import (
     SimpleInventoryConfigFlow,
@@ -13,7 +15,7 @@ from custom_components.simple_inventory.config_flow import (
 
 
 @pytest.fixture
-def mock_setup_entry():
+def mock_setup_entry() -> Generator[MagicMock, None, None]:
     """Mock setting up a config entry."""
     with patch(
         "custom_components.simple_inventory.async_setup_entry",
@@ -22,7 +24,9 @@ def mock_setup_entry():
         yield mock_setup
 
 
-async def test_user_step_redirects_to_add_inventory(hass: HomeAssistant):
+async def test_user_step_redirects_to_add_inventory(
+    hass: HomeAssistant,
+) -> None:
     """Test the initial user step redirects to add inventory."""
     flow = SimpleInventoryConfigFlow()
     flow.hass = hass
@@ -33,11 +37,17 @@ async def test_user_step_redirects_to_add_inventory(hass: HomeAssistant):
     assert result["step_id"] == "add_inventory"
 
 
-async def test_add_inventory_step(hass: HomeAssistant, mock_setup_entry):
+@patch.object(SimpleInventoryConfigFlow, "_async_current_entries")
+async def test_add_inventory_step(
+    mock_current_entries: MagicMock,
+    hass: HomeAssistant,
+    mock_setup_entry: MagicMock,
+) -> None:
     """Test the add inventory step."""
     flow = SimpleInventoryConfigFlow()
     flow.hass = hass
-    flow._async_current_entries = MagicMock(return_value=[])
+
+    mock_current_entries.return_value = []
 
     result = await flow.async_step_add_inventory()
 
@@ -63,24 +73,30 @@ async def test_add_inventory_step(hass: HomeAssistant, mock_setup_entry):
     }
 
 
-async def test_add_inventory_duplicate_name(hass: HomeAssistant):
+@patch.object(SimpleInventoryConfigFlow, "_async_current_entries")
+async def test_add_inventory_duplicate_name(
+    mock_current_entries: MagicMock, hass: HomeAssistant
+) -> None:
     """Test adding inventory with a duplicate name."""
     flow = SimpleInventoryConfigFlow()
     flow.hass = hass
     existing_entry = MagicMock()
     existing_entry.data = {"name": "Kitchen Fridge"}
-    flow._async_current_entries = MagicMock(return_value=[existing_entry])
+    mock_current_entries.return_value = [existing_entry]
 
     result = await flow.async_step_add_inventory({"name": "Kitchen Fridge"})
 
     assert result["type"] == data_entry_flow.FlowResultType.FORM
     assert result["step_id"] == "add_inventory"
-    assert result["errors"] == {"name": "Inventory name already exists"}
+    assert result["errors"] == {"name": "name_exists"}
 
 
+@patch.object(SimpleInventoryConfigFlow, "_async_current_entries")
 async def test_add_inventory_with_existing_global_entry(
-    hass: HomeAssistant, mock_setup_entry
-):
+    mock_current_entries: MagicMock,
+    hass: HomeAssistant,
+    mock_setup_entry: MagicMock,
+) -> None:
     """Test adding inventory when global entry already exists."""
     flow = SimpleInventoryConfigFlow()
     flow.hass = hass
@@ -88,7 +104,7 @@ async def test_add_inventory_with_existing_global_entry(
     # Mock existing global entry
     existing_global = MagicMock()
     existing_global.data = {"entry_type": "global"}
-    flow._async_current_entries = MagicMock(return_value=[existing_global])
+    mock_current_entries.return_value = [existing_global]
 
     result = await flow.async_step_add_inventory(
         {"name": "Garage Fridge", "icon": "mdi:fridge"}
@@ -98,7 +114,7 @@ async def test_add_inventory_with_existing_global_entry(
     assert not result["data"]["create_global"]
 
 
-async def test_internal_step(hass: HomeAssistant):
+async def test_internal_step(hass: HomeAssistant) -> None:
     """Test the internal step for creating global entry."""
     flow = SimpleInventoryConfigFlow()
     flow.hass = hass
@@ -111,7 +127,7 @@ async def test_internal_step(hass: HomeAssistant):
     assert result["data"] == user_input
 
 
-def test_options_flow_update_logic():
+def test_options_flow_update_logic() -> None:
     """Test updating configuration logic in options flow."""
     config_entry = MagicMock()
     config_entry.data = {
@@ -138,7 +154,7 @@ def test_options_flow_update_logic():
     assert new_data["description"] == "Updated description"
 
 
-def test_name_exists_excluding_current_logic():
+def test_name_exists_excluding_current_logic() -> None:
     """Test the name exists check logic."""
     config_entry = MagicMock()
     config_entry.entry_id = "current_entry"
@@ -175,30 +191,33 @@ def test_name_exists_excluding_current_logic():
     assert not name_exists
 
 
-def test_global_entry_exists():
+@patch.object(SimpleInventoryConfigFlow, "_async_current_entries")
+def test_global_entry_exists(mock_current_entries: MagicMock) -> None:
     """Test checking if global entry exists."""
     flow = SimpleInventoryConfigFlow()
 
     regular_entry = MagicMock()
     regular_entry.data = {"entry_type": "inventory"}
-    flow._async_current_entries = MagicMock(return_value=[regular_entry])
+
+    mock_current_entries.return_value = [regular_entry]
     assert not flow._global_entry_exists()
 
     global_entry = MagicMock()
     global_entry.data = {"entry_type": "global"}
-    flow._async_current_entries = MagicMock(
-        return_value=[regular_entry, global_entry]
-    )
+
+    mock_current_entries.return_value = [regular_entry, global_entry]
     assert flow._global_entry_exists()
 
 
-async def test_name_exists():
+@patch.object(SimpleInventoryConfigFlow, "_async_current_entries")
+async def test_name_exists(mock_current_entries: MagicMock) -> None:
     """Test checking if inventory name exists."""
     flow = SimpleInventoryConfigFlow()
 
     existing_entry = MagicMock()
     existing_entry.data = {"name": "Kitchen Fridge"}
-    flow._async_current_entries = MagicMock(return_value=[existing_entry])
+
+    mock_current_entries.return_value = [existing_entry]
 
     # Should return True for existing name (case insensitive)
     assert await flow._async_name_exists("Kitchen Fridge")
@@ -211,59 +230,143 @@ async def test_name_exists():
 class TestCleanInventoryName:
     """Test the clean_inventory_name function."""
 
-    def test_removes_inventory_word(self):
+    @pytest.fixture
+    def mock_hass(self: Self) -> Generator[MagicMock, None, None]:
+        """Mock hass for testing."""
+        hass = MagicMock()
+        hass.config.language = "en"
+
+        async def mock_get_translations(
+            hass_obj: HomeAssistant,
+            lang: str,
+            category: str,
+            integrations: set[str],
+        ) -> dict[str, str]:
+            return {
+                "component.simple_inventory.common.inventory_word": "inventory"
+            }
+
+        with patch(
+            "homeassistant.helpers.translation.async_get_translations",
+            side_effect=mock_get_translations,
+        ):
+            yield hass
+
+    async def test_removes_inventory_word(
+        self: Self, mock_hass: HomeAssistant
+    ) -> None:
         """Test removing 'inventory' from various positions."""
-        assert clean_inventory_name("Kitchen Inventory") == "Kitchen"
-        assert clean_inventory_name("Inventory Kitchen") == "Kitchen"
-        assert clean_inventory_name("My Inventory List") == "My List"
-
-    def test_case_insensitive_removal(self):
-        """Test case-insensitive removal of 'inventory'."""
-        assert clean_inventory_name("Kitchen INVENTORY") == "Kitchen"
-        assert clean_inventory_name("InVeNtOrY Kitchen") == "Kitchen"
-        assert clean_inventory_name("kitchen inventory") == "kitchen"
-
-    def test_preserves_inventory_if_only_word(self):
-        """Test that 'inventory' is preserved if it's the only word."""
-        assert clean_inventory_name("Inventory") == "Inventory"
-        assert clean_inventory_name("inventory") == "inventory"
-        assert clean_inventory_name("  INVENTORY  ") == "INVENTORY"
-
-    def test_handles_multiple_spaces(self):
-        """Test handling of multiple spaces after removal."""
         assert (
-            clean_inventory_name("Kitchen  Inventory  Items") == "Kitchen Items"
+            await clean_inventory_name(mock_hass, "Kitchen Inventory")
+            == "Kitchen"
         )
         assert (
-            clean_inventory_name("Inventory    Kitchen    Stuff")
+            await clean_inventory_name(mock_hass, "Inventory Kitchen")
+            == "Kitchen"
+        )
+        assert (
+            await clean_inventory_name(mock_hass, "My Inventory List")
+            == "My List"
+        )
+
+    async def test_case_insensitive_removal(
+        self: Self, mock_hass: HomeAssistant
+    ) -> None:
+        """Test case-insensitive removal of 'inventory'."""
+        assert (
+            await clean_inventory_name(mock_hass, "Kitchen INVENTORY")
+            == "Kitchen"
+        )
+        assert (
+            await clean_inventory_name(mock_hass, "InVeNtOrY Kitchen")
+            == "Kitchen"
+        )
+        assert (
+            await clean_inventory_name(mock_hass, "kitchen inventory")
+            == "kitchen"
+        )
+
+    async def test_preserves_inventory_if_only_word(
+        self: Self, mock_hass: HomeAssistant
+    ) -> None:
+        """Test that 'inventory' is preserved if it's the only word."""
+        assert await clean_inventory_name(mock_hass, "Inventory") == "Inventory"
+        assert await clean_inventory_name(mock_hass, "inventory") == "inventory"
+        assert (
+            await clean_inventory_name(mock_hass, "  INVENTORY  ")
+            == "INVENTORY"
+        )
+
+    async def test_handles_multiple_spaces(
+        self: Self, mock_hass: HomeAssistant
+    ) -> None:
+        """Test handling of multiple spaces after removal."""
+        assert (
+            await clean_inventory_name(mock_hass, "Kitchen  Inventory  Items")
+            == "Kitchen Items"
+        )
+        assert (
+            await clean_inventory_name(
+                mock_hass, "Inventory    Kitchen    Stuff"
+            )
             == "Kitchen Stuff"
         )
 
-    def test_word_boundary_matching(self):
+    async def test_word_boundary_matching(
+        self: Self, mock_hass: HomeAssistant
+    ) -> None:
         """Test that it only removes complete word 'inventory', not partial matches."""
         assert (
-            clean_inventory_name("Inventorying Items") == "Inventorying Items"
+            await clean_inventory_name(mock_hass, "Inventorying Items")
+            == "Inventorying Items"
         )
-        assert clean_inventory_name("MyInventory") == "MyInventory"
-        assert clean_inventory_name("InventoryList") == "InventoryList"
+        assert (
+            await clean_inventory_name(mock_hass, "MyInventory")
+            == "MyInventory"
+        )
+        assert (
+            await clean_inventory_name(mock_hass, "InventoryList")
+            == "InventoryList"
+        )
 
-    def test_strips_whitespace(self):
+    async def test_strips_whitespace(
+        self: Self, mock_hass: HomeAssistant
+    ) -> None:
         """Test that result is properly trimmed."""
-        assert clean_inventory_name("  Kitchen Inventory  ") == "Kitchen"
-        assert clean_inventory_name("  Inventory  ") == "Inventory"
+        assert (
+            await clean_inventory_name(mock_hass, "  Kitchen Inventory  ")
+            == "Kitchen"
+        )
+        assert (
+            await clean_inventory_name(mock_hass, "  Inventory  ")
+            == "Inventory"
+        )
 
-    def test_multiple_inventory_words(self):
+    async def test_multiple_inventory_words(
+        self: Self, mock_hass: HomeAssistant
+    ) -> None:
         """Test handling of multiple 'inventory' words."""
-        assert clean_inventory_name("Inventory Inventory Items") == "Items"
-        assert clean_inventory_name("Kitchen Inventory Inventory") == "Kitchen"
+        assert (
+            await clean_inventory_name(mock_hass, "Inventory Inventory Items")
+            == "Items"
+        )
+        assert (
+            await clean_inventory_name(mock_hass, "Kitchen Inventory Inventory")
+            == "Kitchen"
+        )
 
 
-# Add these tests to test the integration in config flow
-async def test_add_inventory_cleans_name(hass: HomeAssistant, mock_setup_entry):
+@patch.object(SimpleInventoryConfigFlow, "_async_current_entries")
+async def test_add_inventory_cleans_name(
+    mock_current_entries: MagicMock,
+    hass: HomeAssistant,
+    mock_setup_entry: MagicMock,
+) -> None:
     """Test that inventory name is cleaned when adding."""
     flow = SimpleInventoryConfigFlow()
     flow.hass = hass
-    flow._async_current_entries = MagicMock(return_value=[])
+
+    mock_current_entries.return_value = []
 
     result = await flow.async_step_add_inventory(
         {
@@ -278,13 +381,16 @@ async def test_add_inventory_cleans_name(hass: HomeAssistant, mock_setup_entry):
     assert result["data"]["name"] == "Kitchen"  # Data should have cleaned name
 
 
+@patch.object(SimpleInventoryConfigFlow, "_async_current_entries")
 async def test_add_inventory_preserves_inventory_only_name(
-    hass: HomeAssistant, mock_setup_entry
-):
+    mock_current_entries: MagicMock,
+    hass: HomeAssistant,
+    mock_setup_entry: MagicMock,
+) -> None:
     """Test that 'Inventory' is preserved when it's the only word."""
     flow = SimpleInventoryConfigFlow()
     flow.hass = hass
-    flow._async_current_entries = MagicMock(return_value=[])
+    mock_current_entries.return_value = []
 
     result = await flow.async_step_add_inventory(
         {
@@ -299,7 +405,10 @@ async def test_add_inventory_preserves_inventory_only_name(
     assert result["data"]["name"] == "Inventory"
 
 
-async def test_duplicate_check_uses_cleaned_name(hass: HomeAssistant):
+@patch.object(SimpleInventoryConfigFlow, "_async_current_entries")
+async def test_duplicate_check_uses_cleaned_name(
+    mock_current_entries: MagicMock, hass: HomeAssistant
+) -> None:
     """Test that duplicate check uses cleaned name."""
     flow = SimpleInventoryConfigFlow()
     flow.hass = hass
@@ -307,20 +416,20 @@ async def test_duplicate_check_uses_cleaned_name(hass: HomeAssistant):
     # Existing entry with name "Kitchen"
     existing_entry = MagicMock()
     existing_entry.data = {"name": "Kitchen"}
-    flow._async_current_entries = MagicMock(return_value=[existing_entry])
+    mock_current_entries.return_value = [existing_entry]
 
     # Try to add "Kitchen Inventory" which cleans to "Kitchen"
     result = await flow.async_step_add_inventory({"name": "Kitchen Inventory"})
 
     assert result["type"] == data_entry_flow.FlowResultType.FORM
-    assert result["errors"] == {"name": "Inventory name already exists"}
+    assert result["errors"] == {"name": "name_exists"}
 
 
-def test_options_flow_cleaning_logic():
+async def test_options_flow_cleaning_logic(hass: HomeAssistant) -> None:
     """Test that the options flow would clean names correctly."""
     # Test the cleaning logic directly
     original_name = "Garage Inventory Storage"
-    cleaned = clean_inventory_name(original_name)
+    cleaned = await clean_inventory_name(hass, original_name)
     assert cleaned == "Garage Storage"
 
     # Test that it would be used in the update
@@ -331,7 +440,7 @@ def test_options_flow_cleaning_logic():
     }
 
     new_data = {
-        "name": clean_inventory_name(user_input["name"]),
+        "name": await clean_inventory_name(hass, user_input["name"]),
         "icon": user_input.get("icon", "mdi:package-variant"),
         "description": user_input.get("description", ""),
     }
