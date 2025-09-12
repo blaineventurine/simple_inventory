@@ -3,6 +3,8 @@
 from unittest.mock import MagicMock, patch
 
 import pytest
+from homeassistant import config_entries
+from typing_extensions import Self
 
 from custom_components.simple_inventory.sensor import async_setup_entry
 
@@ -11,7 +13,9 @@ class TestSensorPlatform:
     """Test sensor platform setup."""
 
     @pytest.fixture
-    def mock_config_entry_with_options(self):
+    def mock_config_entry_with_options(
+        self: Self,
+    ) -> config_entries.ConfigEntry:
         """Create a mock config entry with options."""
         config_entry = MagicMock()
         config_entry.entry_id = "test_entry_123"
@@ -20,7 +24,7 @@ class TestSensorPlatform:
         return config_entry
 
     @pytest.fixture
-    def mock_config_entry_minimal(self):
+    def mock_config_entry_minimal(self: Self) -> config_entries.ConfigEntry:
         """Create a mock config entry with minimal data."""
         config_entry = MagicMock()
         config_entry.entry_id = "minimal_entry_456"
@@ -29,7 +33,11 @@ class TestSensorPlatform:
         return config_entry
 
     @pytest.fixture
-    def mock_hass_with_coordinator(self, mock_coordinator, domain):
+    def mock_hass_with_coordinator(
+        self: Self,
+        mock_coordinator: MagicMock,
+        domain: str = "simple_inventory",
+    ) -> MagicMock:
         """Create a mock hass with coordinator in data."""
         hass = MagicMock()
         hass.data = {domain: {"coordinator": mock_coordinator}}
@@ -37,17 +45,17 @@ class TestSensorPlatform:
         return hass
 
     @pytest.fixture
-    def mock_add_entities(self):
+    def mock_add_entities(self: Self) -> MagicMock:
         """Create a mock async_add_entities callback."""
         return MagicMock()
 
     @pytest.mark.asyncio
     async def test_async_setup_entry_basic(
-        self,
-        mock_hass_with_coordinator,
-        mock_config_entry_with_options,
-        mock_add_entities,
-    ):
+        self: Self,
+        mock_hass_with_coordinator: MagicMock,
+        mock_config_entry_with_options: config_entries.ConfigEntry,
+        mock_add_entities: MagicMock,
+    ) -> None:
         """Test basic sensor setup."""
         mock_hass_with_coordinator.config_entries.async_entries.return_value = [
             mock_config_entry_with_options
@@ -96,11 +104,11 @@ class TestSensorPlatform:
 
     @pytest.mark.asyncio
     async def test_async_setup_entry_minimal_data(
-        self,
-        mock_hass_with_coordinator,
-        mock_config_entry_minimal,
-        mock_add_entities,
-    ):
+        self: Self,
+        mock_hass_with_coordinator: MagicMock,
+        mock_config_entry_minimal: config_entries.ConfigEntry,
+        mock_add_entities: MagicMock,
+    ) -> None:
         """Test setup with minimal config entry data."""
         mock_hass_with_coordinator.config_entries.async_entries.return_value = [
             mock_config_entry_minimal
@@ -144,11 +152,11 @@ class TestSensorPlatform:
 
     @pytest.mark.asyncio
     async def test_async_setup_entry_not_first_entry(
-        self,
-        mock_hass_with_coordinator,
-        mock_config_entry_with_options,
-        mock_add_entities,
-    ):
+        self: Self,
+        mock_hass_with_coordinator: MagicMock,
+        mock_config_entry_with_options: config_entries.ConfigEntry,
+        mock_add_entities: MagicMock,
+    ) -> None:
         """Test setup when this is not the first config entry."""
         # Create a different "first" entry
         first_entry = MagicMock()
@@ -200,8 +208,10 @@ class TestSensorPlatform:
 
     @pytest.mark.asyncio
     async def test_async_setup_entry_multiple_config_entries(
-        self, mock_hass_with_coordinator, mock_add_entities
-    ):
+        self: Self,
+        mock_hass_with_coordinator: MagicMock,
+        mock_add_entities: MagicMock,
+    ) -> None:
         """Test setup with multiple config entries."""
         # Create multiple config entries
         entry1 = MagicMock()
@@ -260,11 +270,11 @@ class TestSensorPlatform:
 
     @pytest.mark.asyncio
     async def test_async_setup_entry_coordinator_access(
-        self,
-        mock_hass_with_coordinator,
-        mock_config_entry_with_options,
-        mock_add_entities,
-    ):
+        self: Self,
+        mock_hass_with_coordinator: MagicMock,
+        mock_config_entry_with_options: config_entries.ConfigEntry,
+        mock_add_entities: MagicMock,
+    ) -> None:
         """Test that coordinator is properly accessed from hass.data."""
         expected_coordinator = mock_hass_with_coordinator.data[
             "simple_inventory"
@@ -299,11 +309,11 @@ class TestSensorPlatform:
 
     @pytest.mark.asyncio
     async def test_async_setup_entry_sensor_creation_order(
-        self,
-        mock_hass_with_coordinator,
-        mock_config_entry_with_options,
-        mock_add_entities,
-    ):
+        self: Self,
+        mock_hass_with_coordinator: MagicMock,
+        mock_config_entry_with_options: config_entries.ConfigEntry,
+        mock_add_entities: MagicMock,
+    ) -> None:
         """Test that sensors are created in the correct order."""
         # Make this the first entry
         mock_hass_with_coordinator.config_entries.async_entries.return_value = [
@@ -335,8 +345,10 @@ class TestSensorPlatform:
 
     @pytest.mark.asyncio
     async def test_async_setup_entry_data_extraction(
-        self, mock_hass_with_coordinator, mock_add_entities
-    ):
+        self: Self,
+        mock_hass_with_coordinator: MagicMock,
+        mock_add_entities: MagicMock,
+    ) -> None:
         """Test extraction of various data from config entry."""
         test_cases = [
             # (config_data, expected_name, expected_icon)
@@ -399,8 +411,10 @@ class TestSensorPlatform:
 
     @pytest.mark.asyncio
     async def test_async_setup_entry_entry_id_usage(
-        self, mock_hass_with_coordinator, mock_add_entities
-    ):
+        self: Self,
+        mock_hass_with_coordinator: MagicMock,
+        mock_add_entities: MagicMock,
+    ) -> None:
         """Test that entry_id is properly passed to sensors."""
         config_entry = MagicMock()
         config_entry.entry_id = "unique_entry_id_123"

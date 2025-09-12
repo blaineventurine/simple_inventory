@@ -1,9 +1,12 @@
 """Tests for the SimpleInventoryCoordinator class."""
 
 from datetime import datetime, timedelta
+from typing import Generator, cast
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from homeassistant.core import HomeAssistant
+from typing_extensions import Self
 
 from custom_components.simple_inventory.const import (
     DEFAULT_EXPIRY_ALERT_DAYS,
@@ -12,24 +15,39 @@ from custom_components.simple_inventory.const import (
 from custom_components.simple_inventory.coordinator import (
     SimpleInventoryCoordinator,
 )
+from custom_components.simple_inventory.types import InventoryData
 
 
 @pytest.fixture
-def coordinator(hass):
+def coordinator(
+    hass: MagicMock,
+) -> Generator[SimpleInventoryCoordinator, None, None]:
     """Create a SimpleInventoryCoordinator instance."""
-    coordinator = SimpleInventoryCoordinator(hass)
-    coordinator._store.async_load = AsyncMock(return_value=None)
-    coordinator._store.async_save = AsyncMock()
-    return coordinator
+
+    coordinator = SimpleInventoryCoordinator(cast(HomeAssistant, hass))
+
+    with (
+        patch.object(
+            coordinator._store, "async_load", new=AsyncMock(return_value=None)
+        ),
+        patch.object(coordinator._store, "async_save", new=AsyncMock()),
+    ):
+        yield coordinator
 
 
 @pytest.fixture
-def loaded_coordinator(hass):
+def loaded_coordinator(
+    hass: MagicMock,
+) -> Generator[SimpleInventoryCoordinator, None, None]:
     """Create a coordinator with pre-loaded data."""
-    coordinator = SimpleInventoryCoordinator(hass)
+    from typing import cast
+
+    from homeassistant.core import HomeAssistant
+
+    coordinator = SimpleInventoryCoordinator(cast(HomeAssistant, hass))
 
     # Mock data that would be loaded from storage
-    test_data = {
+    test_data: InventoryData = {
         "inventories": {
             "kitchen": {
                 "items": {
@@ -57,23 +75,34 @@ def loaded_coordinator(hass):
         "config": {"expiry_alert_days": 7},
     }
 
-    coordinator._store.async_load = AsyncMock(return_value=test_data)
-    coordinator._store.async_save = AsyncMock()
-    coordinator._data = test_data
-    return coordinator
+    with (
+        patch.object(
+            coordinator._store,
+            "async_load",
+            new=AsyncMock(return_value=test_data),
+        ),
+        patch.object(coordinator._store, "async_save", new=AsyncMock()),
+    ):
+        coordinator._data = test_data
+        yield coordinator
 
 
 class TestSimpleInventoryCoordinator:
     """Tests for SimpleInventoryCoordinator class."""
 
-    async def test_init(self, coordinator):
+    async def test_init(
+        self: Self, coordinator: SimpleInventoryCoordinator
+    ) -> None:
         """Test coordinator initialization."""
         assert coordinator.hass is not None
         assert coordinator._store is not None
-        assert coordinator._data == {
-            "inventories": {},
-            "config": {"expiry_alert_days": DEFAULT_EXPIRY_ALERT_DAYS},
-        }
+        assert coordinator._data == cast(
+            InventoryData,
+            {
+                "inventories": {},
+                "config": {"expiry_alert_days": DEFAULT_EXPIRY_ALERT_DAYS},
+            },
+        )
         assert "config" in coordinator._data
         assert "expiry_alert_days" in coordinator._data["config"]
         assert (
@@ -81,74 +110,125 @@ class TestSimpleInventoryCoordinator:
             == DEFAULT_EXPIRY_ALERT_DAYS
         )
 
-    async def test_async_load_data_empty(self, coordinator):
+    async def test_async_load_data_empty(
+        self: Self, coordinator: SimpleInventoryCoordinator
+    ) -> None:
         """Test loading data when storage is empty."""
-        coordinator._store.async_load.return_value = None
-        data = await coordinator.async_load_data()
+        with patch.object(
+            coordinator._store, "async_load", new=AsyncMock(return_value=None)
+        ):
 
-        assert "inventories" in data
-        assert "config" in data
-        assert data["inventories"] == {}
+            data = await coordinator.async_load_data()
 
-        assert coordinator._data["inventories"] == {}
+            assert "inventories" in data
+            assert "config" in data
+            assert data["inventories"] == {}
 
-    async def test_async_load_data_with_content(self, coordinator):
+            assert coordinator._data["inventories"] == {}
+
+    async def test_async_load_data_with_content(
+        self: Self, coordinator: SimpleInventoryCoordinator
+    ) -> None:
         """Test loading data with existing content."""
-        test_data = {
+        test_data: InventoryData = {
             "inventories": {"kitchen": {"items": {"milk": {"quantity": 1}}}},
             "config": {"expiry_alert_days": 14},
         }
-        coordinator._store.async_load.return_value = test_data
 
-        data = await coordinator.async_load_data()
+        with patch.object(
+            coordinator._store,
+            "async_load",
+            new=AsyncMock(return_value=test_data),
+        ):
 
-        assert data == test_data
-        assert coordinator._data == test_data
+            data = await coordinator.async_load_data()
 
-    async def test_async_load_data_missing_config(self, coordinator):
+            assert data == test_data
+            assert coordinator._data == test_data
+
+    async def test_async_load_data_missing_config(
+        self: Self, coordinator: SimpleInventoryCoordinator
+    ) -> None:
         """Test loading data with missing config section."""
-        test_data = {"inventories": {"kitchen": {"items": {}}}}
-        coordinator._store.async_load.return_value = test_data
+        test_data: InventoryData = {"inventories": {"kitchen": {"items": {}}}}
+        with patch.object(
+            coordinator._store,
+            "async_load",
+            new=AsyncMock(return_value=test_data),
+        ):
 
-        data = await coordinator.async_load_data()
+            data = await coordinator.async_load_data()
 
-        # Should add config section
-        assert "config" in data
-        assert coordinator._data["config"] == {}
+            # Should add config section
+            assert "config" in data
+            assert coordinator._data["config"] == {}
 
-    async def test_async_save_data(self, coordinator):
+    async def test_async_save_data(
+        self: Self, coordinator: SimpleInventoryCoordinator
+    ) -> None:
         """Test saving data."""
-        coordinator._data = {
-            "inventories": {"kitchen": {"items": {}}},
-            "config": {"expiry_alert_days": 7},
-        }
+        from typing import cast
 
-        await coordinator.async_save_data()
+        from custom_components.simple_inventory.types import InventoryData
 
-        coordinator._store.async_save.assert_called_once_with(coordinator._data)
-        # Should fire events for all inventories
-        # One for inventory, one for general update
-        assert coordinator.hass.bus.async_fire.call_count == 2
-        coordinator.hass.bus.async_fire.assert_any_call(
-            f"{DOMAIN}_updated_kitchen"
+        coordinator._data = cast(
+            InventoryData,
+            {
+                "inventories": {"kitchen": {"items": {}}},
+                "config": {"expiry_alert_days": 7},
+            },
         )
-        coordinator.hass.bus.async_fire.assert_any_call(f"{DOMAIN}_updated")
 
-    async def test_async_save_data_specific_inventory(self, coordinator):
+        with (
+            patch.object(
+                coordinator._store, "async_save", new=AsyncMock()
+            ) as mock_save,
+            patch.object(coordinator.hass.bus, "async_fire") as mock_fire,
+        ):
+
+            await coordinator.async_save_data()
+
+            mock_save.assert_called_once_with(coordinator._data)
+            # Should fire events for all inventories
+            # One for inventory, one for general update
+            assert mock_fire.call_count == 2
+            mock_fire.assert_any_call(f"{DOMAIN}_updated_kitchen")
+            mock_fire.assert_any_call(f"{DOMAIN}_updated")
+
+    async def test_async_save_data_specific_inventory(
+        self: Self, coordinator: SimpleInventoryCoordinator
+    ) -> None:
         """Test saving data for a specific inventory."""
-        coordinator._data = {
-            "inventories": {"kitchen": {"items": {}}, "pantry": {"items": {}}},
-            "config": {"expiry_alert_days": 7},
-        }
+        from typing import cast
 
-        await coordinator.async_save_data(inventory_id="kitchen")
+        from custom_components.simple_inventory.types import InventoryData
 
-        coordinator._store.async_save.assert_called_once_with(coordinator._data)
-        coordinator.hass.bus.async_fire.assert_called_once_with(
-            f"{DOMAIN}_updated_kitchen"
+        coordinator._data = cast(
+            InventoryData,
+            {
+                "inventories": {
+                    "kitchen": {"items": {}},
+                    "pantry": {"items": {}},
+                },
+                "config": {"expiry_alert_days": 7},
+            },
         )
 
-    async def test_get_data(self, loaded_coordinator):
+        with (
+            patch.object(
+                coordinator._store, "async_save", new=AsyncMock()
+            ) as mock_save,
+            patch.object(coordinator.hass.bus, "async_fire") as mock_fire,
+        ):
+
+            await coordinator.async_save_data(inventory_id="kitchen")
+
+            mock_save.assert_called_once_with(coordinator._data)
+            mock_fire.assert_called_once_with(f"{DOMAIN}_updated_kitchen")
+
+    async def test_get_data(
+        self: Self, loaded_coordinator: SimpleInventoryCoordinator
+    ) -> None:
         """Test getting all data."""
         data = loaded_coordinator.get_data()
         assert "inventories" in data
@@ -157,7 +237,9 @@ class TestSimpleInventoryCoordinator:
         assert "expiry_alert_days" in data["config"]
         assert data["config"]["expiry_alert_days"] == 7
 
-    async def test_get_inventory(self, loaded_coordinator):
+    async def test_get_inventory(
+        self: Self, loaded_coordinator: SimpleInventoryCoordinator
+    ) -> None:
         """Test getting a specific inventory."""
         inventory = loaded_coordinator.get_inventory("kitchen")
         assert "items" in inventory
@@ -167,7 +249,9 @@ class TestSimpleInventoryCoordinator:
         empty_inventory = loaded_coordinator.get_inventory("non_existent")
         assert empty_inventory == {"items": {}}
 
-    async def test_ensure_inventory_exists(self, coordinator):
+    async def test_ensure_inventory_exists(
+        self: Self, coordinator: SimpleInventoryCoordinator
+    ) -> None:
         """Test ensuring an inventory exists."""
         # Initially empty
         assert "pantry" not in coordinator._data["inventories"]
@@ -184,7 +268,9 @@ class TestSimpleInventoryCoordinator:
         inventory = coordinator.ensure_inventory_exists("kitchen")
         assert inventory == {"items": {"milk": {"quantity": 1}}}
 
-    async def test_get_item(self, loaded_coordinator):
+    async def test_get_item(
+        self: Self, loaded_coordinator: SimpleInventoryCoordinator
+    ) -> None:
         """Test getting a specific item."""
         item = loaded_coordinator.get_item("kitchen", "milk")
         assert item is not None
@@ -195,7 +281,9 @@ class TestSimpleInventoryCoordinator:
         non_existent = loaded_coordinator.get_item("kitchen", "non_existent")
         assert non_existent is None
 
-    async def test_get_all_items(self, loaded_coordinator):
+    async def test_get_all_items(
+        self: Self, loaded_coordinator: SimpleInventoryCoordinator
+    ) -> None:
         """Test getting all items from an inventory."""
         items = loaded_coordinator.get_all_items("kitchen")
         assert len(items) == 2
@@ -206,7 +294,9 @@ class TestSimpleInventoryCoordinator:
         empty_items = loaded_coordinator.get_all_items("non_existent")
         assert empty_items == {}
 
-    async def test_update_item(self, loaded_coordinator):
+    async def test_update_item(
+        self: Self, loaded_coordinator: SimpleInventoryCoordinator
+    ) -> None:
         """Test updating an existing item."""
         # Update milk quantity
         result = loaded_coordinator.update_item(
@@ -216,6 +306,7 @@ class TestSimpleInventoryCoordinator:
 
         # Verify update
         item = loaded_coordinator.get_item("kitchen", "milk")
+        assert item is not None
         assert item["quantity"] == 3
         assert item["unit"] == "gallons"
 
@@ -225,7 +316,9 @@ class TestSimpleInventoryCoordinator:
         )
         assert result is False
 
-    async def test_update_item_rename(self, loaded_coordinator):
+    async def test_update_item_rename(
+        self: Self, loaded_coordinator: SimpleInventoryCoordinator
+    ) -> None:
         """Test updating an item with a name change."""
         # Rename milk to whole_milk
         result = loaded_coordinator.update_item(
@@ -239,7 +332,9 @@ class TestSimpleInventoryCoordinator:
         assert item is not None
         assert item["quantity"] == 3
 
-    async def test_add_item(self, coordinator):
+    async def test_add_item(
+        self: Self, coordinator: SimpleInventoryCoordinator
+    ) -> None:
         """Test adding a new item."""
         # Add new item
         result = coordinator.add_item(
@@ -266,7 +361,9 @@ class TestSimpleInventoryCoordinator:
         assert item["auto_add_to_list_quantity"] == 1
         assert item["todo_list"] == "todo.shopping"
 
-    async def test_add_item_with_zero_auto_add_quantity(self, coordinator):
+    async def test_add_item_with_zero_auto_add_quantity(
+        self: Self, coordinator: SimpleInventoryCoordinator
+    ) -> None:
         """Test adding item with auto-add quantity set to 0."""
         result = coordinator.add_item(
             "kitchen",
@@ -283,8 +380,8 @@ class TestSimpleInventoryCoordinator:
         assert item["auto_add_to_list_quantity"] == 0
 
     async def test_add_item_auto_add_with_none_todo_list_fails(
-        self, coordinator
-    ):
+        self: Self, coordinator: SimpleInventoryCoordinator
+    ) -> None:
         """Test that auto-add enabled with None todo list fails."""
         result = coordinator.add_item(
             "kitchen",
@@ -292,17 +389,20 @@ class TestSimpleInventoryCoordinator:
             quantity=1,
             auto_add_enabled=True,
             auto_add_to_list_quantity=0,
-            todo_list=None,  # None todo list should fail
+            todo_list=cast(str, None),  # None todo list should fail
         )
         assert result is False
 
         item = coordinator.get_item("kitchen", "butter")
         assert item is None
 
-    async def test_add_item_existing(self, loaded_coordinator):
+    async def test_add_item_existing(
+        self: Self, loaded_coordinator: SimpleInventoryCoordinator
+    ) -> None:
         """Test adding an existing item (should update quantity)."""
         # Initial quantity is 2
         initial_item = loaded_coordinator.get_item("kitchen", "milk")
+        assert initial_item is not None
         assert initial_item["quantity"] == 2
 
         # Add 3 more
@@ -311,9 +411,12 @@ class TestSimpleInventoryCoordinator:
 
         # Verify quantity was updated
         updated_item = loaded_coordinator.get_item("kitchen", "milk")
+        assert updated_item is not None
         assert updated_item["quantity"] == 5  # 2 + 3
 
-    async def test_add_item_empty_name(self, coordinator):
+    async def test_add_item_empty_name(
+        self: Self, coordinator: SimpleInventoryCoordinator
+    ) -> None:
         """Test adding an item with empty name."""
         with pytest.raises(ValueError, match="Item name cannot be empty"):
             coordinator.add_item("kitchen", name="", quantity=1)
@@ -321,16 +424,21 @@ class TestSimpleInventoryCoordinator:
         with pytest.raises(ValueError, match="Item name cannot be empty"):
             coordinator.add_item("kitchen", name="  ", quantity=1)
 
-    async def test_add_item_negative_quantity(self, coordinator):
+    async def test_add_item_negative_quantity(
+        self: Self, coordinator: SimpleInventoryCoordinator
+    ) -> None:
         """Test adding an item with negative quantity."""
         result = coordinator.add_item("kitchen", name="milk", quantity=-3)
         assert result is True
 
         # Quantity should be set to 0 (max of 0 and -3)
         item = coordinator.get_item("kitchen", "milk")
+        assert item is not None
         assert item["quantity"] == 0
 
-    async def test_add_item_negative_auto_add_quantity(self, coordinator):
+    async def test_add_item_negative_auto_add_quantity(
+        self: Self, coordinator: SimpleInventoryCoordinator
+    ) -> None:
         """Test adding an item with negative auto add quantity."""
         result = coordinator.add_item(
             "kitchen", name="milk", quantity=1, auto_add_to_list_quantity=-2
@@ -339,9 +447,12 @@ class TestSimpleInventoryCoordinator:
 
         # Auto add quantity should be set to 0 (max of 0 and -2)
         item = coordinator.get_item("kitchen", "milk")
+        assert item is not None
         assert item["auto_add_to_list_quantity"] == 0
 
-    async def test_remove_item(self, loaded_coordinator):
+    async def test_remove_item(
+        self: Self, loaded_coordinator: SimpleInventoryCoordinator
+    ) -> None:
         """Test removing an item."""
         # Verify item exists
         assert loaded_coordinator.get_item("kitchen", "milk") is not None
@@ -361,10 +472,13 @@ class TestSimpleInventoryCoordinator:
         result = loaded_coordinator.remove_item("kitchen", "")
         assert result is False
 
-    async def test_increment_item(self, loaded_coordinator):
+    async def test_increment_item(
+        self: Self, loaded_coordinator: SimpleInventoryCoordinator
+    ) -> None:
         """Test incrementing item quantity."""
         # Initial quantity is 2
         initial_item = loaded_coordinator.get_item("kitchen", "milk")
+        assert initial_item is not None
         assert initial_item["quantity"] == 2
 
         # Increment by default (1)
@@ -373,12 +487,14 @@ class TestSimpleInventoryCoordinator:
 
         # Verify quantity was incremented
         updated_item = loaded_coordinator.get_item("kitchen", "milk")
+        assert updated_item is not None
         assert updated_item["quantity"] == 3
 
         # Increment by specific amount
         result = loaded_coordinator.increment_item("kitchen", "milk", 2)
         assert result is True
         updated_item = loaded_coordinator.get_item("kitchen", "milk")
+        assert updated_item is not None
         assert updated_item["quantity"] == 5
 
         # Test incrementing non-existent item
@@ -393,10 +509,13 @@ class TestSimpleInventoryCoordinator:
         result = loaded_coordinator.increment_item("kitchen", "milk", -1)
         assert result is False
 
-    async def test_decrement_item(self, loaded_coordinator):
+    async def test_decrement_item(
+        self: Self, loaded_coordinator: SimpleInventoryCoordinator
+    ) -> None:
         """Test decrementing item quantity."""
         # Initial quantity is 2
         initial_item = loaded_coordinator.get_item("kitchen", "milk")
+        assert initial_item is not None
         assert initial_item["quantity"] == 2
 
         # Decrement by default (1)
@@ -405,18 +524,21 @@ class TestSimpleInventoryCoordinator:
 
         # Verify quantity was decremented
         updated_item = loaded_coordinator.get_item("kitchen", "milk")
+        assert updated_item is not None
         assert updated_item["quantity"] == 1
 
         # Decrement by specific amount
         result = loaded_coordinator.decrement_item("kitchen", "milk", 1)
         assert result is True
         updated_item = loaded_coordinator.get_item("kitchen", "milk")
+        assert updated_item is not None
         assert updated_item["quantity"] == 0
 
         # Test decrementing below 0 (should stay at 0)
         result = loaded_coordinator.decrement_item("kitchen", "milk", 5)
         assert result is True
         updated_item = loaded_coordinator.get_item("kitchen", "milk")
+        assert updated_item is not None
         assert updated_item["quantity"] == 0
 
         # Test decrementing non-existent item
@@ -433,8 +555,10 @@ class TestSimpleInventoryCoordinator:
 
     @patch("datetime.datetime")
     async def test_get_items_expiring_soon(
-        self, mock_datetime, loaded_coordinator
-    ):
+        self: Self,
+        mock_datetime: MagicMock,
+        loaded_coordinator: SimpleInventoryCoordinator,
+    ) -> None:
         """Test getting items expiring soon."""
         # Set up a fixed current date for testing
         fixed_date = datetime(2024, 6, 15)
@@ -505,7 +629,8 @@ class TestSimpleInventoryCoordinator:
                                               }, days={item['days_until_expiry']}"
             )
 
-        # Should include milk and yogurt (within 7 days), but not cheese (beyond threshold) or bread (no date)
+        # Should include milk and yogurt (within 7 days), but not cheese
+        # (beyond threshold) or bread (no date)
         assert (
             len(expiring_items) == 2
         ), f"Expected 2 items but found {
@@ -531,7 +656,9 @@ class TestSimpleInventoryCoordinator:
         ), f"Expected 5 days but got {
             expiring_items[1]['days_until_expiry']}"
 
-    async def test_async_add_listener(self, coordinator):
+    async def test_async_add_listener(
+        self: Self, coordinator: SimpleInventoryCoordinator
+    ) -> None:
         """Test adding a listener."""
         listener = MagicMock()
 
@@ -543,7 +670,9 @@ class TestSimpleInventoryCoordinator:
 
         assert listener not in coordinator._listeners
 
-    async def test_notify_listeners(self, coordinator):
+    async def test_notify_listeners(
+        self: Self, coordinator: SimpleInventoryCoordinator
+    ) -> None:
         """Test notifying listeners."""
         listener1 = MagicMock()
         listener2 = MagicMock()
@@ -556,7 +685,9 @@ class TestSimpleInventoryCoordinator:
         listener1.assert_called_once()
         listener2.assert_called_once()
 
-    async def test_get_inventory_statistics(self, loaded_coordinator):
+    async def test_get_inventory_statistics(
+        self: Self, loaded_coordinator: SimpleInventoryCoordinator
+    ) -> None:
         """Test getting inventory statistics."""
         loaded_coordinator._data["inventories"]["kitchen"]["items"][
             "yogurt"
@@ -580,30 +711,32 @@ class TestSimpleInventoryCoordinator:
             "todo_list": "",
         }
 
-        loaded_coordinator.get_items_expiring_soon = MagicMock(
+        with patch.object(
+            loaded_coordinator,
+            "get_items_expiring_soon",
             return_value=[
                 {"name": "yogurt", "days_until_expiry": 1},
                 {"name": "milk", "days_until_expiry": 5},
-            ]
-        )
+            ],
+        ):
 
-        stats = loaded_coordinator.get_inventory_statistics("kitchen")
+            stats = loaded_coordinator.get_inventory_statistics("kitchen")
 
-        # Verify statistics
-        assert stats["total_items"] == 4  # milk, bread, yogurt, rice
-        assert stats["total_quantity"] == 9  # 2 + 1 + 1 + 5
+            # Verify statistics
+            assert stats["total_items"] == 4  # milk, bread, yogurt, rice
+            assert stats["total_quantity"] == 9  # 2 + 1 + 1 + 5
 
-        # Verify categories
-        assert "dairy" in stats["categories"]
-        assert stats["categories"]["dairy"] == 2  # milk, yogurt
-        assert "bakery" in stats["categories"]
-        assert stats["categories"]["bakery"] == 1  # bread
-        assert "grains" in stats["categories"]
-        assert stats["categories"]["grains"] == 1  # rice
+            # Verify categories
+            assert "dairy" in stats["categories"]
+            assert stats["categories"]["dairy"] == 2  # milk, yogurt
+            assert "bakery" in stats["categories"]
+            assert stats["categories"]["bakery"] == 1  # bread
+            assert "grains" in stats["categories"]
+            assert stats["categories"]["grains"] == 1  # rice
 
-        # Verify below threshold
-        assert len(stats["below_threshold"]) == 1  # yogurt
-        assert stats["below_threshold"][0]["name"] == "yogurt"
+            # Verify below threshold
+            assert len(stats["below_threshold"]) == 1  # yogurt
+            assert stats["below_threshold"][0]["name"] == "yogurt"
 
-        # Verify expiring items
-        assert len(stats["expiring_items"]) == 2  # milk, yogurt
+            # Verify expiring items
+            assert len(stats["expiring_items"]) == 2  # milk, yogurt
