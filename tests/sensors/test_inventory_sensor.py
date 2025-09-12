@@ -4,11 +4,9 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from homeassistant.core import HomeAssistant
+from typing_extensions import Self
 
 from custom_components.simple_inventory.const import DOMAIN
-from custom_components.simple_inventory.coordinator import (
-    SimpleInventoryCoordinator,
-)
 from custom_components.simple_inventory.sensors import InventorySensor
 
 
@@ -19,7 +17,7 @@ class TestInventorySensor:
     def inventory_sensor(
         self,
         hass: HomeAssistant,
-        mock_sensor_coordinator: SimpleInventoryCoordinator,
+        mock_sensor_coordinator: MagicMock,
     ) -> InventorySensor:
         """Create an inventory sensor."""
         mock_sensor_coordinator.get_inventory_statistics.return_value = {
@@ -47,36 +45,48 @@ class TestInventorySensor:
         assert inventory_sensor._entry_id == "kitchen_123"
 
     @pytest.mark.asyncio
-    async def test_async_added_to_hass(self, inventory_sensor, hass):
+    async def test_async_added_to_hass(
+        self: Self, inventory_sensor: InventorySensor, hass: MagicMock
+    ) -> None:
         """Test sensor registration with Home Assistant."""
-        inventory_sensor.async_on_remove = MagicMock()
+        with patch.object(inventory_sensor, "async_on_remove"):
+            await inventory_sensor.async_added_to_hass()
 
-        await inventory_sensor.async_added_to_hass()
-        assert hass.bus.async_listen.call_count == 2
-        hass.bus.async_listen.assert_any_call(
-            f"{DOMAIN}_updated_{inventory_sensor._entry_id}",
-            inventory_sensor._handle_update,
-        )
-        hass.bus.async_listen.assert_any_call(
-            f"{DOMAIN}_updated", inventory_sensor._handle_update
-        )
+            assert hass.bus.async_listen.call_count == 2
+            hass.bus.async_listen.assert_any_call(
+                f"{DOMAIN}_updated_{inventory_sensor._entry_id}",
+                inventory_sensor._handle_update,
+            )
+            hass.bus.async_listen.assert_any_call(
+                f"{DOMAIN}_updated", inventory_sensor._handle_update
+            )
 
-    def test_handle_update(self, inventory_sensor):
+    def test_handle_update(
+        self: Self, inventory_sensor: InventorySensor
+    ) -> None:
         """Test inventory update handling."""
-        inventory_sensor._update_data = MagicMock()
-        inventory_sensor.async_write_ha_state = MagicMock()
-        event = MagicMock()
-        inventory_sensor._handle_update(event)
+        with (
+            patch.object(inventory_sensor, "_update_data") as mock_update_data,
+            patch.object(
+                inventory_sensor, "async_write_ha_state"
+            ) as mock_write_state,
+        ):
 
-        inventory_sensor._update_data.assert_called_once()
-        inventory_sensor.async_write_ha_state.assert_called_once()
+            event = MagicMock()
+            inventory_sensor._handle_update(event)
+
+            mock_update_data.assert_called_once()
+            mock_write_state.assert_called_once()
 
     def test_update_data_comprehensive(
-        self, inventory_sensor, sample_inventory_data
-    ):
+        self: Self,
+        inventory_sensor: InventorySensor,
+        sample_inventory_data: dict,
+        mock_sensor_coordinator: MagicMock,
+    ) -> None:
         """Test comprehensive data update."""
         kitchen_items = sample_inventory_data["kitchen"]["items"]
-        inventory_sensor.coordinator.get_all_items.return_value = kitchen_items
+        mock_sensor_coordinator.get_all_items.return_value = kitchen_items
 
         mock_stats = {
             "total_quantity": 4,  # 2 + 1 + 1 from sample data
@@ -96,7 +106,7 @@ class TestInventorySensor:
                 },
             ],
         }
-        inventory_sensor.coordinator.get_inventory_statistics.return_value = (
+        mock_sensor_coordinator.get_inventory_statistics.return_value = (
             mock_stats
         )
 
@@ -121,10 +131,14 @@ class TestInventorySensor:
         assert attributes["total_quantity"] == 4
         assert attributes["expiring_soon"] == 2
 
-    def test_update_data_empty_inventory(self, inventory_sensor):
+    def test_update_data_empty_inventory(
+        self: Self,
+        inventory_sensor: InventorySensor,
+        mock_sensor_coordinator: MagicMock,
+    ) -> None:
         """Test data update with empty inventory."""
-        inventory_sensor.coordinator.get_all_items.return_value = {}
-        inventory_sensor.coordinator.get_inventory_statistics.return_value = {
+        mock_sensor_coordinator.get_all_items.return_value = {}
+        mock_sensor_coordinator.get_inventory_statistics.return_value = {
             "total_quantity": 0,
             "total_items": 0,
             "categories": [],
@@ -142,23 +156,27 @@ class TestInventorySensor:
         assert attributes["total_quantity"] == 0
         assert attributes["expiring_soon"] == 0
 
-    def test_coordinator_interaction(self, inventory_sensor):
+    def test_coordinator_interaction(
+        self: Self,
+        inventory_sensor: InventorySensor,
+        mock_sensor_coordinator: MagicMock,
+    ) -> None:
         """Test proper interaction with coordinator."""
-        inventory_sensor.coordinator.get_all_items.reset_mock()
-        inventory_sensor.coordinator.get_inventory_statistics.reset_mock()
+        mock_sensor_coordinator.get_all_items.reset_mock()
+        mock_sensor_coordinator.get_inventory_statistics.reset_mock()
 
         inventory_sensor._update_data()
 
-        inventory_sensor.coordinator.get_all_items.assert_called_once_with(
+        mock_sensor_coordinator.get_all_items.assert_called_once_with(
             "kitchen_123"
         )
-        inventory_sensor.coordinator.get_inventory_statistics.assert_called_once_with(
+        mock_sensor_coordinator.get_inventory_statistics.assert_called_once_with(
             "kitchen_123"
         )
 
     def test_update_data_called_during_init(
-        self, hass, mock_sensor_coordinator
-    ):
+        self: Self, hass: HomeAssistant, mock_sensor_coordinator: MagicMock
+    ) -> None:
         """Test that _update_data is called during initialization."""
         mock_sensor_coordinator.get_inventory_statistics.return_value = {
             "total_quantity": 0,
@@ -184,8 +202,12 @@ class TestInventorySensor:
         ],
     )
     def test_dynamic_sensor_names(
-        self, hass, mock_sensor_coordinator, inventory_name, expected_attr_name
-    ):
+        self: Self,
+        hass: HomeAssistant,
+        mock_sensor_coordinator: MagicMock,
+        inventory_name: str,
+        expected_attr_name: str,
+    ) -> None:
         """Test sensor name generation with different inventory names."""
         mock_sensor_coordinator.get_inventory_statistics.return_value = {
             "total_quantity": 0,

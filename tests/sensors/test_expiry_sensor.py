@@ -69,7 +69,8 @@ class TestExpiryNotificationSensor:
             ) as mock_write_state,
         ):
 
-            expiry_sensor._handle_update(None)
+            mock_event = MagicMock()
+            expiry_sensor._handle_update(mock_event)
 
             mock_update_data.assert_called_once()
             mock_write_state.assert_called_once()
@@ -119,8 +120,8 @@ class TestExpiryNotificationSensor:
             },
         ]
 
-        expiry_sensor.coordinator.get_items_expiring_soon.side_effect = None
-        expiry_sensor.coordinator.get_items_expiring_soon.return_value = (
+        mock_sensor_coordinator.get_items_expiring_soon.side_effect = None
+        mock_sensor_coordinator.get_items_expiring_soon.return_value = (
             test_items
         )
         expiry_sensor._update_data()
@@ -148,11 +149,13 @@ class TestExpiryNotificationSensor:
         assert expiry_sensor._attr_icon == "mdi:calendar-remove"
 
     def test_update_data_no_items(
-        self: Self, expiry_sensor: ExpiryNotificationSensor
+        self: Self,
+        expiry_sensor: ExpiryNotificationSensor,
+        mock_sensor_coordinator: MagicMock,
     ) -> None:
         """Test data update with no expiring items."""
-        expiry_sensor.coordinator.get_items_expiring_soon.side_effect = None
-        expiry_sensor.coordinator.get_items_expiring_soon.return_value = []
+        mock_sensor_coordinator.get_items_expiring_soon.side_effect = None
+        mock_sensor_coordinator.get_items_expiring_soon.return_value = []
         expiry_sensor._update_data()
 
         assert expiry_sensor._attr_native_value == 0
@@ -163,7 +166,9 @@ class TestExpiryNotificationSensor:
         assert len(attributes["expired_items"]) == 0
 
     def test_update_data_only_expiring(
-        self: Self, expiry_sensor: ExpiryNotificationSensor
+        self: Self,
+        expiry_sensor: ExpiryNotificationSensor,
+        mock_sensor_coordinator: MagicMock,
     ) -> None:
         """Test data update with only expiring items (no expired)."""
         test_items = [
@@ -177,8 +182,8 @@ class TestExpiryNotificationSensor:
             }
         ]
 
-        expiry_sensor.coordinator.get_items_expiring_soon.side_effect = None
-        expiry_sensor.coordinator.get_items_expiring_soon.return_value = (
+        mock_sensor_coordinator.get_items_expiring_soon.side_effect = None
+        mock_sensor_coordinator.get_items_expiring_soon.return_value = (
             test_items
         )
         expiry_sensor._update_data()
@@ -191,11 +196,13 @@ class TestExpiryNotificationSensor:
         assert len(attributes["expired_items"]) == 0
 
     def test_coordinator_method_called_with_inventory_id(
-        self: Self, expiry_sensor: ExpiryNotificationSensor
+        self: Self,
+        expiry_sensor: ExpiryNotificationSensor,
+        mock_sensor_coordinator: MagicMock,
     ) -> None:
         """Test that coordinator method is called with correct inventory ID."""
         expiry_sensor._update_data()
 
-        expiry_sensor.coordinator.get_items_expiring_soon.assert_called_once_with(
+        mock_sensor_coordinator.get_items_expiring_soon.assert_called_once_with(
             "kitchen_inventory"
         )

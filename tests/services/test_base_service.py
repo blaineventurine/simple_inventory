@@ -1,15 +1,25 @@
 """Tests for BaseServiceHandler."""
 
 import logging
+from typing import cast
 from unittest.mock import MagicMock
 
 import pytest
+from homeassistant.core import HomeAssistant
+from typing_extensions import Self
+
+from custom_components.simple_inventory.services.base_service import (
+    BaseServiceHandler,
+)
+from custom_components.simple_inventory.types import AddItemServiceData
 
 
 class TestBaseServiceHandler:
     """Test BaseServiceHandler class."""
 
-    def test_init(self, hass, mock_coordinator):
+    def test_init(
+        self: Self, hass: HomeAssistant, mock_coordinator: MagicMock
+    ) -> None:
         """Test BaseServiceHandler initialization."""
         from custom_components.simple_inventory.services.base_service import (
             BaseServiceHandler,
@@ -22,8 +32,11 @@ class TestBaseServiceHandler:
 
     @pytest.mark.asyncio
     async def test_save_and_log_success(
-        self, base_service_handler, mock_coordinator, caplog
-    ):
+        self: Self,
+        base_service_handler: BaseServiceHandler,
+        mock_coordinator: MagicMock,
+        caplog: pytest.LogCaptureFixture,
+    ) -> None:
         """Test saving data and logging success."""
         with caplog.at_level(logging.INFO):
             await base_service_handler._save_and_log_success(
@@ -37,8 +50,11 @@ class TestBaseServiceHandler:
 
     @pytest.mark.asyncio
     async def test_save_and_log_success_with_special_characters(
-        self, base_service_handler, mock_coordinator, caplog
-    ):
+        self: Self,
+        base_service_handler: BaseServiceHandler,
+        mock_coordinator: MagicMock,
+        caplog: pytest.LogCaptureFixture,
+    ) -> None:
         """Test saving and logging with special characters in names."""
         with caplog.at_level(logging.INFO):
             await base_service_handler._save_and_log_success(
@@ -52,8 +68,10 @@ class TestBaseServiceHandler:
 
     @pytest.mark.asyncio
     async def test_save_and_log_success_coordinator_exception(
-        self, base_service_handler, mock_coordinator
-    ):
+        self: Self,
+        base_service_handler: BaseServiceHandler,
+        mock_coordinator: MagicMock,
+    ) -> None:
         """Test handling coordinator exception during save."""
         mock_coordinator.async_save_data.side_effect = Exception("Save failed")
 
@@ -64,7 +82,11 @@ class TestBaseServiceHandler:
 
         mock_coordinator.async_save_data.assert_called_once_with("kitchen")
 
-    def test_log_item_not_found(self, base_service_handler, caplog):
+    def test_log_item_not_found(
+        self: Self,
+        base_service_handler: BaseServiceHandler,
+        caplog: pytest.LogCaptureFixture,
+    ) -> None:
         """Test logging when item is not found."""
         with caplog.at_level(logging.WARNING):
             base_service_handler._log_item_not_found(
@@ -77,7 +99,11 @@ class TestBaseServiceHandler:
         )
         assert caplog.records[0].levelname == "WARNING"
 
-    def test_log_operation_failed(self, base_service_handler, caplog):
+    def test_log_operation_failed(
+        self: Self,
+        base_service_handler: BaseServiceHandler,
+        caplog: pytest.LogCaptureFixture,
+    ) -> None:
         """Test logging when operation fails."""
         with caplog.at_level(logging.ERROR):
             base_service_handler._log_operation_failed(
@@ -90,15 +116,20 @@ class TestBaseServiceHandler:
         )
         assert caplog.records[0].levelname == "ERROR"
 
-    def test_extract_item_kwargs_basic(self, base_service_handler):
+    def test_extract_item_kwargs_basic(
+        self: Self, base_service_handler: BaseServiceHandler
+    ) -> None:
         """Test extracting item kwargs with basic data."""
-        data = {
-            "inventory_id": "kitchen",
-            "name": "milk",
-            "quantity": 2,
-            "unit": "liters",
-            "category": "dairy",
-        }
+        data = cast(
+            AddItemServiceData,
+            {
+                "inventory_id": "kitchen",
+                "name": "milk",
+                "quantity": 2,
+                "unit": "liters",
+                "category": "dairy",
+            },
+        )
         exclude_keys = ["inventory_id", "name"]
 
         result = base_service_handler._extract_item_kwargs(data, exclude_keys)
@@ -106,18 +137,27 @@ class TestBaseServiceHandler:
         expected = {"quantity": 2, "unit": "liters", "category": "dairy"}
         assert result == expected
 
-    def test_extract_item_kwargs_empty_exclude(self, base_service_handler):
+    def test_extract_item_kwargs_empty_exclude(
+        self: Self, base_service_handler: BaseServiceHandler
+    ) -> None:
         """Test extracting kwargs with empty exclude list."""
-        data = {"inventory_id": "kitchen", "name": "milk", "quantity": 2}
-        exclude_keys = []
+        data = cast(
+            AddItemServiceData,
+            {"inventory_id": "kitchen", "name": "milk", "quantity": 2},
+        )
+        exclude_keys: list[str] = []
 
         result = base_service_handler._extract_item_kwargs(data, exclude_keys)
 
         assert result == data
 
-    def test_extract_item_kwargs_all_excluded(self, base_service_handler):
+    def test_extract_item_kwargs_all_excluded(
+        self: Self, base_service_handler: BaseServiceHandler
+    ) -> None:
         """Test extracting kwargs when all keys are excluded."""
-        data = {"inventory_id": "kitchen", "name": "milk"}
+        data = cast(
+            AddItemServiceData, {"inventory_id": "kitchen", "name": "milk"}
+        )
         exclude_keys = ["inventory_id", "name"]
 
         result = base_service_handler._extract_item_kwargs(data, exclude_keys)
@@ -125,8 +165,10 @@ class TestBaseServiceHandler:
         assert result == {}
 
     def test_get_inventory_and_name_basic(
-        self, base_service_handler, basic_service_call
-    ):
+        self: Self,
+        base_service_handler: BaseServiceHandler,
+        basic_service_call: MagicMock,
+    ) -> None:
         """Test extracting inventory ID and name from service call."""
         inventory_id, name = base_service_handler._get_inventory_and_name(
             basic_service_call
@@ -136,8 +178,8 @@ class TestBaseServiceHandler:
         assert name == "milk"
 
     def test_get_inventory_and_name_missing_inventory_id(
-        self, base_service_handler
-    ):
+        self: Self, base_service_handler: BaseServiceHandler
+    ) -> None:
         """Test extracting when inventory_id is missing."""
         call = MagicMock()
         call.data = {"name": "milk"}
@@ -145,7 +187,9 @@ class TestBaseServiceHandler:
         with pytest.raises(KeyError, match="inventory_id"):
             base_service_handler._get_inventory_and_name(call)
 
-    def test_get_inventory_and_name_missing_name(self, base_service_handler):
+    def test_get_inventory_and_name_missing_name(
+        self: Self, base_service_handler: BaseServiceHandler
+    ) -> None:
         """Test extracting when name is missing."""
         call = MagicMock()
         call.data = {"inventory_id": "kitchen"}
@@ -155,8 +199,10 @@ class TestBaseServiceHandler:
 
     @pytest.mark.asyncio
     async def test_concurrent_save_operations(
-        self, base_service_handler, mock_coordinator
-    ):
+        self: Self,
+        base_service_handler: BaseServiceHandler,
+        mock_coordinator: MagicMock,
+    ) -> None:
         """Test concurrent save operations."""
         import asyncio
 
@@ -173,14 +219,16 @@ class TestBaseServiceHandler:
         # Verify all coordinator calls were made
         assert mock_coordinator.async_save_data.call_count == 3
 
-    def test_inheritance_capability(self, hass, mock_coordinator):
+    def test_inheritance_capability(
+        self: Self, hass: HomeAssistant, mock_coordinator: MagicMock
+    ) -> None:
         """Test that BaseServiceHandler can be inherited properly."""
         from custom_components.simple_inventory.services.base_service import (
             BaseServiceHandler,
         )
 
         class TestChildHandler(BaseServiceHandler):
-            def test_method(self):
+            def test_method(self: Self) -> str:
                 return "child method"
 
         child_handler = TestChildHandler(hass, mock_coordinator)
