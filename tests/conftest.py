@@ -44,9 +44,7 @@ def hass() -> HomeAssistant:
     entity_registry.entities = {}
     hass_mock.helpers = MagicMock()
     hass_mock.helpers.entity_registry = MagicMock()
-    hass_mock.helpers.entity_registry.async_get = AsyncMock(
-        return_value=entity_registry
-    )
+    hass_mock.helpers.entity_registry.async_get = AsyncMock(return_value=entity_registry)
     hass_mock.helpers.utcnow = MagicMock(return_value=datetime.now())
 
     hass_mock.config_entries = MagicMock()
@@ -70,9 +68,7 @@ def mock_coordinator() -> SimpleInventoryCoordinator:
     coordinator.add_item = MagicMock()
     coordinator.remove_item = MagicMock(return_value=True)
     coordinator.update_item = MagicMock(return_value=True)
-    coordinator.get_item = MagicMock(
-        return_value={"quantity": 5, "auto_add_to_list_quantity": 2}
-    )
+    coordinator.get_item = MagicMock(return_value={"quantity": 5, "auto_add_to_list_quantity": 2})
     coordinator.get_all_items = MagicMock(return_value={})
 
     # Quantity operations
@@ -220,9 +216,7 @@ def sample_inventory_data() -> dict[str, Any]:
                     "auto_add_to_list_quantity": 1,
                     "category": "dairy",
                     "expiry_alert_days": 7,
-                    "expiry_date": (today + timedelta(days=5)).strftime(
-                        "%Y-%m-%d"
-                    ),
+                    "expiry_date": (today + timedelta(days=5)).strftime("%Y-%m-%d"),
                     "quantity": 2,
                     "todo_list": "todo.shopping",
                     "unit": "liters",
@@ -232,9 +226,7 @@ def sample_inventory_data() -> dict[str, Any]:
                     "auto_add_to_list_quantity": None,
                     "category": "bakery",
                     "expiry_alert_days": None,
-                    "expiry_date": (today + timedelta(days=2)).strftime(
-                        "%Y-%m-%d"
-                    ),
+                    "expiry_date": (today + timedelta(days=2)).strftime("%Y-%m-%d"),
                     "quantity": 1,
                     "todo_list": "",
                     "unit": "loaf",
@@ -244,9 +236,7 @@ def sample_inventory_data() -> dict[str, Any]:
                     "auto_add_to_list_quantity": None,
                     "category": "dairy",
                     "expiry_alert_days": 7,
-                    "expiry_date": (today - timedelta(days=1)).strftime(
-                        "%Y-%m-%d"
-                    ),
+                    "expiry_date": (today - timedelta(days=1)).strftime("%Y-%m-%d"),
                     "quantity": 1,
                     "todo_list": "",
                     "unit": "cup",
@@ -260,9 +250,7 @@ def sample_inventory_data() -> dict[str, Any]:
                     "auto_add_to_list_quantity": None,
                     "category": "grains",
                     "expiry_alert_days": None,
-                    "expiry_date": (today + timedelta(days=365)).strftime(
-                        "%Y-%m-%d"
-                    ),
+                    "expiry_date": (today + timedelta(days=365)).strftime("%Y-%m-%d"),
                     "quantity": 5,
                     "todo_list": "",
                     "unit": "kg",
@@ -295,9 +283,9 @@ def mock_sensor_coordinator(sample_inventory_data: dict[str, Any]) -> MagicMock:
     """Create a mock coordinator specifically for sensor testing."""
     coordinator = MagicMock()
     coordinator.get_data.return_value = {"inventories": sample_inventory_data}
-    coordinator.get_all_items.return_value = sample_inventory_data.get(
-        "kitchen", {}
-    ).get("items", {})
+    coordinator.get_all_items.return_value = sample_inventory_data.get("kitchen", {}).get(
+        "items", {}
+    )
     coordinator.last_update_success = True
     coordinator.last_update_time = datetime.now()
     coordinator.get_inventory_statistics = MagicMock(
@@ -319,9 +307,7 @@ def mock_sensor_coordinator(sample_inventory_data: dict[str, Any]) -> MagicMock:
 
         inventories_to_check = {}
         if inventory_id:
-            inventories_to_check = {
-                inventory_id: sample_inventory_data.get(inventory_id, {})
-            }
+            inventories_to_check = {inventory_id: sample_inventory_data.get(inventory_id, {})}
         else:
             inventories_to_check = sample_inventory_data
 
@@ -329,9 +315,7 @@ def mock_sensor_coordinator(sample_inventory_data: dict[str, Any]) -> MagicMock:
             for item_name, item_data in inventory.get("items", {}).items():
                 expiry_date_str = item_data.get("expiry_date", "")
                 if expiry_date_str:
-                    expiry_date = datetime.strptime(
-                        expiry_date_str, "%Y-%m-%d"
-                    ).date()
+                    expiry_date = datetime.strptime(expiry_date_str, "%Y-%m-%d").date()
                     days_until_expiry = (expiry_date - today).days
                     item_threshold = item_data.get("expiry_alert_days", 7)
 
@@ -348,9 +332,7 @@ def mock_sensor_coordinator(sample_inventory_data: dict[str, Any]) -> MagicMock:
                         )
         return items
 
-    coordinator.get_items_expiring_soon = MagicMock(
-        side_effect=mock_get_items_expiring_soon
-    )
+    coordinator.get_items_expiring_soon = MagicMock(side_effect=mock_get_items_expiring_soon)
     coordinator.async_add_listener = MagicMock(return_value=MagicMock())
 
     return coordinator
@@ -404,13 +386,9 @@ def full_service_setup(
         "hass": hass,
         "coordinator": mock_coordinator,
         "todo_manager": mock_todo_manager,
-        "service_handler": ServiceHandler(
-            hass, mock_coordinator, mock_todo_manager
-        ),
+        "service_handler": ServiceHandler(hass, mock_coordinator, mock_todo_manager),
         "inventory_service": InventoryService(hass, mock_coordinator),
-        "quantity_service": QuantityService(
-            hass, mock_coordinator, mock_todo_manager
-        ),
+        "quantity_service": QuantityService(hass, mock_coordinator, mock_todo_manager),
     }
 
 
@@ -474,8 +452,6 @@ def hass_with_expiry_sensor(
     hass.config_entries.async_entries.return_value = mock_config_entries
     hass.states.async_entity_ids.return_value = ["sensor.items_expiring_soon"]
     hass.states.get.return_value = mock_expiry_sensor_state
-    hass.helpers.entity_registry.async_get.return_value = (
-        mock_entity_registry_with_expiry_sensor
-    )
+    hass.helpers.entity_registry.async_get.return_value = mock_entity_registry_with_expiry_sensor
 
     return hass

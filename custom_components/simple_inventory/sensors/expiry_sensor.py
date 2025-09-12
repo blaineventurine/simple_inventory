@@ -40,20 +40,14 @@ class ExpiryNotificationSensor(SensorEntity):
     async def async_added_to_hass(self) -> None:
         """Register callbacks for inventory updates."""
         self.async_on_remove(
-            self.hass.bus.async_listen(
-                f"{DOMAIN}_updated_{self.inventory_id}", self._handle_update
-            )
+            self.hass.bus.async_listen(f"{DOMAIN}_updated_{self.inventory_id}", self._handle_update)
         )
 
-        self.async_on_remove(
-            self.hass.bus.async_listen(f"{DOMAIN}_updated", self._handle_update)
-        )
+        self.async_on_remove(self.hass.bus.async_listen(f"{DOMAIN}_updated", self._handle_update))
 
         if hasattr(self.coordinator, "async_add_listener"):
             self.async_on_remove(
-                self.coordinator.async_add_listener(
-                    self._handle_coordinator_update
-                )
+                self.coordinator.async_add_listener(self._handle_coordinator_update)
             )
 
     @callback
@@ -72,12 +66,8 @@ class ExpiryNotificationSensor(SensorEntity):
         """Update sensor data for this specific inventory."""
         all_items = self.coordinator.get_items_expiring_soon(self.inventory_id)
 
-        expired_items = [
-            item for item in all_items if item["days_until_expiry"] < 0
-        ]
-        expiring_items = [
-            item for item in all_items if item["days_until_expiry"] >= 0
-        ]
+        expired_items = [item for item in all_items if item["days_until_expiry"] < 0]
+        expiring_items = [item for item in all_items if item["days_until_expiry"] >= 0]
 
         for item in all_items:
             item["inventory"] = self.inventory_name

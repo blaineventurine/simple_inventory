@@ -53,9 +53,7 @@ class TestQuantityService:
         """Test successful item increment."""
         await quantity_service.async_increment_item(quantity_service_call)
 
-        mock_coordinator.increment_item.assert_called_once_with(
-            "kitchen", "milk", 2
-        )
+        mock_coordinator.increment_item.assert_called_once_with("kitchen", "milk", 2)
         mock_coordinator.async_save_data.assert_called_once_with("kitchen")
 
     @pytest.mark.asyncio
@@ -68,9 +66,7 @@ class TestQuantityService:
         """Test increment with default amount (1)."""
         await quantity_service.async_increment_item(basic_service_call)
 
-        mock_coordinator.increment_item.assert_called_once_with(
-            "kitchen", "milk", 1
-        )
+        mock_coordinator.increment_item.assert_called_once_with("kitchen", "milk", 1)
         mock_coordinator.async_save_data.assert_called_once_with("kitchen")
 
     @pytest.mark.asyncio
@@ -87,15 +83,10 @@ class TestQuantityService:
         with caplog.at_level(logging.WARNING):
             await quantity_service.async_increment_item(quantity_service_call)
 
-        mock_coordinator.increment_item.assert_called_once_with(
-            "kitchen", "milk", 2
-        )
+        mock_coordinator.increment_item.assert_called_once_with("kitchen", "milk", 2)
         mock_coordinator.async_save_data.assert_not_called()
 
-        assert (
-            "Increment item failed - Item not found: milk in inventory: kitchen"
-            in caplog.text
-        )
+        assert "Increment item failed - Item not found: milk in inventory: kitchen" in caplog.text
 
     @pytest.mark.asyncio
     async def test_async_increment_item_coordinator_exception(
@@ -106,17 +97,12 @@ class TestQuantityService:
         caplog: pytest.LogCaptureFixture,
     ) -> None:
         """Test handling coordinator exception during increment."""
-        mock_coordinator.increment_item.side_effect = Exception(
-            "Database error"
-        )
+        mock_coordinator.increment_item.side_effect = Exception("Database error")
 
         with caplog.at_level(logging.ERROR):
             await quantity_service.async_increment_item(quantity_service_call)
 
-        assert (
-            "Failed to increment item milk in inventory kitchen: Database error"
-            in caplog.text
-        )
+        assert "Failed to increment item milk in inventory kitchen: Database error" in caplog.text
         mock_coordinator.async_save_data.assert_not_called()
 
     @pytest.mark.asyncio
@@ -130,14 +116,10 @@ class TestQuantityService:
         """Test successful item decrement with todo list check."""
         await quantity_service.async_decrement_item(quantity_service_call)
 
-        mock_coordinator.decrement_item.assert_called_once_with(
-            "kitchen", "milk", 2
-        )
+        mock_coordinator.decrement_item.assert_called_once_with("kitchen", "milk", 2)
         mock_coordinator.get_item.assert_called_once_with("kitchen", "milk")
         expected_item_data = {"quantity": 5, "auto_add_to_list_quantity": 2}
-        mock_todo_manager.check_and_add_item.assert_called_once_with(
-            "milk", expected_item_data
-        )
+        mock_todo_manager.check_and_add_item.assert_called_once_with("milk", expected_item_data)
         mock_coordinator.async_save_data.assert_called_once_with("kitchen")
 
     @pytest.mark.asyncio
@@ -151,9 +133,7 @@ class TestQuantityService:
         """Test decrement with default amount (1)."""
         await quantity_service.async_decrement_item(basic_service_call)
 
-        mock_coordinator.decrement_item.assert_called_once_with(
-            "kitchen", "milk", 1
-        )
+        mock_coordinator.decrement_item.assert_called_once_with("kitchen", "milk", 1)
         mock_coordinator.get_item.assert_called_once_with("kitchen", "milk")
         mock_todo_manager.check_and_add_item.assert_called_once()
 
@@ -190,18 +170,13 @@ class TestQuantityService:
         with caplog.at_level(logging.WARNING):
             await quantity_service.async_decrement_item(quantity_service_call)
 
-        mock_coordinator.decrement_item.assert_called_once_with(
-            "kitchen", "milk", 2
-        )
+        mock_coordinator.decrement_item.assert_called_once_with("kitchen", "milk", 2)
 
         mock_coordinator.get_item.assert_not_called()
         mock_todo_manager.check_and_add_item.assert_not_called()
         mock_coordinator.async_save_data.assert_not_called()
 
-        assert (
-            "Decrement item failed - Item not found: milk in inventory: kitchen"
-            in caplog.text
-        )
+        assert "Decrement item failed - Item not found: milk in inventory: kitchen" in caplog.text
 
     @pytest.mark.asyncio
     async def test_async_decrement_item_coordinator_exception(
@@ -213,17 +188,12 @@ class TestQuantityService:
         caplog: pytest.LogCaptureFixture,
     ) -> None:
         """Test handling coordinator exception during decrement."""
-        mock_coordinator.decrement_item.side_effect = Exception(
-            "Decrement failed"
-        )
+        mock_coordinator.decrement_item.side_effect = Exception("Decrement failed")
 
         with caplog.at_level(logging.ERROR):
             await quantity_service.async_decrement_item(quantity_service_call)
 
-        assert (
-            "Failed to decrement item milk in inventory kitchen: Decrement failed"
-            in caplog.text
-        )
+        assert "Failed to decrement item milk in inventory kitchen: Decrement failed" in caplog.text
 
         mock_todo_manager.check_and_add_item.assert_not_called()
         mock_coordinator.async_save_data.assert_not_called()
@@ -238,9 +208,7 @@ class TestQuantityService:
         caplog: pytest.LogCaptureFixture,
     ) -> None:
         """Test handling todo manager exception during decrement."""
-        mock_todo_manager.check_and_add_item.side_effect = Exception(
-            "Todo check failed"
-        )
+        mock_todo_manager.check_and_add_item.side_effect = Exception("Todo check failed")
 
         # The exception should be caught and logged, not propagated
         with caplog.at_level(logging.ERROR):
@@ -250,8 +218,7 @@ class TestQuantityService:
         mock_coordinator.get_item.assert_called_once()
 
         assert (
-            "Failed to decrement item milk in inventory kitchen: Todo check failed"
-            in caplog.text
+            "Failed to decrement item milk in inventory kitchen: Todo check failed" in caplog.text
         )
 
         mock_coordinator.async_save_data.assert_not_called()
@@ -276,9 +243,7 @@ class TestQuantityService:
 
         await quantity_service.async_increment_item(call)
 
-        mock_coordinator.increment_item.assert_called_once_with(
-            "kitchen", "milk", amount
-        )
+        mock_coordinator.increment_item.assert_called_once_with("kitchen", "milk", amount)
 
     @pytest.mark.asyncio
     async def test_concurrent_decrement_operations(

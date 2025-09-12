@@ -5,7 +5,5 @@ setup(
     version="0.3.3",
     packages=find_packages(),
     include_package_data=True,
-    package_data={
-        "custom_components.simple_inventory": ["translations/*.json"]
-    },
+    package_data={"custom_components.simple_inventory": ["translations/*.json"]},
 )

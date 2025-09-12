@@ -46,9 +46,7 @@ class SimpleInventoryConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
     VERSION = 1
 
-    async def async_step_user(
-        self, user_input: dict[str, Any] | None = None
-    ) -> ConfigFlowResult:
+    async def async_step_user(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
         """Handle the initial step."""
         return await self.async_step_add_inventory(user_input)
 
@@ -59,9 +57,7 @@ class SimpleInventoryConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         errors = {}
 
         if user_input is not None:
-            cleaned_name = await clean_inventory_name(
-                self.hass, user_input["name"]
-            )
+            cleaned_name = await clean_inventory_name(self.hass, user_input["name"])
 
             if await self._async_name_exists(cleaned_name):
                 errors["name"] = "name_exists"
@@ -86,15 +82,11 @@ class SimpleInventoryConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             step_id="add_inventory",
             data_schema=vol.Schema(
                 {
-                    vol.Required(
-                        "name", default=defaults.get("name", "")
-                    ): cv.string,
+                    vol.Required("name", default=defaults.get("name", "")): cv.string,
                     vol.Optional(
                         "icon", default=defaults.get("icon", DEFAULT_ICON)
                     ): selector.IconSelector(),
-                    vol.Optional(
-                        "description", default=defaults.get("description", "")
-                    ): cv.string,
+                    vol.Optional("description", default=defaults.get("description", "")): cv.string,
                 }
             ),
             errors=errors,
@@ -112,17 +104,12 @@ class SimpleInventoryConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     def _global_entry_exists(self) -> bool:
         """Check if global config entry already exists."""
         existing_entries = self._async_current_entries()
-        return any(
-            entry.data.get("entry_type") == "global"
-            for entry in existing_entries
-        )
+        return any(entry.data.get("entry_type") == "global" for entry in existing_entries)
 
     async def _async_name_exists(self, name: str) -> bool:
         """Check if inventory name already exists."""
         existing_entries = self._async_current_entries()
-        existing_names = [
-            entry.data.get("name", "").lower() for entry in existing_entries
-        ]
+        existing_names = [entry.data.get("name", "").lower() for entry in existing_entries]
         return name.lower() in existing_names
 
     @staticmethod
@@ -141,16 +128,12 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
         """Initialize options flow."""
         pass
 
-    async def async_step_init(
-        self, user_input: dict[str, Any] | None = None
-    ) -> ConfigFlowResult:
+    async def async_step_init(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
         """Manage the options."""
         errors = {}
 
         if user_input is not None:
-            cleaned_name = await clean_inventory_name(
-                self.hass, user_input["name"]
-            )
+            cleaned_name = await clean_inventory_name(self.hass, user_input["name"])
 
             if await self._async_name_exists_excluding_current(cleaned_name):
                 errors["name"] = "name_exists"
@@ -178,14 +161,10 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
             step_id="init",
             data_schema=vol.Schema(
                 {
-                    vol.Required(
-                        "name", default=self.config_entry.data.get("name", "")
-                    ): cv.string,
+                    vol.Required("name", default=self.config_entry.data.get("name", "")): cv.string,
                     vol.Optional(
                         "icon",
-                        default=self.config_entry.data.get(
-                            "icon", DEFAULT_ICON
-                        ),
+                        default=self.config_entry.data.get("icon", DEFAULT_ICON),
                     ): selector.IconSelector(),
                     vol.Optional(
                         "description",

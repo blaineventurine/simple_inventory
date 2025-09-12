@@ -30,9 +30,7 @@ class InventoryService(BaseServiceHandler):
             self.coordinator.add_item(inventory_id, **item_kwargs)
             await self._save_and_log_success(inventory_id, "Added item", name)
         except Exception as e:
-            _LOGGER.error(
-                f"Failed to add item {name} to inventory {inventory_id}: {e}"
-            )
+            _LOGGER.error(f"Failed to add item {name} to inventory {inventory_id}: {e}")
 
     async def async_remove_item(self, call: ServiceCall) -> None:
         """Remove an item from the inventory."""
@@ -42,9 +40,7 @@ class InventoryService(BaseServiceHandler):
 
         try:
             if self.coordinator.remove_item(inventory_id, name):
-                await self._save_and_log_success(
-                    inventory_id, "Removed item", name
-                )
+                await self._save_and_log_success(inventory_id, "Removed item", name)
             else:
                 self._log_item_not_found("Remove item", name, inventory_id)
         except Exception as e:
@@ -81,18 +77,14 @@ class InventoryService(BaseServiceHandler):
                 update_data[field] = data.get(field)
 
         try:
-            if self.coordinator.update_item(
-                inventory_id, old_name, new_name, **update_data
-            ):
+            if self.coordinator.update_item(inventory_id, old_name, new_name, **update_data):
                 await self._save_and_log_success(
                     inventory_id,
                     f"Updated item: {old_name} -> {new_name}",
                     new_name,
                 )
             else:
-                self._log_operation_failed(
-                    "Update item", old_name, inventory_id
-                )
+                self._log_operation_failed("Update item", old_name, inventory_id)
         except Exception as e:
             _LOGGER.error(
                 f"Failed to update item {

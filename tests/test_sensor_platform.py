@@ -78,9 +78,7 @@ class TestSensorPlatform:
 
             mock_inventory_sensor.assert_called_once_with(
                 mock_hass_with_coordinator,
-                mock_hass_with_coordinator.data["simple_inventory"][
-                    "coordinator"
-                ],
+                mock_hass_with_coordinator.data["simple_inventory"]["coordinator"],
                 "Kitchen Inventory",
                 "mdi:fridge",
                 "test_entry_123",
@@ -88,9 +86,7 @@ class TestSensorPlatform:
 
             mock_expiry_sensor.assert_called_once_with(
                 mock_hass_with_coordinator,
-                mock_hass_with_coordinator.data["simple_inventory"][
-                    "coordinator"
-                ],
+                mock_hass_with_coordinator.data["simple_inventory"]["coordinator"],
                 "test_entry_123",
                 "Kitchen Inventory",
             )
@@ -132,9 +128,7 @@ class TestSensorPlatform:
             # Verify InventorySensor was created with default values
             mock_inventory_sensor.assert_called_once_with(
                 mock_hass_with_coordinator,
-                mock_hass_with_coordinator.data["simple_inventory"][
-                    "coordinator"
-                ],
+                mock_hass_with_coordinator.data["simple_inventory"]["coordinator"],
                 "Inventory",  # Default name
                 "mdi:package-variant",  # Default icon
                 "minimal_entry_456",
@@ -143,9 +137,7 @@ class TestSensorPlatform:
             # Verify per-inventory ExpiryNotificationSensor was created
             mock_expiry_sensor.assert_called_once_with(
                 mock_hass_with_coordinator,
-                mock_hass_with_coordinator.data["simple_inventory"][
-                    "coordinator"
-                ],
+                mock_hass_with_coordinator.data["simple_inventory"]["coordinator"],
                 "minimal_entry_456",  # entry_id
                 "Inventory",  # inventory_name (default)
             )
@@ -188,9 +180,7 @@ class TestSensorPlatform:
             mock_inventory_sensor.assert_called_once()
             mock_expiry_sensor.assert_called_once_with(
                 mock_hass_with_coordinator,
-                mock_hass_with_coordinator.data["simple_inventory"][
-                    "coordinator"
-                ],
+                mock_hass_with_coordinator.data["simple_inventory"]["coordinator"],
                 "test_entry_123",  # entry_id
                 "Kitchen Inventory",  # inventory_name
             )
@@ -230,9 +220,7 @@ class TestSensorPlatform:
         entry3.options = {"expiry_threshold": 30}
 
         all_entries = [entry1, entry2, entry3]
-        mock_hass_with_coordinator.config_entries.async_entries.return_value = (
-            all_entries
-        )
+        mock_hass_with_coordinator.config_entries.async_entries.return_value = all_entries
 
         with (
             patch(
@@ -244,9 +232,7 @@ class TestSensorPlatform:
         ):
 
             # Test setup for first entry
-            await async_setup_entry(
-                mock_hass_with_coordinator, entry1, mock_add_entities
-            )
+            await async_setup_entry(mock_hass_with_coordinator, entry1, mock_add_entities)
 
             mock_expiry_sensor.assert_called_once()
 
@@ -256,9 +242,7 @@ class TestSensorPlatform:
             mock_add_entities.reset_mock()
 
             # Test setup for second entry
-            await async_setup_entry(
-                mock_hass_with_coordinator, entry2, mock_add_entities
-            )
+            await async_setup_entry(mock_hass_with_coordinator, entry2, mock_add_entities)
 
             # Should create per-inventory expiry sensor but NOT global
             mock_expiry_sensor.assert_called_once()
@@ -276,9 +260,7 @@ class TestSensorPlatform:
         mock_add_entities: MagicMock,
     ) -> None:
         """Test that coordinator is properly accessed from hass.data."""
-        expected_coordinator = mock_hass_with_coordinator.data[
-            "simple_inventory"
-        ]["coordinator"]
+        expected_coordinator = mock_hass_with_coordinator.data["simple_inventory"]["coordinator"]
 
         # Make this the first entry
         mock_hass_with_coordinator.config_entries.async_entries.return_value = [
@@ -396,9 +378,7 @@ class TestSensorPlatform:
                 ) as mock_expiry_sensor,
             ):
 
-                await async_setup_entry(
-                    mock_hass_with_coordinator, config_entry, mock_add_entities
-                )
+                await async_setup_entry(mock_hass_with_coordinator, config_entry, mock_add_entities)
 
                 inventory_call_args = mock_inventory_sensor.call_args[0]
 
@@ -438,9 +418,7 @@ class TestSensorPlatform:
             ) as mock_expiry_sensor,
         ):
 
-            await async_setup_entry(
-                mock_hass_with_coordinator, config_entry, mock_add_entities
-            )
+            await async_setup_entry(mock_hass_with_coordinator, config_entry, mock_add_entities)
 
             inventory_call_args = mock_inventory_sensor.call_args[0]
 

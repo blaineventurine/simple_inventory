@@ -90,15 +90,9 @@ class TestTodoManager:
         with patch.object(
             todo_manager.hass.services,
             "async_call",
-            new=AsyncMock(
-                return_value={
-                    "todo.shopping_list": {"items": sample_todo_items}
-                }
-            ),
+            new=AsyncMock(return_value={"todo.shopping_list": {"items": sample_todo_items}}),
         ):
-            result = await todo_manager._get_incomplete_items(
-                "todo.shopping_list"
-            )
+            result = await todo_manager._get_incomplete_items("todo.shopping_list")
 
             expected_items = [
                 {"summary": "milk", "status": "needs_action", "uid": "1"},
@@ -107,9 +101,7 @@ class TestTodoManager:
             assert result == expected_items
 
     @pytest.mark.asyncio
-    async def test_get_incomplete_items_no_entity(
-        self: Self, todo_manager: TodoManager
-    ) -> None:
+    async def test_get_incomplete_items_no_entity(self: Self, todo_manager: TodoManager) -> None:
         """Test _get_incomplete_items when entity doesn't exist."""
         with (
             patch.object(
@@ -120,9 +112,7 @@ class TestTodoManager:
             patch.object(todo_manager.hass.states, "get", return_value=None),
         ):
 
-            result = await todo_manager._get_incomplete_items(
-                "todo.nonexistent"
-            )
+            result = await todo_manager._get_incomplete_items("todo.nonexistent")
             assert result == []
 
     @pytest.mark.asyncio
@@ -134,18 +124,12 @@ class TestTodoManager:
             patch.object(
                 todo_manager,
                 "_get_incomplete_items",
-                new=AsyncMock(
-                    return_value=[{"summary": "milk", "status": "needs_action"}]
-                ),
+                new=AsyncMock(return_value=[{"summary": "milk", "status": "needs_action"}]),
             ),
-            patch.object(
-                todo_manager.hass.services, "async_call", new=AsyncMock()
-            ) as mock_call,
+            patch.object(todo_manager.hass.services, "async_call", new=AsyncMock()) as mock_call,
         ):
 
-            result = await todo_manager.check_and_add_item(
-                "bread", sample_item_data
-            )
+            result = await todo_manager.check_and_add_item("bread", sample_item_data)
 
             assert result is True
             mock_call.assert_called_with(
@@ -165,20 +149,14 @@ class TestTodoManager:
                 "_get_incomplete_items",
                 new=AsyncMock(
                     return_value=[
-                        TodoItem(
-                            summary="bread", status=TodoItemStatus.NEEDS_ACTION
-                        ),
+                        TodoItem(summary="bread", status=TodoItemStatus.NEEDS_ACTION),
                     ]
                 ),
             ),
-            patch.object(
-                todo_manager.hass.services, "async_call", new=AsyncMock()
-            ) as mock_call,
+            patch.object(todo_manager.hass.services, "async_call", new=AsyncMock()) as mock_call,
         ):
 
-            result = await todo_manager.check_and_add_item(
-                "bread", sample_item_data
-            )
+            result = await todo_manager.check_and_add_item("bread", sample_item_data)
 
             assert result is False
             mock_call.assert_not_called()
@@ -192,20 +170,12 @@ class TestTodoManager:
             patch.object(
                 todo_manager,
                 "_get_incomplete_items",
-                new=AsyncMock(
-                    return_value=[
-                        {"summary": "BREAD", "status": "needs_action"}
-                    ]
-                ),
+                new=AsyncMock(return_value=[{"summary": "BREAD", "status": "needs_action"}]),
             ),
-            patch.object(
-                todo_manager.hass.services, "async_call", new=AsyncMock()
-            ) as mock_call,
+            patch.object(todo_manager.hass.services, "async_call", new=AsyncMock()) as mock_call,
         ):
 
-            result = await todo_manager.check_and_add_item(
-                "bread", sample_item_data
-            )
+            result = await todo_manager.check_and_add_item("bread", sample_item_data)
 
             assert result is False
             mock_call.assert_not_called()
@@ -258,12 +228,8 @@ class TestTodoManager:
         expected: bool,
     ) -> None:
         """Test check_and_add_item when conditions are not met."""
-        with patch.object(
-            todo_manager.hass.services, "async_call", new=AsyncMock()
-        ) as mock_call:
-            result = await todo_manager.check_and_add_item(
-                "Buy bread", item_data
-            )
+        with patch.object(todo_manager.hass.services, "async_call", new=AsyncMock()) as mock_call:
+            result = await todo_manager.check_and_add_item("Buy bread", item_data)
             assert result == expected
             mock_call.assert_not_called()
 
@@ -285,9 +251,7 @@ class TestTodoManager:
             ),
         ):
 
-            result = await todo_manager.check_and_add_item(
-                "Buy bread", sample_item_data
-            )
+            result = await todo_manager.check_and_add_item("Buy bread", sample_item_data)
 
             assert result is False
 
@@ -301,16 +265,12 @@ class TestTodoManager:
             "_get_incomplete_items",
             new=AsyncMock(side_effect=Exception("Get items error")),
         ):
-            result = await todo_manager.check_and_add_item(
-                "Buy bread", sample_item_data
-            )
+            result = await todo_manager.check_and_add_item("Buy bread", sample_item_data)
 
             assert result is False
 
     @pytest.mark.asyncio
-    async def test_integration_complete_workflow(
-        self: Self, todo_manager: TodoManager
-    ) -> None:
+    async def test_integration_complete_workflow(self: Self, todo_manager: TodoManager) -> None:
         """Test complete workflow integration."""
         item_data: InventoryItem = {
             "auto_add_enabled": True,
@@ -319,9 +279,7 @@ class TestTodoManager:
             "todo_list": "todo.shopping_list",
         }
 
-        with patch.object(
-            todo_manager.hass.services, "async_call", new=AsyncMock()
-        ) as mock_call:
+        with patch.object(todo_manager.hass.services, "async_call", new=AsyncMock()) as mock_call:
             mock_call.side_effect = [
                 # First call: get_items
                 {
