@@ -3,6 +3,7 @@
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from typing_extensions import Self
 
 from custom_components.simple_inventory.services import ServiceHandler
 
@@ -11,28 +12,33 @@ class TestServiceHandler:
     """Test ServiceHandler class."""
 
     @pytest.fixture
-    def mock_hass(self):
+    def mock_hass(self: Self) -> MagicMock:
         """Create a mock Home Assistant instance."""
         return MagicMock()
 
     @pytest.fixture
-    def mock_coordinator(self):
+    def mock_coordinator(self: Self) -> MagicMock:
         """Create a mock coordinator."""
         return MagicMock()
 
     @pytest.fixture
-    def mock_todo_manager(self):
+    def mock_todo_manager(self: Self) -> MagicMock:
         """Create a mock todo manager."""
         return MagicMock()
 
     @pytest.fixture
-    def mock_service_call(self):
+    def mock_service_call(self: Self) -> MagicMock:
         """Create a mock service call."""
         call = MagicMock()
         call.data = {"inventory_id": "kitchen", "name": "milk", "quantity": 2}
         return call
 
-    def test_init(self, mock_hass, mock_coordinator, mock_todo_manager):
+    def test_init(
+        self: Self,
+        mock_hass: MagicMock,
+        mock_coordinator: MagicMock,
+        mock_todo_manager: MagicMock,
+    ) -> None:
         """Test ServiceHandler initialization."""
         with (
             patch(
@@ -69,8 +75,12 @@ class TestServiceHandler:
 
     @pytest.mark.asyncio
     async def test_async_add_item(
-        self, mock_hass, mock_coordinator, mock_todo_manager, mock_service_call
-    ):
+        self: Self,
+        mock_hass: MagicMock,
+        mock_coordinator: MagicMock,
+        mock_todo_manager: MagicMock,
+        mock_service_call: MagicMock,
+    ) -> None:
         """Test async_add_item delegates to inventory service."""
         with (
             patch(
@@ -96,8 +106,12 @@ class TestServiceHandler:
 
     @pytest.mark.asyncio
     async def test_async_remove_item(
-        self, mock_hass, mock_coordinator, mock_todo_manager, mock_service_call
-    ):
+        self: Self,
+        mock_hass: MagicMock,
+        mock_coordinator: MagicMock,
+        mock_todo_manager: MagicMock,
+        mock_service_call: MagicMock,
+    ) -> None:
         """Test async_remove_item delegates to inventory service."""
         with (
             patch(
@@ -123,8 +137,12 @@ class TestServiceHandler:
 
     @pytest.mark.asyncio
     async def test_async_update_item(
-        self, mock_hass, mock_coordinator, mock_todo_manager, mock_service_call
-    ):
+        self: Self,
+        mock_hass: MagicMock,
+        mock_coordinator: MagicMock,
+        mock_todo_manager: MagicMock,
+        mock_service_call: MagicMock,
+    ) -> None:
         """Test async_update_item delegates to inventory service."""
         with (
             patch(
@@ -150,8 +168,12 @@ class TestServiceHandler:
 
     @pytest.mark.asyncio
     async def test_async_increment_item(
-        self, mock_hass, mock_coordinator, mock_todo_manager, mock_service_call
-    ):
+        self: Self,
+        mock_hass: MagicMock,
+        mock_coordinator: MagicMock,
+        mock_todo_manager: MagicMock,
+        mock_service_call: MagicMock,
+    ) -> None:
         """Test async_increment_item delegates to quantity service."""
         with (
             patch(
@@ -177,8 +199,12 @@ class TestServiceHandler:
 
     @pytest.mark.asyncio
     async def test_async_decrement_item(
-        self, mock_hass, mock_coordinator, mock_todo_manager, mock_service_call
-    ):
+        self: Self,
+        mock_hass: MagicMock,
+        mock_coordinator: MagicMock,
+        mock_todo_manager: MagicMock,
+        mock_service_call: MagicMock,
+    ) -> None:
         """Test async_decrement_item delegates to quantity service."""
         with (
             patch(
@@ -204,8 +230,12 @@ class TestServiceHandler:
 
     @pytest.mark.asyncio
     async def test_async_add_item_exception_propagation(
-        self, mock_hass, mock_coordinator, mock_todo_manager, mock_service_call
-    ):
+        self: Self,
+        mock_hass: MagicMock,
+        mock_coordinator: MagicMock,
+        mock_todo_manager: MagicMock,
+        mock_service_call: MagicMock,
+    ) -> None:
         """Test that exceptions from inventory service are propagated."""
         with (
             patch(
@@ -235,8 +265,12 @@ class TestServiceHandler:
 
     @pytest.mark.asyncio
     async def test_async_increment_item_exception_propagation(
-        self, mock_hass, mock_coordinator, mock_todo_manager, mock_service_call
-    ):
+        self: Self,
+        mock_hass: MagicMock,
+        mock_coordinator: MagicMock,
+        mock_todo_manager: MagicMock,
+        mock_service_call: MagicMock,
+    ) -> None:
         """Test that exceptions from quantity service are propagated."""
         with (
             patch(
@@ -266,8 +300,11 @@ class TestServiceHandler:
 
     @pytest.mark.asyncio
     async def test_multiple_service_calls(
-        self, mock_hass, mock_coordinator, mock_todo_manager
-    ):
+        self: Self,
+        mock_hass: MagicMock,
+        mock_coordinator: MagicMock,
+        mock_todo_manager: MagicMock,
+    ) -> None:
         """Test that multiple service calls work correctly."""
         with (
             patch(
@@ -320,7 +357,7 @@ class TestServiceHandler:
                 decrement_call
             )
 
-    def test_exports(self):
+    def test_exports(self: Self) -> None:
         """Test that __all__ exports are correct."""
         from custom_components.simple_inventory.services import __all__
 
@@ -331,7 +368,7 @@ class TestServiceHandler:
         ]
         assert __all__ == expected_exports
 
-    def test_import_structure(self):
+    def test_import_structure(self: Self) -> None:
         """Test that imports work correctly."""
         from custom_components.simple_inventory.services import (
             InventoryService,
@@ -345,8 +382,11 @@ class TestServiceHandler:
 
     @pytest.mark.asyncio
     async def test_service_handler_isolation(
-        self, mock_hass, mock_coordinator, mock_todo_manager
-    ):
+        self: Self,
+        mock_hass: MagicMock,
+        mock_coordinator: MagicMock,
+        mock_todo_manager: MagicMock,
+    ) -> None:
         """Test that multiple ServiceHandler instances don't interfere with each other."""
         with (
             patch(
@@ -358,10 +398,12 @@ class TestServiceHandler:
         ):
 
             mock_inventory_service.side_effect = (
-                lambda *args, **kwargs: MagicMock()
+                lambda *args: MagicMock(),
+                lambda **kwargs: MagicMock(),
             )
             mock_quantity_service.side_effect = (
-                lambda *args, **kwargs: MagicMock()
+                lambda *args: MagicMock(),
+                lambda **kwargs: MagicMock(),
             )
 
             service_handler1 = ServiceHandler(

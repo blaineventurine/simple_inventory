@@ -5,10 +5,8 @@ from unittest.mock import MagicMock
 
 import pytest
 from homeassistant.core import ServiceCall
+from typing_extensions import Self
 
-from custom_components.simple_inventory.coordinator import (
-    SimpleInventoryCoordinator,
-)
 from custom_components.simple_inventory.services.inventory_service import (
     InventoryService,
 )
@@ -17,7 +15,9 @@ from custom_components.simple_inventory.services.inventory_service import (
 class TestInventoryService:
     """Test InventoryService class."""
 
-    def test_inheritance(self, inventory_service: InventoryService) -> None:
+    def test_inheritance(
+        self: Self, inventory_service: InventoryService
+    ) -> None:
         """Test that InventoryService properly inherits from BaseServiceHandler."""
         from custom_components.simple_inventory.services.base_service import (
             BaseServiceHandler,
@@ -30,10 +30,10 @@ class TestInventoryService:
 
     @pytest.mark.asyncio
     async def test_async_add_item_success(
-        self,
+        self: Self,
         inventory_service: InventoryService,
         add_item_service_call: ServiceCall,
-        mock_coordinator: SimpleInventoryCoordinator,
+        mock_coordinator: MagicMock,
     ) -> None:
         """Test successful item addition."""
         await inventory_service.async_add_item(add_item_service_call)
@@ -55,10 +55,10 @@ class TestInventoryService:
 
     @pytest.mark.asyncio
     async def test_async_add_item_minimal_data(
-        self,
+        self: Self,
         inventory_service: InventoryService,
         basic_service_call: ServiceCall,
-        mock_coordinator,
+        mock_coordinator: MagicMock,
     ) -> None:
         """Test adding item with minimal required data."""
         await inventory_service.async_add_item(basic_service_call)
@@ -70,11 +70,11 @@ class TestInventoryService:
 
     @pytest.mark.asyncio
     async def test_async_add_item_coordinator_exception(
-        self,
+        self: Self,
         inventory_service: InventoryService,
         add_item_service_call: ServiceCall,
-        mock_coordinator: SimpleInventoryCoordinator,
-        caplog,
+        mock_coordinator: MagicMock,
+        caplog: pytest.LogCaptureFixture,
     ) -> None:
         """Test handling coordinator exception during add."""
         mock_coordinator.add_item.side_effect = Exception("Database error")
@@ -90,10 +90,10 @@ class TestInventoryService:
 
     @pytest.mark.asyncio
     async def test_async_remove_item_success(
-        self,
+        self: Self,
         inventory_service: InventoryService,
         basic_service_call: ServiceCall,
-        mock_coordinator,
+        mock_coordinator: MagicMock,
     ) -> None:
         """Test successful item removal."""
         mock_coordinator.remove_item.return_value = True
@@ -105,8 +105,12 @@ class TestInventoryService:
 
     @pytest.mark.asyncio
     async def test_async_remove_item_not_found(
-        self, inventory_service, basic_service_call, mock_coordinator, caplog
-    ):
+        self: Self,
+        inventory_service: InventoryService,
+        basic_service_call: ServiceCall,
+        mock_coordinator: MagicMock,
+        caplog: pytest.LogCaptureFixture,
+    ) -> None:
         """Test removing item that doesn't exist."""
         mock_coordinator.remove_item.return_value = False
 
@@ -123,8 +127,12 @@ class TestInventoryService:
 
     @pytest.mark.asyncio
     async def test_async_remove_item_coordinator_exception(
-        self, inventory_service, basic_service_call, mock_coordinator, caplog
-    ):
+        self: Self,
+        inventory_service: InventoryService,
+        basic_service_call: ServiceCall,
+        mock_coordinator: MagicMock,
+        caplog: pytest.LogCaptureFixture,
+    ) -> None:
         """Test handling coordinator exception during remove."""
         mock_coordinator.remove_item.side_effect = Exception(
             "Database connection lost"
@@ -141,8 +149,11 @@ class TestInventoryService:
 
     @pytest.mark.asyncio
     async def test_async_update_item_success(
-        self, inventory_service, update_item_service_call, mock_coordinator
-    ):
+        self: Self,
+        inventory_service: InventoryService,
+        update_item_service_call: ServiceCall,
+        mock_coordinator: MagicMock,
+    ) -> None:
         """Test successful item update."""
         await inventory_service.async_update_item(update_item_service_call)
 
@@ -160,12 +171,12 @@ class TestInventoryService:
 
     @pytest.mark.asyncio
     async def test_async_update_item_not_found(
-        self,
-        inventory_service,
-        update_item_service_call,
-        mock_coordinator,
-        caplog,
-    ):
+        self: Self,
+        inventory_service: InventoryService,
+        update_item_service_call: ServiceCall,
+        mock_coordinator: MagicMock,
+        caplog: pytest.LogCaptureFixture,
+    ) -> None:
         """Test updating item that doesn't exist."""
         mock_coordinator.get_item.return_value = None
 
@@ -184,12 +195,12 @@ class TestInventoryService:
 
     @pytest.mark.asyncio
     async def test_async_update_item_coordinator_update_fails(
-        self,
-        inventory_service,
-        update_item_service_call,
-        mock_coordinator,
-        caplog,
-    ):
+        self: Self,
+        inventory_service: InventoryService,
+        update_item_service_call: ServiceCall,
+        mock_coordinator: MagicMock,
+        caplog: pytest.LogCaptureFixture,
+    ) -> None:
         """Test when coordinator update returns False."""
         mock_coordinator.update_item.return_value = False
 
@@ -206,12 +217,12 @@ class TestInventoryService:
 
     @pytest.mark.asyncio
     async def test_async_update_item_coordinator_exception(
-        self,
-        inventory_service,
-        update_item_service_call,
-        mock_coordinator,
-        caplog,
-    ):
+        self: Self,
+        inventory_service: InventoryService,
+        update_item_service_call: ServiceCall,
+        mock_coordinator: MagicMock,
+        caplog: pytest.LogCaptureFixture,
+    ) -> None:
         """Test handling coordinator exception during update."""
         mock_coordinator.update_item.side_effect = Exception("Update failed")
 
@@ -226,8 +237,10 @@ class TestInventoryService:
 
     @pytest.mark.asyncio
     async def test_concurrent_operations(
-        self, inventory_service, mock_coordinator
-    ):
+        self: Self,
+        inventory_service: InventoryService,
+        mock_coordinator: MagicMock,
+    ) -> None:
         """Test concurrent inventory operations."""
         import asyncio
 

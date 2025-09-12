@@ -1,14 +1,26 @@
 """Tests for QuantityService."""
 
 import logging
+from unittest.mock import MagicMock
 
 import pytest
+from homeassistant.core import HomeAssistant, ServiceCall
+from typing_extensions import Self
+
+from custom_components.simple_inventory.services.quantity_service import (
+    QuantityService,
+)
 
 
 class TestQuantityService:
     """Test QuantityService class."""
 
-    def test_init(self, hass, mock_coordinator, mock_todo_manager):
+    def test_init(
+        self: Self,
+        hass: HomeAssistant,
+        mock_coordinator: MagicMock,
+        mock_todo_manager: MagicMock,
+    ) -> None:
         """Test QuantityService initialization."""
         from custom_components.simple_inventory.services.quantity_service import (
             QuantityService,
@@ -20,7 +32,7 @@ class TestQuantityService:
         assert service.coordinator is mock_coordinator
         assert service.todo_manager is mock_todo_manager
 
-    def test_inheritance(self, quantity_service):
+    def test_inheritance(self: Self, quantity_service: QuantityService) -> None:
         """Test that QuantityService properly inherits from BaseServiceHandler."""
         from custom_components.simple_inventory.services.base_service import (
             BaseServiceHandler,
@@ -33,8 +45,11 @@ class TestQuantityService:
 
     @pytest.mark.asyncio
     async def test_async_increment_item_success(
-        self, quantity_service, quantity_service_call, mock_coordinator
-    ):
+        self: Self,
+        quantity_service: QuantityService,
+        quantity_service_call: ServiceCall,
+        mock_coordinator: MagicMock,
+    ) -> None:
         """Test successful item increment."""
         await quantity_service.async_increment_item(quantity_service_call)
 
@@ -45,8 +60,11 @@ class TestQuantityService:
 
     @pytest.mark.asyncio
     async def test_async_increment_item_default_amount(
-        self, quantity_service, basic_service_call, mock_coordinator
-    ):
+        self: Self,
+        quantity_service: QuantityService,
+        basic_service_call: ServiceCall,
+        mock_coordinator: MagicMock,
+    ) -> None:
         """Test increment with default amount (1)."""
         await quantity_service.async_increment_item(basic_service_call)
 
@@ -57,8 +75,12 @@ class TestQuantityService:
 
     @pytest.mark.asyncio
     async def test_async_increment_item_not_found(
-        self, quantity_service, quantity_service_call, mock_coordinator, caplog
-    ):
+        self: Self,
+        quantity_service: QuantityService,
+        quantity_service_call: ServiceCall,
+        mock_coordinator: MagicMock,
+        caplog: pytest.LogCaptureFixture,
+    ) -> None:
         """Test incrementing item that doesn't exist."""
         mock_coordinator.increment_item.return_value = False
 
@@ -77,8 +99,12 @@ class TestQuantityService:
 
     @pytest.mark.asyncio
     async def test_async_increment_item_coordinator_exception(
-        self, quantity_service, quantity_service_call, mock_coordinator, caplog
-    ):
+        self: Self,
+        quantity_service: QuantityService,
+        quantity_service_call: ServiceCall,
+        mock_coordinator: MagicMock,
+        caplog: pytest.LogCaptureFixture,
+    ) -> None:
         """Test handling coordinator exception during increment."""
         mock_coordinator.increment_item.side_effect = Exception(
             "Database error"
@@ -95,12 +121,12 @@ class TestQuantityService:
 
     @pytest.mark.asyncio
     async def test_async_decrement_item_success_with_todo_check(
-        self,
-        quantity_service,
-        quantity_service_call,
-        mock_coordinator,
-        mock_todo_manager,
-    ):
+        self: Self,
+        quantity_service: QuantityService,
+        quantity_service_call: ServiceCall,
+        mock_coordinator: MagicMock,
+        mock_todo_manager: MagicMock,
+    ) -> None:
         """Test successful item decrement with todo list check."""
         await quantity_service.async_decrement_item(quantity_service_call)
 
@@ -116,12 +142,12 @@ class TestQuantityService:
 
     @pytest.mark.asyncio
     async def test_async_decrement_item_default_amount(
-        self,
-        quantity_service,
-        basic_service_call,
-        mock_coordinator,
-        mock_todo_manager,
-    ):
+        self: Self,
+        quantity_service: QuantityService,
+        basic_service_call: ServiceCall,
+        mock_coordinator: MagicMock,
+        mock_todo_manager: MagicMock,
+    ) -> None:
         """Test decrement with default amount (1)."""
         await quantity_service.async_decrement_item(basic_service_call)
 
@@ -133,12 +159,12 @@ class TestQuantityService:
 
     @pytest.mark.asyncio
     async def test_async_decrement_item_no_item_data(
-        self,
-        quantity_service,
-        quantity_service_call,
-        mock_coordinator,
-        mock_todo_manager,
-    ):
+        self: Self,
+        quantity_service: QuantityService,
+        quantity_service_call: ServiceCall,
+        mock_coordinator: MagicMock,
+        mock_todo_manager: MagicMock,
+    ) -> None:
         """Test decrement when get_item returns None."""
         mock_coordinator.get_item.return_value = None
 
@@ -151,13 +177,13 @@ class TestQuantityService:
 
     @pytest.mark.asyncio
     async def test_async_decrement_item_not_found(
-        self,
-        quantity_service,
-        quantity_service_call,
-        mock_coordinator,
-        mock_todo_manager,
-        caplog,
-    ):
+        self: Self,
+        quantity_service: QuantityService,
+        quantity_service_call: ServiceCall,
+        mock_coordinator: MagicMock,
+        mock_todo_manager: MagicMock,
+        caplog: pytest.LogCaptureFixture,
+    ) -> None:
         """Test decrementing item that doesn't exist."""
         mock_coordinator.decrement_item.return_value = False
 
@@ -179,13 +205,13 @@ class TestQuantityService:
 
     @pytest.mark.asyncio
     async def test_async_decrement_item_coordinator_exception(
-        self,
-        quantity_service,
-        quantity_service_call,
-        mock_coordinator,
-        mock_todo_manager,
-        caplog,
-    ):
+        self: Self,
+        quantity_service: QuantityService,
+        quantity_service_call: ServiceCall,
+        mock_coordinator: MagicMock,
+        mock_todo_manager: MagicMock,
+        caplog: pytest.LogCaptureFixture,
+    ) -> None:
         """Test handling coordinator exception during decrement."""
         mock_coordinator.decrement_item.side_effect = Exception(
             "Decrement failed"
@@ -204,13 +230,13 @@ class TestQuantityService:
 
     @pytest.mark.asyncio
     async def test_async_decrement_item_todo_manager_exception(
-        self,
-        quantity_service,
-        quantity_service_call,
-        mock_coordinator,
-        mock_todo_manager,
-        caplog,
-    ):
+        self: Self,
+        quantity_service: QuantityService,
+        quantity_service_call: ServiceCall,
+        mock_coordinator: MagicMock,
+        mock_todo_manager: MagicMock,
+        caplog: pytest.LogCaptureFixture,
+    ) -> None:
         """Test handling todo manager exception during decrement."""
         mock_todo_manager.check_and_add_item.side_effect = Exception(
             "Todo check failed"
@@ -233,8 +259,11 @@ class TestQuantityService:
     @pytest.mark.parametrize("amount", [1, 5, 10, 100, 0])
     @pytest.mark.asyncio
     async def test_increment_various_amounts(
-        self, quantity_service, mock_coordinator, amount
-    ):
+        self: Self,
+        quantity_service: QuantityService,
+        mock_coordinator: MagicMock,
+        amount: int,
+    ) -> None:
         """Test increment with various amount values."""
         from unittest.mock import MagicMock
 
@@ -253,8 +282,11 @@ class TestQuantityService:
 
     @pytest.mark.asyncio
     async def test_concurrent_decrement_operations(
-        self, quantity_service, mock_coordinator, mock_todo_manager
-    ):
+        self: Self,
+        quantity_service: QuantityService,
+        mock_coordinator: MagicMock,
+        mock_todo_manager: MagicMock,
+    ) -> None:
         """Test concurrent decrement operations."""
         import asyncio
         from unittest.mock import MagicMock

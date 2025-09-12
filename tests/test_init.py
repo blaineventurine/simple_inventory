@@ -1,10 +1,12 @@
 """Tests for the Simple Inventory integration initialization."""
 
+from typing import Any
 from unittest.mock import ANY, AsyncMock, MagicMock, call, patch
 
 import pytest
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
+from typing_extensions import Self
 
 from custom_components.simple_inventory import (
     PLATFORMS,
@@ -26,7 +28,7 @@ class TestSimpleInventoryInit:
     """Test Simple Inventory integration initialization."""
 
     @pytest.fixture
-    def mock_config_entry(self):
+    def mock_config_entry(self: Self) -> MagicMock:
         """Create a mock config entry."""
         entry = MagicMock(spec=ConfigEntry)
         entry.entry_id = "test_entry_123"
@@ -34,7 +36,7 @@ class TestSimpleInventoryInit:
         return entry
 
     @pytest.fixture
-    def mock_config_entry_2(self):
+    def mock_config_entry_2(self: Self) -> MagicMock:
         """Create a second mock config entry."""
         entry = MagicMock(spec=ConfigEntry)
         entry.entry_id = "test_entry_456"
@@ -42,7 +44,7 @@ class TestSimpleInventoryInit:
         return entry
 
     @pytest.fixture
-    def mock_hass(self):
+    def mock_hass(self: Self) -> MagicMock:
         """Create a mock Home Assistant instance."""
         hass = MagicMock(spec=HomeAssistant)
         hass.data = {}
@@ -61,8 +63,8 @@ class TestSimpleInventoryInit:
 
     @pytest.mark.asyncio
     async def test_async_setup_entry_first_entry(
-        self, mock_hass, mock_config_entry
-    ):
+        self: Self, mock_hass: MagicMock, mock_config_entry: MagicMock
+    ) -> None:
         """Test setting up the first config entry."""
         with (
             patch(
@@ -154,8 +156,11 @@ class TestSimpleInventoryInit:
 
     @pytest.mark.asyncio
     async def test_async_setup_entry_second_entry(
-        self, mock_hass, mock_config_entry, mock_config_entry_2
-    ):
+        self: Self,
+        mock_hass: MagicMock,
+        mock_config_entry: MagicMock,
+        mock_config_entry_2: MagicMock,
+    ) -> None:
         """Test setting up a second config entry when coordinator already exists."""
         mock_coordinator = MagicMock()
         mock_todo_manager = MagicMock()
@@ -204,8 +209,8 @@ class TestSimpleInventoryInit:
 
     @pytest.mark.asyncio
     async def test_async_setup_entry_data_loading_failure(
-        self, mock_hass, mock_config_entry
-    ):
+        self: Self, mock_hass: MagicMock, mock_config_entry: MagicMock
+    ) -> None:
         """Test handling data loading failure during setup."""
         with (
             patch(
@@ -239,8 +244,8 @@ class TestSimpleInventoryInit:
 
     @pytest.mark.asyncio
     async def test_async_setup_entry_platform_setup_failure(
-        self, mock_hass, mock_config_entry
-    ):
+        self: Self, mock_hass: MagicMock, mock_config_entry: MagicMock
+    ) -> None:
         """Test handling platform setup failure."""
         with (
             patch(
@@ -271,8 +276,8 @@ class TestSimpleInventoryInit:
 
     @pytest.mark.asyncio
     async def test_async_unload_entry_with_remaining_entries(
-        self, mock_hass, mock_config_entry
-    ):
+        self: Self, mock_hass: MagicMock, mock_config_entry: MagicMock
+    ) -> None:
         """Test unloading an entry when other entries remain."""
         mock_coordinator = MagicMock()
         mock_todo_manager = MagicMock()
@@ -300,8 +305,8 @@ class TestSimpleInventoryInit:
 
     @pytest.mark.asyncio
     async def test_async_unload_entry_last_entry(
-        self, mock_hass, mock_config_entry
-    ):
+        self: Self, mock_hass: MagicMock, mock_config_entry: MagicMock
+    ) -> None:
         """Test unloading the last entry."""
         mock_coordinator = MagicMock()
         mock_todo_manager = MagicMock()
@@ -336,8 +341,8 @@ class TestSimpleInventoryInit:
 
     @pytest.mark.asyncio
     async def test_async_unload_entry_platform_unload_failure(
-        self, mock_hass, mock_config_entry
-    ):
+        self: Self, mock_hass: MagicMock, mock_config_entry: MagicMock
+    ) -> None:
         """Test handling platform unload failure."""
         mock_hass.data[DOMAIN] = {
             "coordinator": MagicMock(),
@@ -356,8 +361,8 @@ class TestSimpleInventoryInit:
 
     @pytest.mark.asyncio
     async def test_async_unload_entry_empty_domain_data(
-        self, mock_hass, mock_config_entry
-    ):
+        self: Self, mock_hass: MagicMock, mock_config_entry: MagicMock
+    ) -> None:
         """Test unloading when domain has no entry data."""
         mock_hass.data[DOMAIN] = {
             "coordinator": MagicMock(),
@@ -375,9 +380,11 @@ class TestSimpleInventoryInit:
         assert DOMAIN not in mock_hass.data
 
     @pytest.mark.asyncio
-    async def test_async_setup_legacy_yaml(self, mock_hass):
+    async def test_async_setup_legacy_yaml(
+        self: Self, mock_hass: MagicMock
+    ) -> None:
         """Test legacy YAML setup."""
-        config = {"simple_inventory": {}}
+        config: dict[str, Any] = {"simple_inventory": {}}
 
         result = await async_setup(mock_hass, config)
 
@@ -386,8 +393,8 @@ class TestSimpleInventoryInit:
 
     @pytest.mark.asyncio
     async def test_service_registration_schemas(
-        self, mock_hass, mock_config_entry
-    ):
+        self: Self, mock_hass: MagicMock, mock_config_entry: MagicMock
+    ) -> None:
         """Test that services are registered with correct schemas."""
         with (
             patch(
@@ -431,7 +438,9 @@ class TestSimpleInventoryInit:
             assert SERVICE_DECREMENT_ITEM in service_registrations
 
     @pytest.mark.asyncio
-    async def test_entry_data_structure(self, mock_hass, mock_config_entry):
+    async def test_entry_data_structure(
+        self: Self, mock_hass: MagicMock, mock_config_entry: MagicMock
+    ) -> None:
         """Test that entry data is stored with correct structure."""
         with (
             patch(
@@ -467,8 +476,11 @@ class TestSimpleInventoryInit:
 
     @pytest.mark.asyncio
     async def test_domain_data_persistence_across_entries(
-        self, mock_hass, mock_config_entry, mock_config_entry_2
-    ):
+        self: Self,
+        mock_hass: MagicMock,
+        mock_config_entry: MagicMock,
+        mock_config_entry_2: MagicMock,
+    ) -> None:
         """Test that domain-level data persists across multiple entries."""
         with (
             patch(
@@ -508,8 +520,8 @@ class TestSimpleInventoryInit:
 
     @pytest.mark.asyncio
     async def test_async_setup_entry_creates_global_when_needed(
-        self, mock_hass, mock_config_entry
-    ):
+        self: Self, mock_hass: MagicMock, mock_config_entry: MagicMock
+    ) -> None:
         """Test that global entry is created when create_global is True and no global exists."""
         mock_config_entry.data = {
             "name": "Test Inventory",
@@ -548,8 +560,8 @@ class TestSimpleInventoryInit:
 
     @pytest.mark.asyncio
     async def test_async_setup_entry_skips_global_when_exists(
-        self, mock_hass, mock_config_entry
-    ):
+        self: Self, mock_hass: MagicMock, mock_config_entry: MagicMock
+    ) -> None:
         """Test that global entry is not created when create_global is True but global already exists."""
         mock_config_entry.data = {
             "name": "Test Inventory",
@@ -589,8 +601,8 @@ class TestSimpleInventoryInit:
 
     @pytest.mark.asyncio
     async def test_async_setup_entry_no_global_when_flag_false(
-        self, mock_hass, mock_config_entry
-    ):
+        self: Self, mock_hass: MagicMock, mock_config_entry: MagicMock
+    ) -> None:
         """Test that global entry is not created when create_global is False."""
         mock_config_entry.data = {
             "name": "Test Inventory",

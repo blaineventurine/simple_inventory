@@ -1,0 +1,206 @@
+{
+  "config": {
+    "step": {
+      "add_inventory": {
+        "title": "Agregar Inventario",
+        "description": "Crear un nuevo inventario para rastrear tus artículos.",
+        "data": {
+          "name": "Nombre del Inventario",
+          "icon": "Icono",
+          "description": "Descripción"
+        },
+        "data_description": {
+          "icon": "Haz clic en el campo de icono para abrir el selector con todos los iconos de Material Design",
+          "description": "Descripción opcional para este inventario"
+        }
+      }
+    },
+    "error": {
+      "name_exists": "El nombre del inventario ya existe"
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Configurar Inventario",
+        "description": "Actualizar la configuración de {current_name}",
+        "data": {
+          "name": "Nombre del Inventario",
+          "icon": "Icono",
+          "description": "Descripción"
+        },
+        "data_description": {
+          "icon": "Haz clic en el campo de icono para explorar todos los iconos disponibles",
+          "description": "Descripción opcional para este inventario"
+        }
+      }
+    },
+    "error": {
+      "name_exists": "El nombre del inventario ya existe"
+    }
+  },
+  "entity": {
+    "sensor": {
+      "expiring_items": {
+        "name": "{inventory_name} Artículos que Vencen Pronto"
+      },
+      "all_expiring_items": {
+        "name": "Todos los Artículos que Vencen Pronto"
+      },
+      "inventory": {
+        "name": "Inventario {inventory_name}"
+      }
+    }
+  },
+  "services": {
+    "add_item": {
+      "name": "Agregar Artículo",
+      "description": "Agregar un artículo a un inventario",
+      "fields": {
+        "inventory_id": {
+          "name": "ID del Inventario",
+          "description": "ID del inventario al que agregar"
+        },
+        "name": {
+          "name": "Nombre del Artículo",
+          "description": "Nombre del artículo"
+        },
+        "quantity": {
+          "name": "Cantidad",
+          "description": "Cantidad del artículo"
+        },
+        "unit": {
+          "name": "Unidad",
+          "description": "Unidad de medida"
+        },
+        "category": {
+          "name": "Categoría",
+          "description": "Categoría del artículo"
+        },
+        "expiry_date": {
+          "name": "Fecha de Vencimiento",
+          "description": "Fecha de expiración"
+        },
+        "expiry_alert_days": {
+          "name": "Días de Alerta",
+          "description": "Número de días de anticipación para avisar sobre artículos que vencen"
+        },
+        "auto_add_enabled": {
+          "name": "Auto Agregar Habilitado",
+          "description": "Habilitar agregado automático a la lista de tareas"
+        },
+        "auto_add_to_list_quantity": {
+          "name": "Umbral de Auto Agregar",
+          "description": "Umbral de cantidad para auto-agregar"
+        },
+        "todo_list": {
+          "name": "Lista de Tareas",
+          "description": "Entidad de lista de tareas a la que agregar"
+        }
+      }
+    },
+    "remove_item": {
+      "name": "Quitar Artículo",
+      "description": "Quitar un artículo de un inventario",
+      "fields": {
+        "inventory_id": {
+          "name": "ID del Inventario",
+          "description": "ID del inventario del que quitar"
+        },
+        "name": {
+          "name": "Nombre del Artículo",
+          "description": "Nombre del artículo a quitar"
+        }
+      }
+    },
+    "increment_item": {
+      "name": "Incrementar Artículo",
+      "description": "Incrementar la cantidad de un artículo",
+      "fields": {
+        "inventory_id": {
+          "name": "ID del Inventario",
+          "description": "ID del inventario"
+        },
+        "name": {
+          "name": "Nombre del Artículo",
+          "description": "Nombre del artículo"
+        },
+        "amount": {
+          "name": "Cantidad",
+          "description": "Cantidad a incrementar"
+        }
+      }
+    },
+    "decrement_item": {
+      "name": "Decrementar Artículo",
+      "description": "Decrementar la cantidad de un artículo",
+      "fields": {
+        "inventory_id": {
+          "name": "ID del Inventario",
+          "description": "ID del inventario"
+        },
+        "name": {
+          "name": "Nombre del Artículo",
+          "description": "Nombre del artículo"
+        },
+        "amount": {
+          "name": "Cantidad",
+          "description": "Cantidad a decrementar"
+        }
+      }
+    },
+    "update_item": {
+      "name": "Actualizar Artículo",
+      "description": "Actualizar un artículo de inventario existente",
+      "fields": {
+        "inventory_id": {
+          "name": "ID del Inventario",
+          "description": "ID del inventario"
+        },
+        "old_name": {
+          "name": "Nombre Actual",
+          "description": "Nombre actual del artículo"
+        },
+        "name": {
+          "name": "Nuevo Nombre",
+          "description": "Nuevo nombre del artículo"
+        },
+        "quantity": {
+          "name": "Cantidad",
+          "description": "Nueva cantidad"
+        },
+        "unit": {
+          "name": "Unidad",
+          "description": "Unidad de medida"
+        },
+        "category": {
+          "name": "Categoría",
+          "description": "Categoría"
+        },
+        "expiry_date": {
+          "name": "Fecha de Vencimiento",
+          "description": "Fecha de expiración"
+        },
+        "auto_add_enabled": {
+          "name": "Auto Agregar Habilitado",
+          "description": "Habilitar auto-agregar a lista de tareas"
+        },
+        "auto_add_to_list_quantity": {
+          "name": "Umbral de Auto Agregar",
+          "description": "Umbral para auto-agregar"
+        },
+        "todo_list": {
+          "name": "Lista de Tareas",
+          "description": "Entidad de lista de tareas"
+        },
+        "expiry_alert_days": {
+          "name": "Días de Alerta",
+          "description": "Número de días de anticipación para avisar sobre artículos que vencen"
+        }
+      }
+    }
+  },
+  "common": {
+    "inventory_word": "inventario"
+  }
+}
