@@ -1,4 +1,5 @@
 import logging
+from typing import cast
 
 from homeassistant.components.sensor import SensorEntity
 from homeassistant.core import Event, HomeAssistant, callback
@@ -116,7 +117,9 @@ class GlobalExpiryNotificationSensor(SensorEntity):
             config_entries = self.hass.config_entries.async_entries(DOMAIN)
             for entry in config_entries:
                 if entry.entry_id == inventory_id:
-                    return entry.data.get("name", "Unknown Inventory")
+                    return cast(
+                        str, entry.data.get("name", "Unknown Inventory")
+                    )
         except Exception:
             pass
 
