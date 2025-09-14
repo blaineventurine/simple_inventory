@@ -75,6 +75,7 @@ class InventoryService(BaseServiceHandler):
             "auto_add_to_list_quantity",
             "expiry_alert_days",
             "todo_list",
+            "location",
         ]
         for field in optional_fields:
             if field in data:

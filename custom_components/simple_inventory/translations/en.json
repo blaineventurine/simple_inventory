@@ -96,6 +96,10 @@
         "todo_list": {
           "name": "Todo List",
           "description": "Todo list entity to add to"
+        },
+        "location": {
+          "name": "Location",
+          "description": "Location of the item within the inventory"
         }
       }
     },
@@ -196,6 +200,10 @@
         "expiry_alert_days": {
           "name": "Alert Days",
           "description": "Number of days in advance to warn about expiring items"
+        },
+        "location": {
+          "name": "Location",
+          "description": "Location within the inventory"
         }
       }
     }

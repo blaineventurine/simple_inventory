@@ -49,6 +49,11 @@ add_item:
       example: "todo.grocery_list"
       required: false
       default: ""
+    location:
+      description: Location of the item
+      example: Basement Refrigerator
+      required: false
+      default: ""
 
 remove_item:
   description: Remove an item from an inventory
@@ -143,3 +148,8 @@ update_item:
       description: Number of days in advance to warn about expiring items
       example: 7
       required: false
+    location:
+      description: Location of the item
+      example: Basement Refrigerator
+      required: false
+      default: ""
