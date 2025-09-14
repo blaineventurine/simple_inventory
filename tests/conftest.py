@@ -219,6 +219,7 @@ def sample_inventory_data() -> dict[str, Any]:
                     "auto_add_enabled": True,
                     "auto_add_to_list_quantity": 1,
                     "category": "dairy",
+                    "location": "fridge",
                     "expiry_alert_days": 7,
                     "expiry_date": (today + timedelta(days=5)).strftime(
                         "%Y-%m-%d"
@@ -231,6 +232,7 @@ def sample_inventory_data() -> dict[str, Any]:
                     "auto_add_enabled": False,
                     "auto_add_to_list_quantity": None,
                     "category": "bakery",
+                    "location": "pantry",
                     "expiry_alert_days": None,
                     "expiry_date": (today + timedelta(days=2)).strftime(
                         "%Y-%m-%d"
@@ -243,6 +245,7 @@ def sample_inventory_data() -> dict[str, Any]:
                     "auto_add_enabled": False,
                     "auto_add_to_list_quantity": None,
                     "category": "dairy",
+                    "location": "fridge",
                     "expiry_alert_days": 7,
                     "expiry_date": (today - timedelta(days=1)).strftime(
                         "%Y-%m-%d"
@@ -259,6 +262,7 @@ def sample_inventory_data() -> dict[str, Any]:
                     "auto_add_enabled": False,
                     "auto_add_to_list_quantity": None,
                     "category": "grains",
+                    "location": "pantry",
                     "expiry_alert_days": None,
                     "expiry_date": (today + timedelta(days=365)).strftime(
                         "%Y-%m-%d"

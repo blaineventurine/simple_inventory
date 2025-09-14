@@ -52,22 +52,24 @@ def loaded_coordinator(
             "kitchen": {
                 "items": {
                     "milk": {
-                        "quantity": 2,
-                        "unit": "liters",
-                        "category": "dairy",
-                        "expiry_date": "2024-12-31",
                         "auto_add_enabled": True,
                         "auto_add_to_list_quantity": 1,
+                        "category": "dairy",
+                        "expiry_date": "2024-12-31",
+                        "location": "fridge",
+                        "quantity": 2,
                         "todo_list": "todo.shopping",
+                        "unit": "liters",
                     },
                     "bread": {
-                        "quantity": 1,
-                        "unit": "loaf",
-                        "category": "bakery",
-                        "expiry_date": "2024-06-20",
                         "auto_add_enabled": False,
                         "auto_add_to_list_quantity": 0,
+                        "category": "bakery",
+                        "expiry_date": "2024-06-20",
+                        "location": "pantry",
+                        "quantity": 1,
                         "todo_list": "",
+                        "unit": "loaf",
                     },
                 }
             }
@@ -343,6 +345,7 @@ class TestSimpleInventoryCoordinator:
             quantity=2,
             unit="liters",
             category="dairy",
+            location="fridge",
             expiry_date="2024-12-31",
             auto_add_enabled=True,
             auto_add_to_list_quantity=1,
@@ -356,6 +359,7 @@ class TestSimpleInventoryCoordinator:
         assert item["quantity"] == 2
         assert item["unit"] == "liters"
         assert item["category"] == "dairy"
+        assert item["location"] == "fridge"
         assert item["expiry_date"] == "2024-12-31"
         assert item["auto_add_enabled"] is True
         assert item["auto_add_to_list_quantity"] == 1
@@ -692,23 +696,25 @@ class TestSimpleInventoryCoordinator:
         loaded_coordinator._data["inventories"]["kitchen"]["items"][
             "yogurt"
         ] = {
-            "quantity": 1,
-            "unit": "cup",
-            "category": "dairy",
-            "expiry_date": "2024-06-16",  # Expiring soon
             "auto_add_enabled": False,
             "auto_add_to_list_quantity": 2,  # Below threshold
+            "category": "dairy",
+            "expiry_date": "2024-06-16",  # Expiring soon
+            "location": "fridge",
+            "quantity": 1,
             "todo_list": "",
+            "unit": "cup",
         }
 
         loaded_coordinator._data["inventories"]["kitchen"]["items"]["rice"] = {
-            "quantity": 5,
-            "unit": "kg",
-            "category": "grains",
-            "expiry_date": "2025-06-15",
             "auto_add_enabled": False,
             "auto_add_to_list_quantity": 2,
+            "category": "grains",
+            "expiry_date": "2025-06-15",
+            "location": "pantry",
+            "quantity": 5,
             "todo_list": "",
+            "unit": "kg",
         }
 
         with patch.object(
@@ -733,6 +739,12 @@ class TestSimpleInventoryCoordinator:
             assert stats["categories"]["bakery"] == 1  # bread
             assert "grains" in stats["categories"]
             assert stats["categories"]["grains"] == 1  # rice
+
+            # Verify locations
+            assert "fridge" in stats["locations"]
+            assert stats["locations"]["fridge"] == 2  # milk, yogurt
+            assert "pantry" in stats["locations"]
+            assert stats["locations"]["pantry"] == 2  # bread, rice
 
             # Verify below threshold
             assert len(stats["below_threshold"]) == 1  # yogurt

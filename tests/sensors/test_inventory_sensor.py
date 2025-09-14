@@ -24,6 +24,7 @@ class TestInventorySensor:
             "total_quantity": 0,
             "total_items": 0,
             "categories": [],
+            "locations": [],
             "below_threshold": [],
             "expiring_items": [],
         }
@@ -92,6 +93,7 @@ class TestInventorySensor:
             "total_quantity": 4,  # 2 + 1 + 1 from sample data
             "total_items": 3,  # milk, bread, expired_yogurt
             "categories": ["dairy", "bakery"],
+            "locations": ["fridge", "pantry"],
             "below_threshold": [],
             "expiring_items": [
                 {
@@ -127,6 +129,7 @@ class TestInventorySensor:
         assert milk_item["quantity"] == 2
         assert milk_item["unit"] == "liters"
         assert milk_item["category"] == "dairy"
+        assert milk_item["location"] == "fridge"
         assert attributes["total_items"] == 3
         assert attributes["total_quantity"] == 4
         assert attributes["expiring_soon"] == 2
@@ -142,6 +145,7 @@ class TestInventorySensor:
             "total_quantity": 0,
             "total_items": 0,
             "categories": [],
+            "locations": [],
             "below_threshold": [],
             "expiring_items": [],
         }
@@ -155,6 +159,8 @@ class TestInventorySensor:
         assert attributes["total_items"] == 0
         assert attributes["total_quantity"] == 0
         assert attributes["expiring_soon"] == 0
+        assert attributes["categories"] == []
+        assert attributes["locations"] == []
 
     def test_coordinator_interaction(
         self: Self,
@@ -182,6 +188,7 @@ class TestInventorySensor:
             "total_quantity": 0,
             "total_items": 0,
             "categories": [],
+            "locations": [],
             "below_threshold": [],
             "expiring_items": [],
         }
@@ -213,6 +220,7 @@ class TestInventorySensor:
             "total_quantity": 0,
             "total_items": 0,
             "categories": [],
+            "locations": [],
             "below_threshold": [],
             "expiring_items": [],
         }
