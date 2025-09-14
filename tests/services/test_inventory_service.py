@@ -44,6 +44,7 @@ class TestInventoryService:
             auto_add_enabled=True,
             auto_add_to_list_quantity=1,
             category="dairy",
+            location="fridge",
             expiry_alert_days=7,
             expiry_date="2024-12-31",
             quantity=2,
@@ -165,6 +166,7 @@ class TestInventoryService:
             quantity=3,
             unit="liters",
             category="dairy",
+            location="fridge",
         )
 
         mock_coordinator.async_save_data.assert_called_once_with("kitchen")

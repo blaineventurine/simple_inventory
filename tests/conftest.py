@@ -143,6 +143,7 @@ def add_item_service_call() -> ServiceCall:
         "auto_add_enabled": True,
         "auto_add_to_list_quantity": 1,
         "category": "dairy",
+        "location": "fridge",
         "expiry_alert_days": 7,
         "expiry_date": "2024-12-31",
         "inventory_id": "kitchen",
@@ -165,6 +166,7 @@ def update_item_service_call() -> ServiceCall:
         "quantity": 3,
         "unit": "liters",
         "category": "dairy",
+        "location": "fridge",
     }
     return call
 
