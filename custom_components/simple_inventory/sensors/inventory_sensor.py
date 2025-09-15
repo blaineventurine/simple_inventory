@@ -40,18 +40,12 @@ class InventorySensor(SensorEntity):
     async def async_added_to_hass(self) -> None:
         """Register callbacks."""
         self.async_on_remove(
-            self.hass.bus.async_listen(
-                f"{DOMAIN}_updated_{self._entry_id}", self._handle_update
-            )
+            self.hass.bus.async_listen(f"{DOMAIN}_updated_{self._entry_id}", self._handle_update)
         )
 
-        self.async_on_remove(
-            self.hass.bus.async_listen(f"{DOMAIN}_updated", self._handle_update)
-        )
+        self.async_on_remove(self.hass.bus.async_listen(f"{DOMAIN}_updated", self._handle_update))
 
-        self.async_on_remove(
-            self.coordinator.async_add_listener(self._handle_coordinator_update)
-        )
+        self.async_on_remove(self.coordinator.async_add_listener(self._handle_coordinator_update))
 
     @callback
     def _handle_update(self, _event: Event) -> None:
@@ -73,9 +67,7 @@ class InventorySensor(SensorEntity):
 
         description = ""
         try:
-            config_entry = self.hass.config_entries.async_get_entry(
-                self._entry_id
-            )
+            config_entry = self.hass.config_entries.async_get_entry(self._entry_id)
             if config_entry:
                 description = config_entry.data.get("description", "")
         except Exception:
@@ -84,9 +76,7 @@ class InventorySensor(SensorEntity):
         self._attr_extra_state_attributes = {
             "inventory_id": self._entry_id,
             "description": description,
-            "items": [
-                {"name": name, **details} for name, details in items.items()
-            ],
+            "items": [{"name": name, **details} for name, details in items.items()],
             "total_items": stats["total_items"],
             "total_quantity": stats["total_quantity"],
             "categories": stats["categories"],

@@ -32,9 +32,7 @@ ITEM_SCHEMA = {
 
 ADD_ITEM_SCHEMA = vol.Schema({INVENTORY_ID: cv.string, **ITEM_SCHEMA})
 
-UPDATE_ITEM_SCHEMA = vol.Schema(
-    {INVENTORY_ID: cv.string, OLD_NAME: cv.string, **ITEM_SCHEMA}
-)
+UPDATE_ITEM_SCHEMA = vol.Schema({INVENTORY_ID: cv.string, OLD_NAME: cv.string, **ITEM_SCHEMA})
 
 REMOVE_ITEM_SCHEMA = vol.Schema(
     {

@@ -25,15 +25,10 @@ class TestGlobalExpiryNotificationSensor:
         mock_sensor_coordinator.get_items_expiring_soon.reset_mock()
         return sensor
 
-    def test_init(
-        self: Self, global_expiry_sensor: GlobalExpiryNotificationSensor
-    ) -> None:
+    def test_init(self: Self, global_expiry_sensor: GlobalExpiryNotificationSensor) -> None:
         """Test global sensor initialization."""
         assert global_expiry_sensor._attr_name == "All Items Expiring Soon"
-        assert (
-            global_expiry_sensor._attr_unique_id
-            == "simple_inventory_all_expiring_items"
-        )
+        assert global_expiry_sensor._attr_unique_id == "simple_inventory_all_expiring_items"
         assert global_expiry_sensor._attr_native_unit_of_measurement == "items"
 
     def test_update_data_multiple_inventories(
@@ -58,9 +53,7 @@ class TestGlobalExpiryNotificationSensor:
         ]
 
         mock_sensor_coordinator.get_items_expiring_soon.side_effect = None
-        mock_sensor_coordinator.get_items_expiring_soon.return_value = (
-            test_items
-        )
+        mock_sensor_coordinator.get_items_expiring_soon.return_value = test_items
         mock_sensor_coordinator._get_inventory_name = MagicMock(
             side_effect=lambda x: f"Inventory {x}"
         )
@@ -104,21 +97,13 @@ class TestGlobalExpiryNotificationSensor:
     ) -> None:
         """Test icon selection for global sensor based on most urgent item."""
         if most_urgent_days < 0:
-            test_items = [
-                {"days_until_expiry": most_urgent_days, "inventory_id": "test"}
-            ]
+            test_items = [{"days_until_expiry": most_urgent_days, "inventory_id": "test"}]
         else:
-            test_items = [
-                {"days_until_expiry": most_urgent_days, "inventory_id": "test"}
-            ]
+            test_items = [{"days_until_expiry": most_urgent_days, "inventory_id": "test"}]
 
         mock_sensor_coordinator.get_items_expiring_soon.side_effect = None
-        mock_sensor_coordinator.get_items_expiring_soon.return_value = (
-            test_items
-        )
-        mock_sensor_coordinator._get_inventory_name = MagicMock(
-            return_value="Test"
-        )
+        mock_sensor_coordinator.get_items_expiring_soon.return_value = test_items
+        mock_sensor_coordinator._get_inventory_name = MagicMock(return_value="Test")
 
         global_expiry_sensor._update_data()
         assert global_expiry_sensor._attr_icon == expected_icon

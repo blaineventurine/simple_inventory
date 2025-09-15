@@ -15,9 +15,7 @@ from custom_components.simple_inventory.services.inventory_service import (
 class TestInventoryService:
     """Test InventoryService class."""
 
-    def test_inheritance(
-        self: Self, inventory_service: InventoryService
-    ) -> None:
+    def test_inheritance(self: Self, inventory_service: InventoryService) -> None:
         """Test that InventoryService properly inherits from BaseServiceHandler."""
         from custom_components.simple_inventory.services.base_service import (
             BaseServiceHandler,
@@ -64,9 +62,7 @@ class TestInventoryService:
         """Test adding item with minimal required data."""
         await inventory_service.async_add_item(basic_service_call)
 
-        mock_coordinator.add_item.assert_called_once_with(
-            "kitchen", name="milk"
-        )
+        mock_coordinator.add_item.assert_called_once_with("kitchen", name="milk")
         mock_coordinator.async_save_data.assert_called_once_with("kitchen")
 
     @pytest.mark.asyncio
@@ -83,10 +79,7 @@ class TestInventoryService:
         with caplog.at_level(logging.ERROR):
             await inventory_service.async_add_item(add_item_service_call)
 
-        assert (
-            "Failed to add item milk to inventory kitchen: Database error"
-            in caplog.text
-        )
+        assert "Failed to add item milk to inventory kitchen: Database error" in caplog.text
         mock_coordinator.async_save_data.assert_not_called()
 
     @pytest.mark.asyncio
@@ -121,10 +114,7 @@ class TestInventoryService:
         mock_coordinator.remove_item.assert_called_once_with("kitchen", "milk")
         mock_coordinator.async_save_data.assert_not_called()
 
-        assert (
-            "Remove item failed - Item not found: milk in inventory: kitchen"
-            in caplog.text
-        )
+        assert "Remove item failed - Item not found: milk in inventory: kitchen" in caplog.text
 
     @pytest.mark.asyncio
     async def test_async_remove_item_coordinator_exception(
@@ -135,9 +125,7 @@ class TestInventoryService:
         caplog: pytest.LogCaptureFixture,
     ) -> None:
         """Test handling coordinator exception during remove."""
-        mock_coordinator.remove_item.side_effect = Exception(
-            "Database connection lost"
-        )
+        mock_coordinator.remove_item.side_effect = Exception("Database connection lost")
 
         with caplog.at_level(logging.ERROR):
             await inventory_service.async_remove_item(basic_service_call)
@@ -190,10 +178,7 @@ class TestInventoryService:
         mock_coordinator.update_item.assert_not_called()
         mock_coordinator.async_save_data.assert_not_called()
 
-        assert (
-            "Update item failed - Item not found: milk in inventory: kitchen"
-            in caplog.text
-        )
+        assert "Update item failed - Item not found: milk in inventory: kitchen" in caplog.text
 
     @pytest.mark.asyncio
     async def test_async_update_item_coordinator_update_fails(
@@ -212,10 +197,7 @@ class TestInventoryService:
         mock_coordinator.update_item.assert_called_once()
         mock_coordinator.async_save_data.assert_not_called()
 
-        assert (
-            "Update item failed for item: milk in inventory: kitchen"
-            in caplog.text
-        )
+        assert "Update item failed for item: milk in inventory: kitchen" in caplog.text
 
     @pytest.mark.asyncio
     async def test_async_update_item_coordinator_exception(
@@ -231,10 +213,7 @@ class TestInventoryService:
         with caplog.at_level(logging.ERROR):
             await inventory_service.async_update_item(update_item_service_call)
 
-        assert (
-            "Failed to update item milk in inventory kitchen: Update failed"
-            in caplog.text
-        )
+        assert "Failed to update item milk in inventory kitchen: Update failed" in caplog.text
         mock_coordinator.async_save_data.assert_not_called()
 
     @pytest.mark.asyncio

@@ -86,10 +86,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     if entry.data.get("create_global", False):
         existing_entries = hass.config_entries.async_entries(DOMAIN)
-        global_exists = any(
-            entry.data.get("entry_type") == "global"
-            for entry in existing_entries
-        )
+        global_exists = any(entry.data.get("entry_type") == "global" for entry in existing_entries)
 
         if not global_exists:
             await _create_global_entry(hass)
@@ -117,9 +114,7 @@ async def _create_global_entry(hass: HomeAssistant) -> None:
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Unload a config entry."""
-    unload_ok = await hass.config_entries.async_unload_platforms(
-        entry, PLATFORMS
-    )
+    unload_ok = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
 
     if unload_ok:
         hass.data[DOMAIN].pop(entry.entry_id)

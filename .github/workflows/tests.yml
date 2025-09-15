@@ -48,8 +48,8 @@ jobs:
         run: flake8 custom_components/ tests/
 
       - name: Run mypy
-        run: mypy --explicit-package-bases custom_components/
-        continue-on-error: true
+        run: mypy --explicit-package-bases ./
+        # continue-on-error: true
 
   test:
     runs-on: ubuntu-latest

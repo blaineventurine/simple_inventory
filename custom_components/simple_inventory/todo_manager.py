@@ -37,15 +37,11 @@ class TodoManager:
             or item.get("state") == "completed"
         )
 
-    def _filter_incomplete_items(
-        self, all_items: list[dict[str, Any]]
-    ) -> list[dict[str, Any]]:
+    def _filter_incomplete_items(self, all_items: list[dict[str, Any]]) -> list[dict[str, Any]]:
         """Filter and convert items to incomplete TodoItems."""
         return [item for item in all_items if not self._is_item_completed(item)]
 
-    async def _get_incomplete_items(
-        self, todo_list_entity: str
-    ) -> list[dict[str, Any]]:
+    async def _get_incomplete_items(self, todo_list_entity: str) -> list[dict[str, Any]]:
         """Get incomplete items from a todo list."""
         try:
             response = await self.hass.services.async_call(
@@ -61,9 +57,7 @@ class TodoManager:
                 if isinstance(entity_data, dict):
                     all_items = entity_data.get("items", [])
                     if isinstance(all_items, list):
-                        return self._filter_incomplete_items(
-                            cast(list[dict[str, Any]], all_items)
-                        )
+                        return self._filter_incomplete_items(cast(list[dict[str, Any]], all_items))
 
         except Exception as service_error:
             _LOGGER.warning(f"Could not use get_items service: {service_error}")
@@ -71,15 +65,11 @@ class TodoManager:
             if todo_state and todo_state.attributes:
                 all_items = todo_state.attributes.get("items", [])
                 if isinstance(all_items, list):
-                    return self._filter_incomplete_items(
-                        cast(list[dict[str, Any]], all_items)
-                    )
+                    return self._filter_incomplete_items(cast(list[dict[str, Any]], all_items))
 
         return []
 
-    async def check_and_add_item(
-        self, item_name: str, item_data: InventoryItem
-    ) -> bool:
+    async def check_and_add_item(self, item_name: str, item_data: InventoryItem) -> bool:
         """Check if item should be added to todo list and add it."""
         _LOGGER.debug(f"Checking if {item_name} is valid...")
         if not (
@@ -92,20 +82,14 @@ class TodoManager:
             and item_data.get(FIELD_TODO_LIST)
         ):
             return False
-        _LOGGER.debug(
-            f"Checking if {item_name} should be added to todo list..."
-        )
+        _LOGGER.debug(f"Checking if {item_name} should be added to todo list...")
         try:
             todo_list_entity = item_data["todo_list"]
-            incomplete_items = await self._get_incomplete_items(
-                todo_list_entity
-            )
+            incomplete_items = await self._get_incomplete_items(todo_list_entity)
 
             for item in incomplete_items:
                 item_summary = item.get("summary", "")
-                _LOGGER.debug(
-                    f"Checking item: {item_summary} against {item_name}"
-                )
+                _LOGGER.debug(f"Checking item: {item_summary} against {item_name}")
                 if item_summary.lower().strip() == item_name.lower().strip():
 
                     _LOGGER.info(

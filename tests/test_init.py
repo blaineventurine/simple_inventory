@@ -52,12 +52,8 @@ class TestSimpleInventoryInit:
         hass.services.async_register = MagicMock()
         hass.services.async_remove = MagicMock()
         hass.config_entries = MagicMock()
-        hass.config_entries.async_forward_entry_setups = AsyncMock(
-            return_value=True
-        )
-        hass.config_entries.async_unload_platforms = AsyncMock(
-            return_value=True
-        )
+        hass.config_entries.async_forward_entry_setups = AsyncMock(return_value=True)
+        hass.config_entries.async_unload_platforms = AsyncMock(return_value=True)
         hass.config_entries.async_entries = MagicMock(return_value=[])
         return hass
 
@@ -70,12 +66,8 @@ class TestSimpleInventoryInit:
             patch(
                 "custom_components.simple_inventory.SimpleInventoryCoordinator"
             ) as mock_coord_class,
-            patch(
-                "custom_components.simple_inventory.TodoManager"
-            ) as mock_todo_class,
-            patch(
-                "custom_components.simple_inventory.ServiceHandler"
-            ) as mock_service_class,
+            patch("custom_components.simple_inventory.TodoManager") as mock_todo_class,
+            patch("custom_components.simple_inventory.ServiceHandler") as mock_service_class,
         ):
 
             mock_coordinator = MagicMock()
@@ -179,12 +171,8 @@ class TestSimpleInventoryInit:
             patch(
                 "custom_components.simple_inventory.SimpleInventoryCoordinator"
             ) as mock_coord_class,
-            patch(
-                "custom_components.simple_inventory.TodoManager"
-            ) as mock_todo_class,
-            patch(
-                "custom_components.simple_inventory.ServiceHandler"
-            ) as mock_service_class,
+            patch("custom_components.simple_inventory.TodoManager") as mock_todo_class,
+            patch("custom_components.simple_inventory.ServiceHandler") as mock_service_class,
         ):
 
             result = await async_setup_entry(mock_hass, mock_config_entry_2)
@@ -216,18 +204,12 @@ class TestSimpleInventoryInit:
             patch(
                 "custom_components.simple_inventory.SimpleInventoryCoordinator"
             ) as mock_coord_class,
-            patch(
-                "custom_components.simple_inventory.TodoManager"
-            ) as mock_todo_class,
-            patch(
-                "custom_components.simple_inventory.ServiceHandler"
-            ) as mock_service_class,
+            patch("custom_components.simple_inventory.TodoManager") as mock_todo_class,
+            patch("custom_components.simple_inventory.ServiceHandler") as mock_service_class,
         ):
 
             mock_coordinator = MagicMock()
-            mock_coordinator.async_load_data = AsyncMock(
-                side_effect=Exception("Load failed")
-            )
+            mock_coordinator.async_load_data = AsyncMock(side_effect=Exception("Load failed"))
             mock_coord_class.return_value = mock_coordinator
 
             mock_todo_manager = MagicMock()
@@ -251,12 +233,8 @@ class TestSimpleInventoryInit:
             patch(
                 "custom_components.simple_inventory.SimpleInventoryCoordinator"
             ) as mock_coord_class,
-            patch(
-                "custom_components.simple_inventory.TodoManager"
-            ) as mock_todo_class,
-            patch(
-                "custom_components.simple_inventory.ServiceHandler"
-            ) as mock_service_class,
+            patch("custom_components.simple_inventory.TodoManager") as mock_todo_class,
+            patch("custom_components.simple_inventory.ServiceHandler") as mock_service_class,
         ):
 
             mock_coordinator = MagicMock()
@@ -267,8 +245,8 @@ class TestSimpleInventoryInit:
             mock_service_handler = MagicMock()
             mock_service_class.return_value = mock_service_handler
 
-            mock_hass.config_entries.async_forward_entry_setups.side_effect = (
-                Exception("Platform setup failed")
+            mock_hass.config_entries.async_forward_entry_setups.side_effect = Exception(
+                "Platform setup failed"
             )
 
             with pytest.raises(Exception, match="Platform setup failed"):
@@ -332,9 +310,7 @@ class TestSimpleInventoryInit:
             call(DOMAIN, SERVICE_REMOVE_ITEM),
             call(DOMAIN, SERVICE_UPDATE_ITEM),
         ]
-        mock_hass.services.async_remove.assert_has_calls(
-            expected_service_removals, any_order=True
-        )
+        mock_hass.services.async_remove.assert_has_calls(expected_service_removals, any_order=True)
         assert mock_hass.services.async_remove.call_count == 5
 
         assert DOMAIN not in mock_hass.data
@@ -380,9 +356,7 @@ class TestSimpleInventoryInit:
         assert DOMAIN not in mock_hass.data
 
     @pytest.mark.asyncio
-    async def test_async_setup_legacy_yaml(
-        self: Self, mock_hass: MagicMock
-    ) -> None:
+    async def test_async_setup_legacy_yaml(self: Self, mock_hass: MagicMock) -> None:
         """Test legacy YAML setup."""
         config: dict[str, Any] = {"simple_inventory": {}}
 
@@ -400,12 +374,8 @@ class TestSimpleInventoryInit:
             patch(
                 "custom_components.simple_inventory.SimpleInventoryCoordinator"
             ) as mock_coord_class,
-            patch(
-                "custom_components.simple_inventory.TodoManager"
-            ) as mock_todo_class,
-            patch(
-                "custom_components.simple_inventory.ServiceHandler"
-            ) as mock_service_class,
+            patch("custom_components.simple_inventory.TodoManager") as mock_todo_class,
+            patch("custom_components.simple_inventory.ServiceHandler") as mock_service_class,
             patch("custom_components.simple_inventory.ADD_ITEM_SCHEMA"),
             patch("custom_components.simple_inventory.UPDATE_ITEM_SCHEMA"),
             patch("custom_components.simple_inventory.REMOVE_ITEM_SCHEMA"),
@@ -427,9 +397,7 @@ class TestSimpleInventoryInit:
             assert result is True
 
             service_calls = mock_hass.services.async_register.call_args_list
-            service_registrations = {
-                call[0][1]: call[1]["schema"] for call in service_calls
-            }
+            service_registrations = {call[0][1]: call[1]["schema"] for call in service_calls}
 
             assert SERVICE_ADD_ITEM in service_registrations
             assert SERVICE_UPDATE_ITEM in service_registrations
@@ -446,12 +414,8 @@ class TestSimpleInventoryInit:
             patch(
                 "custom_components.simple_inventory.SimpleInventoryCoordinator"
             ) as mock_coord_class,
-            patch(
-                "custom_components.simple_inventory.TodoManager"
-            ) as mock_todo_class,
-            patch(
-                "custom_components.simple_inventory.ServiceHandler"
-            ) as mock_service_class,
+            patch("custom_components.simple_inventory.TodoManager") as mock_todo_class,
+            patch("custom_components.simple_inventory.ServiceHandler") as mock_service_class,
         ):
 
             mock_coordinator = MagicMock()
@@ -486,12 +450,8 @@ class TestSimpleInventoryInit:
             patch(
                 "custom_components.simple_inventory.SimpleInventoryCoordinator"
             ) as mock_coord_class,
-            patch(
-                "custom_components.simple_inventory.TodoManager"
-            ) as mock_todo_class,
-            patch(
-                "custom_components.simple_inventory.ServiceHandler"
-            ) as mock_service_class,
+            patch("custom_components.simple_inventory.TodoManager") as mock_todo_class,
+            patch("custom_components.simple_inventory.ServiceHandler") as mock_service_class,
         ):
 
             mock_coordinator = MagicMock()
@@ -536,15 +496,9 @@ class TestSimpleInventoryInit:
             patch(
                 "custom_components.simple_inventory.SimpleInventoryCoordinator"
             ) as mock_coord_class,
-            patch(
-                "custom_components.simple_inventory.TodoManager"
-            ) as mock_todo_class,
-            patch(
-                "custom_components.simple_inventory.ServiceHandler"
-            ) as mock_service_class,
-            patch(
-                "custom_components.simple_inventory._create_global_entry"
-            ) as mock_create_global,
+            patch("custom_components.simple_inventory.TodoManager") as mock_todo_class,
+            patch("custom_components.simple_inventory.ServiceHandler") as mock_service_class,
+            patch("custom_components.simple_inventory._create_global_entry") as mock_create_global,
         ):
             mock_coordinator = MagicMock()
             mock_coordinator.async_load_data = AsyncMock()
@@ -578,15 +532,9 @@ class TestSimpleInventoryInit:
             patch(
                 "custom_components.simple_inventory.SimpleInventoryCoordinator"
             ) as mock_coord_class,
-            patch(
-                "custom_components.simple_inventory.TodoManager"
-            ) as mock_todo_class,
-            patch(
-                "custom_components.simple_inventory.ServiceHandler"
-            ) as mock_service_class,
-            patch(
-                "custom_components.simple_inventory._create_global_entry"
-            ) as mock_create_global,
+            patch("custom_components.simple_inventory.TodoManager") as mock_todo_class,
+            patch("custom_components.simple_inventory.ServiceHandler") as mock_service_class,
+            patch("custom_components.simple_inventory._create_global_entry") as mock_create_global,
         ):
             mock_coordinator = MagicMock()
             mock_coordinator.async_load_data = AsyncMock()
@@ -614,15 +562,9 @@ class TestSimpleInventoryInit:
             patch(
                 "custom_components.simple_inventory.SimpleInventoryCoordinator"
             ) as mock_coord_class,
-            patch(
-                "custom_components.simple_inventory.TodoManager"
-            ) as mock_todo_class,
-            patch(
-                "custom_components.simple_inventory.ServiceHandler"
-            ) as mock_service_class,
-            patch(
-                "custom_components.simple_inventory._create_global_entry"
-            ) as mock_create_global,
+            patch("custom_components.simple_inventory.TodoManager") as mock_todo_class,
+            patch("custom_components.simple_inventory.ServiceHandler") as mock_service_class,
+            patch("custom_components.simple_inventory._create_global_entry") as mock_create_global,
         ):
             mock_coordinator = MagicMock()
             mock_coordinator.async_load_data = AsyncMock()

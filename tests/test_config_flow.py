@@ -106,9 +106,7 @@ async def test_add_inventory_with_existing_global_entry(
     existing_global.data = {"entry_type": "global"}
     mock_current_entries.return_value = [existing_global]
 
-    result = await flow.async_step_add_inventory(
-        {"name": "Garage Fridge", "icon": "mdi:fridge"}
-    )
+    result = await flow.async_step_add_inventory({"name": "Garage Fridge", "icon": "mdi:fridge"})
 
     assert result["type"] == data_entry_flow.FlowResultType.CREATE_ENTRY
     assert not result["data"]["create_global"]
@@ -242,9 +240,7 @@ class TestCleanInventoryName:
             category: str,
             integrations: set[str],
         ) -> dict[str, str]:
-            return {
-                "component.simple_inventory.common.inventory_word": "inventory"
-            }
+            return {"component.simple_inventory.common.inventory_word": "inventory"}
 
         with patch(
             "homeassistant.helpers.translation.async_get_translations",
@@ -252,108 +248,47 @@ class TestCleanInventoryName:
         ):
             yield hass
 
-    async def test_removes_inventory_word(
-        self: Self, mock_hass: HomeAssistant
-    ) -> None:
+    async def test_removes_inventory_word(self: Self, mock_hass: HomeAssistant) -> None:
         """Test removing 'inventory' from various positions."""
-        assert (
-            await clean_inventory_name(mock_hass, "Kitchen Inventory")
-            == "Kitchen"
-        )
-        assert (
-            await clean_inventory_name(mock_hass, "Inventory Kitchen")
-            == "Kitchen"
-        )
-        assert (
-            await clean_inventory_name(mock_hass, "My Inventory List")
-            == "My List"
-        )
+        assert await clean_inventory_name(mock_hass, "Kitchen Inventory") == "Kitchen"
+        assert await clean_inventory_name(mock_hass, "Inventory Kitchen") == "Kitchen"
+        assert await clean_inventory_name(mock_hass, "My Inventory List") == "My List"
 
-    async def test_case_insensitive_removal(
-        self: Self, mock_hass: HomeAssistant
-    ) -> None:
+    async def test_case_insensitive_removal(self: Self, mock_hass: HomeAssistant) -> None:
         """Test case-insensitive removal of 'inventory'."""
-        assert (
-            await clean_inventory_name(mock_hass, "Kitchen INVENTORY")
-            == "Kitchen"
-        )
-        assert (
-            await clean_inventory_name(mock_hass, "InVeNtOrY Kitchen")
-            == "Kitchen"
-        )
-        assert (
-            await clean_inventory_name(mock_hass, "kitchen inventory")
-            == "kitchen"
-        )
+        assert await clean_inventory_name(mock_hass, "Kitchen INVENTORY") == "Kitchen"
+        assert await clean_inventory_name(mock_hass, "InVeNtOrY Kitchen") == "Kitchen"
+        assert await clean_inventory_name(mock_hass, "kitchen inventory") == "kitchen"
 
-    async def test_preserves_inventory_if_only_word(
-        self: Self, mock_hass: HomeAssistant
-    ) -> None:
+    async def test_preserves_inventory_if_only_word(self: Self, mock_hass: HomeAssistant) -> None:
         """Test that 'inventory' is preserved if it's the only word."""
         assert await clean_inventory_name(mock_hass, "Inventory") == "Inventory"
         assert await clean_inventory_name(mock_hass, "inventory") == "inventory"
-        assert (
-            await clean_inventory_name(mock_hass, "  INVENTORY  ")
-            == "INVENTORY"
-        )
+        assert await clean_inventory_name(mock_hass, "  INVENTORY  ") == "INVENTORY"
 
-    async def test_handles_multiple_spaces(
-        self: Self, mock_hass: HomeAssistant
-    ) -> None:
+    async def test_handles_multiple_spaces(self: Self, mock_hass: HomeAssistant) -> None:
         """Test handling of multiple spaces after removal."""
+        assert await clean_inventory_name(mock_hass, "Kitchen  Inventory  Items") == "Kitchen Items"
         assert (
-            await clean_inventory_name(mock_hass, "Kitchen  Inventory  Items")
-            == "Kitchen Items"
-        )
-        assert (
-            await clean_inventory_name(
-                mock_hass, "Inventory    Kitchen    Stuff"
-            )
+            await clean_inventory_name(mock_hass, "Inventory    Kitchen    Stuff")
             == "Kitchen Stuff"
         )
 
-    async def test_word_boundary_matching(
-        self: Self, mock_hass: HomeAssistant
-    ) -> None:
+    async def test_word_boundary_matching(self: Self, mock_hass: HomeAssistant) -> None:
         """Test that it only removes complete word 'inventory', not partial matches."""
-        assert (
-            await clean_inventory_name(mock_hass, "Inventorying Items")
-            == "Inventorying Items"
-        )
-        assert (
-            await clean_inventory_name(mock_hass, "MyInventory")
-            == "MyInventory"
-        )
-        assert (
-            await clean_inventory_name(mock_hass, "InventoryList")
-            == "InventoryList"
-        )
+        assert await clean_inventory_name(mock_hass, "Inventorying Items") == "Inventorying Items"
+        assert await clean_inventory_name(mock_hass, "MyInventory") == "MyInventory"
+        assert await clean_inventory_name(mock_hass, "InventoryList") == "InventoryList"
 
-    async def test_strips_whitespace(
-        self: Self, mock_hass: HomeAssistant
-    ) -> None:
+    async def test_strips_whitespace(self: Self, mock_hass: HomeAssistant) -> None:
         """Test that result is properly trimmed."""
-        assert (
-            await clean_inventory_name(mock_hass, "  Kitchen Inventory  ")
-            == "Kitchen"
-        )
-        assert (
-            await clean_inventory_name(mock_hass, "  Inventory  ")
-            == "Inventory"
-        )
+        assert await clean_inventory_name(mock_hass, "  Kitchen Inventory  ") == "Kitchen"
+        assert await clean_inventory_name(mock_hass, "  Inventory  ") == "Inventory"
 
-    async def test_multiple_inventory_words(
-        self: Self, mock_hass: HomeAssistant
-    ) -> None:
+    async def test_multiple_inventory_words(self: Self, mock_hass: HomeAssistant) -> None:
         """Test handling of multiple 'inventory' words."""
-        assert (
-            await clean_inventory_name(mock_hass, "Inventory Inventory Items")
-            == "Items"
-        )
-        assert (
-            await clean_inventory_name(mock_hass, "Kitchen Inventory Inventory")
-            == "Kitchen"
-        )
+        assert await clean_inventory_name(mock_hass, "Inventory Inventory Items") == "Items"
+        assert await clean_inventory_name(mock_hass, "Kitchen Inventory Inventory") == "Kitchen"
 
 
 @patch.object(SimpleInventoryConfigFlow, "_async_current_entries")

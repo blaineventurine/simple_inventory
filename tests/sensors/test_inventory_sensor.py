@@ -62,15 +62,11 @@ class TestInventorySensor:
                 f"{DOMAIN}_updated", inventory_sensor._handle_update
             )
 
-    def test_handle_update(
-        self: Self, inventory_sensor: InventorySensor
-    ) -> None:
+    def test_handle_update(self: Self, inventory_sensor: InventorySensor) -> None:
         """Test inventory update handling."""
         with (
             patch.object(inventory_sensor, "_update_data") as mock_update_data,
-            patch.object(
-                inventory_sensor, "async_write_ha_state"
-            ) as mock_write_state,
+            patch.object(inventory_sensor, "async_write_ha_state") as mock_write_state,
         ):
 
             event = MagicMock()
@@ -108,9 +104,7 @@ class TestInventorySensor:
                 },
             ],
         }
-        mock_sensor_coordinator.get_inventory_statistics.return_value = (
-            mock_stats
-        )
+        mock_sensor_coordinator.get_inventory_statistics.return_value = mock_stats
 
         inventory_sensor._update_data()
 
@@ -173,12 +167,8 @@ class TestInventorySensor:
 
         inventory_sensor._update_data()
 
-        mock_sensor_coordinator.get_all_items.assert_called_once_with(
-            "kitchen_123"
-        )
-        mock_sensor_coordinator.get_inventory_statistics.assert_called_once_with(
-            "kitchen_123"
-        )
+        mock_sensor_coordinator.get_all_items.assert_called_once_with("kitchen_123")
+        mock_sensor_coordinator.get_inventory_statistics.assert_called_once_with("kitchen_123")
 
     def test_update_data_called_during_init(
         self: Self, hass: HomeAssistant, mock_sensor_coordinator: MagicMock
@@ -194,9 +184,7 @@ class TestInventorySensor:
         }
 
         with patch.object(InventorySensor, "_update_data") as mock_update:
-            _ = InventorySensor(
-                hass, mock_sensor_coordinator, "Test", "mdi:test", "test_123"
-            )
+            _ = InventorySensor(hass, mock_sensor_coordinator, "Test", "mdi:test", "test_123")
             mock_update.assert_called_once()
 
     @pytest.mark.parametrize(

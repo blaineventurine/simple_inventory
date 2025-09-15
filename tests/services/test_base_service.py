@@ -17,9 +17,7 @@ from custom_components.simple_inventory.types import AddItemServiceData
 class TestBaseServiceHandler:
     """Test BaseServiceHandler class."""
 
-    def test_init(
-        self: Self, hass: HomeAssistant, mock_coordinator: MagicMock
-    ) -> None:
+    def test_init(self: Self, hass: HomeAssistant, mock_coordinator: MagicMock) -> None:
         """Test BaseServiceHandler initialization."""
         from custom_components.simple_inventory.services.base_service import (
             BaseServiceHandler,
@@ -39,9 +37,7 @@ class TestBaseServiceHandler:
     ) -> None:
         """Test saving data and logging success."""
         with caplog.at_level(logging.INFO):
-            await base_service_handler._save_and_log_success(
-                "kitchen", "Added item", "milk"
-            )
+            await base_service_handler._save_and_log_success("kitchen", "Added item", "milk")
 
         mock_coordinator.async_save_data.assert_called_once_with("kitchen")
 
@@ -62,9 +58,7 @@ class TestBaseServiceHandler:
             )
 
         mock_coordinator.async_save_data.assert_called_once_with("my-pantry_01")
-        assert (
-            "Updated item: café-latte in inventory: my-pantry_01" in caplog.text
-        )
+        assert "Updated item: café-latte in inventory: my-pantry_01" in caplog.text
 
     @pytest.mark.asyncio
     async def test_save_and_log_success_coordinator_exception(
@@ -76,9 +70,7 @@ class TestBaseServiceHandler:
         mock_coordinator.async_save_data.side_effect = Exception("Save failed")
 
         with pytest.raises(Exception, match="Save failed"):
-            await base_service_handler._save_and_log_success(
-                "kitchen", "Added item", "milk"
-            )
+            await base_service_handler._save_and_log_success("kitchen", "Added item", "milk")
 
         mock_coordinator.async_save_data.assert_called_once_with("kitchen")
 
@@ -89,14 +81,9 @@ class TestBaseServiceHandler:
     ) -> None:
         """Test logging when item is not found."""
         with caplog.at_level(logging.WARNING):
-            base_service_handler._log_item_not_found(
-                "Remove item", "milk", "kitchen"
-            )
+            base_service_handler._log_item_not_found("Remove item", "milk", "kitchen")
 
-        assert (
-            "Remove item failed - Item not found: milk in inventory: kitchen"
-            in caplog.text
-        )
+        assert "Remove item failed - Item not found: milk in inventory: kitchen" in caplog.text
         assert caplog.records[0].levelname == "WARNING"
 
     def test_log_operation_failed(
@@ -106,14 +93,9 @@ class TestBaseServiceHandler:
     ) -> None:
         """Test logging when operation fails."""
         with caplog.at_level(logging.ERROR):
-            base_service_handler._log_operation_failed(
-                "Update item", "milk", "kitchen"
-            )
+            base_service_handler._log_operation_failed("Update item", "milk", "kitchen")
 
-        assert (
-            "Update item failed for item: milk in inventory: kitchen"
-            in caplog.text
-        )
+        assert "Update item failed for item: milk in inventory: kitchen" in caplog.text
         assert caplog.records[0].levelname == "ERROR"
 
     def test_extract_item_kwargs_basic(
@@ -155,9 +137,7 @@ class TestBaseServiceHandler:
         self: Self, base_service_handler: BaseServiceHandler
     ) -> None:
         """Test extracting kwargs when all keys are excluded."""
-        data = cast(
-            AddItemServiceData, {"inventory_id": "kitchen", "name": "milk"}
-        )
+        data = cast(AddItemServiceData, {"inventory_id": "kitchen", "name": "milk"})
         exclude_keys = ["inventory_id", "name"]
 
         result = base_service_handler._extract_item_kwargs(data, exclude_keys)
@@ -170,9 +150,7 @@ class TestBaseServiceHandler:
         basic_service_call: MagicMock,
     ) -> None:
         """Test extracting inventory ID and name from service call."""
-        inventory_id, name = base_service_handler._get_inventory_and_name(
-            basic_service_call
-        )
+        inventory_id, name = base_service_handler._get_inventory_and_name(basic_service_call)
 
         assert inventory_id == "kitchen"
         assert name == "milk"
@@ -208,9 +186,7 @@ class TestBaseServiceHandler:
 
         # Create multiple concurrent save operations
         tasks = [
-            base_service_handler._save_and_log_success(
-                f"inventory_{i}", "Operation", f"item_{i}"
-            )
+            base_service_handler._save_and_log_success(f"inventory_{i}", "Operation", f"item_{i}")
             for i in range(3)
         ]
 
