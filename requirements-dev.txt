@@ -1,21 +1,21 @@
 -r requirements.txt
 
 # Code formatting
-black #==25.1.0
-isort # ==6.0.1
+black
+isort
 
 # Linting
-flake8 #==7.2.0
-flake8-bugbear #==24.12.12
-flake8-comprehensions #==3.16.0
-flake8-simplify #==0.22.0
+flake8
+flake8-bugbear
+flake8-comprehensions
+flake8-simplify
 
 # Type checking
-mypy #==1.16.0
+mypy
 
 # Testing
-pytest #==8.3.5
-pytest-cov #==6.0.0
+pytest
+pytest-cov
 pytest-homeassistant-custom-component
 
 safety
