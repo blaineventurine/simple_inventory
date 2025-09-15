@@ -1,18 +1,13 @@
 {
   "domain": "simple_inventory",
   "name": "Simple Inventory",
-  "codeowners": [
-    "@blaineventurine"
-  ],
+  "codeowners": ["@blaineventurine"],
   "config_flow": true,
-  "dependencies": [
-    "frontend",
-    "lovelace"
-  ],
+  "dependencies": ["frontend", "lovelace"],
   "documentation": "https://github.com/blaineventurine/simple_inventory",
   "integration_type": "device",
   "iot_class": "local_polling",
   "issue_tracker": "https://github.com/blaineventurine/simple_inventory/issues",
   "requirements": [],
-  "version": "0.3.4"
+  "version": "0.3.5"
 }
