@@ -27,6 +27,7 @@ ITEM_SCHEMA = {
         vol.Coerce(int), vol.Range(min=DEFAULT_AUTO_ADD_TO_LIST_QUANTITY)
     ),
     vol.Optional("todo_list"): cv.string,
+    vol.Optional("location"): cv.string,
 }
 
 ADD_ITEM_SCHEMA = vol.Schema({INVENTORY_ID: cv.string, **ITEM_SCHEMA})

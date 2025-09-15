@@ -21,6 +21,7 @@ FIELD_NAME: Final = "name"
 FIELD_QUANTITY: Final = "quantity"
 FIELD_TODO_LIST: Final = "todo_list"
 FIELD_UNIT: Final = "unit"
+FIELD_LOCATION: Final = "location"
 
 DEFAULT_AUTO_ADD_ENABLED: Final = False
 DEFAULT_AUTO_ADD_TO_LIST_QUANTITY: Final = 0
@@ -30,6 +31,7 @@ DEFAULT_EXPIRY_DATE: Final = ""
 DEFAULT_QUANTITY: Final = 1
 DEFAULT_TODO_LIST: Final = ""
 DEFAULT_UNIT: Final = ""
+DEFAULT_LOCATION: Final = ""
 
 INVENTORY_CONFIG: Final = "config"
 INVENTORY_ITEMS: Final = "items"

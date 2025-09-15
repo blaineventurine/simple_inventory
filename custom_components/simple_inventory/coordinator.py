@@ -13,6 +13,7 @@ from .const import (
     DEFAULT_CATEGORY,
     DEFAULT_EXPIRY_ALERT_DAYS,
     DEFAULT_EXPIRY_DATE,
+    DEFAULT_LOCATION,
     DEFAULT_QUANTITY,
     DEFAULT_TODO_LIST,
     DEFAULT_UNIT,
@@ -22,6 +23,7 @@ from .const import (
     FIELD_CATEGORY,
     FIELD_EXPIRY_ALERT_DAYS,
     FIELD_EXPIRY_DATE,
+    FIELD_LOCATION,
     FIELD_NAME,
     FIELD_QUANTITY,
     FIELD_TODO_LIST,
@@ -140,6 +142,7 @@ class SimpleInventoryCoordinator:
             FIELD_QUANTITY,
             FIELD_TODO_LIST,
             FIELD_UNIT,
+            FIELD_LOCATION,
         }
 
         for key, value in kwargs.items():
@@ -238,6 +241,7 @@ class SimpleInventoryCoordinator:
                 FIELD_QUANTITY: max(0, quantity),
                 FIELD_TODO_LIST: kwargs.get(FIELD_TODO_LIST, DEFAULT_TODO_LIST),
                 FIELD_UNIT: kwargs.get(FIELD_UNIT, DEFAULT_UNIT),
+                FIELD_LOCATION: kwargs.get(FIELD_LOCATION, DEFAULT_LOCATION),
             }
 
             if new_item[FIELD_AUTO_ADD_ENABLED]:
@@ -423,6 +427,14 @@ class SimpleInventoryCoordinator:
                     categories[category] = 0
                 categories[category] += 1
 
+        locations = {}
+        for item in items.values():
+            location = item.get(FIELD_LOCATION, DEFAULT_LOCATION)
+            if location:
+                if location not in locations:
+                    locations[location] = 0
+                locations[location] += 1
+
         below_threshold = []
         for name, item in items.items():
             quantity = item.get(FIELD_QUANTITY, 0)
@@ -447,6 +459,7 @@ class SimpleInventoryCoordinator:
             "total_items": total_items,
             "total_quantity": total_quantity,
             "categories": categories,
+            "locations": locations,
             "below_threshold": below_threshold,
             "expiring_items": expiring_items,
         }
