@@ -96,6 +96,10 @@
         "todo_list": {
           "name": "Liste de tâches",
           "description": "Entité de liste de tâches à laquelle ajouter"
+        },
+        "location": {
+          "name": "Emplacement",
+          "description": "Emplacement de l'article"
         }
       }
     },
@@ -196,6 +200,10 @@
         "expiry_alert_days": {
           "name": "Délai d'alerte",
           "description": "Nombre de jours pour prévenir en avance de l'expiration"
+        },
+        "location": {
+          "name": "Emplacement",
+          "description": "Emplacement dans l'inventaire"
         }
       }
     }
