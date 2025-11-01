@@ -89,8 +89,46 @@ class TodoManager:
 
             for item in incomplete_items:
                 item_summary = item.get("summary", "")
-                _LOGGER.debug(f"Checking item: {item_summary} against {item_name}")
-                if item_summary.lower().strip() == item_name.lower().strip():
+                _LOGGER.debug(
+                    f"Checking item: {
+                        item_summary} against {item_name}"
+                )
+
+                if (
+                    item_summary.lower().strip() == item_name.lower().strip()
+                    or item_summary.lower().startswith(f"{item_name.lower().strip()} (x")
+                ):
+                    _LOGGER.info(
+                        f"Updating item {
+                            item_name} quantity in todo list"
+                    )
+
+                    # current_quantity = ""
+                    #
+                    # if item_summary.lower().startswith(f"{item_name.lower().strip()} (x"):
+                    #     start_index = item_summary.lower().find("(x") + 2
+                    #     end_index = item_summary.lower().find(")", start_index)
+                    #     current_quantity = item_summary[start_index:end_index].strip()
+
+                    quantity_needed = (
+                        item_data[FIELD_AUTO_ADD_TO_LIST_QUANTITY] - item_data[FIELD_QUANTITY]
+                    )
+
+                    await self.hass.services.async_call(
+                        "todo",
+                        "update_item",
+                        {
+                            "item": f"{item_summary}",
+                            "rename": f"{item_name} (x{quantity_needed})",
+                            "entity_id": todo_list_entity,
+                        },
+                    )
+                    return True
+
+                if (
+                    item_summary.lower().strip() == item_name.lower().strip()
+                    or item_summary.lower().startswith(f"{item_name.lower().strip()} (x")
+                ):
 
                     _LOGGER.info(
                         f"Item {
@@ -109,4 +147,48 @@ class TodoManager:
 
         except Exception as e:
             _LOGGER.error(f"Failed to add {item_name} to todo list: {e}")
+            return False
+
+    async def check_and_remove_item(self, item_name: str, item_data: InventoryItem) -> bool:
+        """Check if item should be removed from todo list and remove it."""
+        _LOGGER.debug(f"Checking if {item_name} should be removed...")
+        if not (
+            item_data.get(FIELD_AUTO_ADD_ENABLED, False)
+            and item_data[FIELD_QUANTITY]
+            > item_data.get(
+                FIELD_AUTO_ADD_TO_LIST_QUANTITY,
+                DEFAULT_AUTO_ADD_TO_LIST_QUANTITY,
+            )
+            and item_data.get(FIELD_TODO_LIST)
+        ):
+            return False
+        try:
+            todo_list_entity = item_data["todo_list"]
+            incomplete_items = await self._get_incomplete_items(todo_list_entity)
+            for item in incomplete_items:
+                item_summary = item.get("summary", "")
+                if (
+                    item_summary.lower().strip() == item_name.lower().strip()
+                    or item_summary.lower().startswith(f"{item_name.lower().strip()} (x")
+                ) and item_data[FIELD_QUANTITY] > item_data.get(
+                    FIELD_AUTO_ADD_TO_LIST_QUANTITY,
+                    DEFAULT_AUTO_ADD_TO_LIST_QUANTITY,
+                ):
+                    _LOGGER.info(
+                        f"Removing {item_name} from todo list {
+                            todo_list_entity}"
+                    )
+                    await self.hass.services.async_call(
+                        "todo",
+                        "remove_item",
+                        {"item": item_summary, "entity_id": todo_list_entity},
+                    )
+                    return True
+            _LOGGER.debug(
+                f"Item {item_name} not found in todo list {
+                    todo_list_entity}"
+            )
+            return False
+        except Exception as e:
+            _LOGGER.error(f"Failed to remove {item_name} from todo list: {e}")
             return False

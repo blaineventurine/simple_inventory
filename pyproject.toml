@@ -16,6 +16,14 @@ extend-exclude = '''
 )/
 '''
 
+[tool.flake8]
+max-line-length = 100
+ignore = [
+  "E203", # whitespace before ':'
+  "E501", # line length
+  "W503", # line break before binary operator
+]
+
 [tool.isort]
 profile = "black"
 line_length = 100

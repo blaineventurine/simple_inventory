@@ -17,11 +17,11 @@ FIELD_CATEGORY: Final = "category"
 FIELD_EXPIRY_ALERT_DAYS: Final = "expiry_alert_days"
 FIELD_EXPIRY_DATE: Final = "expiry_date"
 FIELD_ITEMS: Final = "items"
+FIELD_LOCATION: Final = "location"
 FIELD_NAME: Final = "name"
 FIELD_QUANTITY: Final = "quantity"
 FIELD_TODO_LIST: Final = "todo_list"
 FIELD_UNIT: Final = "unit"
-FIELD_LOCATION: Final = "location"
 
 DEFAULT_AUTO_ADD_ENABLED: Final = False
 DEFAULT_AUTO_ADD_TO_LIST_QUANTITY: Final = 0

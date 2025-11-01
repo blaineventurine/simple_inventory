@@ -31,6 +31,10 @@ class QuantityService(BaseServiceHandler):
 
         try:
             if self.coordinator.increment_item(inventory_id, name, amount):
+                item_data = self.coordinator.get_item(inventory_id, name)
+                if item_data:
+                    await self.todo_manager.check_and_remove_item(name, item_data)
+
                 await self._save_and_log_success(
                     inventory_id, f"Incremented {name} by {amount}", name
                 )
