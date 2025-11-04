@@ -51,10 +51,14 @@ QUANTITY_UPDATE_SCHEMA = vol.Schema(
     }
 )
 
+# Read-only: return all items for an inventory
+GET_ITEMS_SCHEMA = vol.Schema({INVENTORY_ID: cv.string})
+
 ALL_SCHEMAS = {
     "add_item": ADD_ITEM_SCHEMA,
     "remove_item": REMOVE_ITEM_SCHEMA,
     "update_item": UPDATE_ITEM_SCHEMA,
     "increment_item": QUANTITY_UPDATE_SCHEMA,
     "decrement_item": QUANTITY_UPDATE_SCHEMA,
+    "get_items": GET_ITEMS_SCHEMA,
 }

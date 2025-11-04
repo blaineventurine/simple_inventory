@@ -153,3 +153,11 @@ update_item:
       example: Basement Refrigerator
       required: false
       default: ""
+
+get_items:
+  description: Return the full list of items for an inventory. Use return_response.
+  fields:
+    inventory_id:
+      description: ID of the inventory
+      example: "kitchen_freezer"
+      required: true
