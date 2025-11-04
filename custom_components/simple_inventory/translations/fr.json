@@ -206,6 +206,16 @@
           "description": "Emplacement dans l'inventaire"
         }
       }
+    },
+    "get_items": {
+      "name": "Obtenir les articles",
+      "description": "Retourne la liste complète des articles d'un inventaire",
+      "fields": {
+        "inventory_id": {
+          "name": "ID de l'inventaire",
+          "description": "ID de l'inventaire"
+        }
+      }
     }
   },
   "common": {

@@ -206,6 +206,16 @@
           "description": "Location within the inventory"
         }
       }
+    },
+    "get_items": {
+      "name": "Get Items",
+      "description": "Return the full list of items for an inventory",
+      "fields": {
+        "inventory_id": {
+          "name": "Inventory ID",
+          "description": "ID of the inventory"
+        }
+      }
     }
   },
   "common": {
