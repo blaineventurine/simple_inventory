@@ -59,8 +59,9 @@ class InventoryService(BaseServiceHandler):
         try:
             item = self.coordinator.get_item(inventory_id, name) if self.todo_manager else None
 
-            if self.coordinator.remove_item(inventory_id, name) and item:
-                await self.todo_manager.check_and_remove_item(name, item)
+            if self.coordinator.remove_item(inventory_id, name):
+                if item:
+                    await self.todo_manager.check_and_remove_item(name, item)
                 await self._save_and_log_success(inventory_id, "Removed item", name)
             else:
                 self._log_item_not_found("Remove item", name, inventory_id)

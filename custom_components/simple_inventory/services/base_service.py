@@ -28,7 +28,7 @@ class BaseServiceHandler:
     ) -> None:
         """Save data and log successful operation."""
         await self.coordinator.async_save_data(inventory_id)
-        _LOGGER.info(f"{operation}: {item_name} in inventory: {inventory_id}")
+        _LOGGER.debug(f"{operation}: {item_name} in inventory: {inventory_id}")
 
     def _log_item_not_found(self, operation: str, item_name: str, inventory_id: str) -> None:
         """Log when an item is not found."""
