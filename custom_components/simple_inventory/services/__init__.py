@@ -25,7 +25,7 @@ class ServiceHandler:
         self.hass = hass
         self.coordinator = coordinator
         self.todo_manager = todo_manager
-        self.inventory_service = InventoryService(hass, coordinator)
+        self.inventory_service = InventoryService(hass, coordinator, todo_manager)
         self.quantity_service = QuantityService(hass, coordinator, todo_manager)
 
     async def async_add_item(self, call: ServiceCall) -> None:

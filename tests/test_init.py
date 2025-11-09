@@ -498,14 +498,15 @@ class TestSimpleInventoryInit:
             ) as mock_coord_class,
             patch("custom_components.simple_inventory.TodoManager") as mock_todo_class,
             patch("custom_components.simple_inventory.ServiceHandler") as mock_service_class,
-            patch("custom_components.simple_inventory._create_global_entry") as mock_create_global,
+            patch(
+                "custom_components.simple_inventory._create_global_entry", new_callable=AsyncMock
+            ) as mock_create_global,
         ):
             mock_coordinator = MagicMock()
             mock_coordinator.async_load_data = AsyncMock()
             mock_coord_class.return_value = mock_coordinator
             mock_todo_class.return_value = MagicMock()
             mock_service_class.return_value = MagicMock()
-            mock_create_global.return_value = AsyncMock()
 
             result = await async_setup_entry(mock_hass, mock_config_entry)
 

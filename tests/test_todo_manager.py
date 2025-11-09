@@ -135,7 +135,8 @@ class TestTodoManager:
             mock_call.assert_called_with(
                 "todo",
                 "add_item",
-                {"item": "bread", "entity_id": "todo.shopping_list"},
+                {"item": "bread (x4)", "entity_id": "todo.shopping_list"},
+                blocking=True,
             )
 
     @pytest.mark.asyncio
@@ -170,15 +171,15 @@ class TestTodoManager:
             patch.object(
                 todo_manager,
                 "_get_incomplete_items",
-                new=AsyncMock(return_value=[{"summary": "BREAD", "status": "needs_action"}]),
+                new=AsyncMock(return_value=[{"summary": "BREAD (x4)", "status": "needs_action"}]),
             ),
             patch.object(todo_manager.hass.services, "async_call", new=AsyncMock()) as mock_call,
         ):
 
             result = await todo_manager.check_and_add_item("bread", sample_item_data)
 
-            assert result is False
-            mock_call.assert_not_called()
+            assert result is True
+            mock_call.assert_called()
 
     @pytest.mark.parametrize(
         "item_data,expected",
