@@ -1,7 +1,7 @@
 """Tests for InventoryService."""
 
 import logging
-from unittest.mock import MagicMock
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from homeassistant.core import ServiceCall
@@ -257,7 +257,7 @@ class TestInventoryService:
         add_item_service_call: ServiceCall,
     ) -> None:
         """Test adding item with todo manager integration."""
-        mock_todo_manager = MagicMock()
+        mock_todo_manager = AsyncMock()
         inventory_service = InventoryService(MagicMock(), mock_coordinator, mock_todo_manager)
 
         # Item below threshold
@@ -265,6 +265,7 @@ class TestInventoryService:
             "name": "milk",
             "quantity": 1,
             "auto_add_to_list_quantity": 2,
+            "auto_add_enabled": True,
         }
 
         await inventory_service.async_add_item(add_item_service_call)
