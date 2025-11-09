@@ -59,6 +59,7 @@ This integration exposes the following actions:
 - `update_item`
 - `increment_item`
 - `decrement_item`
+- `get_items` (returns data)
 
 which can be used in automations. For example, if I call `simple_inventory.increment_item` with:
 
@@ -71,3 +72,34 @@ amount: 1
 <img width="1085" height="506" alt="image" src="https://github.com/user-attachments/assets/5e1c2411-4d5e-46f9-abc3-2c8dcb639305" />
 
 it will increment the amount by 1. The amount field is how much you want to increment it by. You can get the inventory ID by going to Developer Tools → States, then filtering on “inventory” and you will see a list of your inventories and their IDs in the Attributes column.
+
+### Retrieve all items in an inventory
+
+Use the `simple_inventory.get_items` service to get the full list of items for a specific inventory. This service supports responses; in Developer Tools → Services, set `return_response: true` to receive the data back.
+
+Example call:
+
+```yaml
+inventory_id: "01JYFPCDMBRBRK4MB3C26S2FKH"
+```
+
+Example response:
+
+```json
+{
+  "items": [
+    {
+      "name": "Milk",
+      "quantity": 1,
+      "unit": "L",
+      "category": "Dairy",
+      "expiry_date": "2025-11-10",
+      "expiry_alert_days": 3,
+      "auto_add_enabled": true,
+      "auto_add_to_list_quantity": 1,
+      "todo_list": "todo.grocery_list",
+      "location": "Fridge"
+    }
+  ]
+}
+```

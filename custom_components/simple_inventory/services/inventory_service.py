@@ -146,3 +146,20 @@ class InventoryService(BaseServiceHandler):
                 inventory_id,
                 e,
             )
+
+    async def async_get_items(self, call: ServiceCall) -> dict[str, list[dict[str, Any]]]:
+        """Return full list of items for an inventory.
+
+        Response shape:
+        { "items": [{"name": str, ...item fields...}, ...] }
+        """
+        data = cast(dict[str, Any], call.data)
+        inventory_id = data["inventory_id"]
+
+        items_map = self.coordinator.get_all_items(inventory_id)
+        items_list = [{"name": name, **details} for name, details in items_map.items()]
+
+        # Sorting for stable output
+        items_list.sort(key=lambda item: item.get("name", "").lower())
+
+        return {"items": items_list}

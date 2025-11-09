@@ -48,5 +48,9 @@ class ServiceHandler:
         """Decrement item quantity."""
         await self.quantity_service.async_decrement_item(call)
 
+    async def async_get_items(self, call: ServiceCall):
+        """Return full item list for an inventory."""
+        return await self.inventory_service.async_get_items(call)
+
 
 __all__ = ["ServiceHandler", "InventoryService", "QuantityService"]

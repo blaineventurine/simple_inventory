@@ -198,6 +198,16 @@
           "description": "Número de días de anticipación para avisar sobre artículos que vencen"
         }
       }
+    },
+    "get_items": {
+      "name": "Obtener Artículos",
+      "description": "Devuelve la lista completa de artículos de un inventario",
+      "fields": {
+        "inventory_id": {
+          "name": "ID del Inventario",
+          "description": "ID del inventario"
+        }
+      }
     }
   },
   "common": {
