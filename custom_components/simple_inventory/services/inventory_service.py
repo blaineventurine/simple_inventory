@@ -3,8 +3,10 @@
 import logging
 from typing import Any, cast
 
-from homeassistant.core import ServiceCall
+from homeassistant.core import HomeAssistant, ServiceCall
 
+from ..coordinator import SimpleInventoryCoordinator
+from ..todo_manager import TodoManager
 from ..types import (
     AddItemServiceData,
     RemoveItemServiceData,
@@ -18,16 +20,32 @@ _LOGGER = logging.getLogger(__name__)
 class InventoryService(BaseServiceHandler):
     """Handle inventory-specific operations (add, remove, update items)."""
 
+    def __init__(
+        self,
+        hass: HomeAssistant,
+        coordinator: SimpleInventoryCoordinator,
+        todo_manager: TodoManager,
+    ):
+        """Initialize inventory service with optional todo manager."""
+        super().__init__(hass, coordinator)
+        self.todo_manager = todo_manager
+
     async def async_add_item(self, call: ServiceCall) -> None:
         """Add an item to the inventory."""
         item_data: AddItemServiceData = cast(AddItemServiceData, call.data)
         inventory_id = item_data["inventory_id"]
         name = item_data["name"]
-
         item_kwargs = self._extract_item_kwargs(item_data, ["inventory_id"])
 
         try:
             self.coordinator.add_item(inventory_id, **item_kwargs)
+            item = self.coordinator.get_item(inventory_id, name)
+            if item:
+                quantity = item.get("quantity", 0)
+                auto_add_quantity = item.get("auto_add_to_list_quantity", 0)
+                if quantity <= auto_add_quantity:
+                    await self.todo_manager.check_and_add_item(name, item)
+
             await self._save_and_log_success(inventory_id, "Added item", name)
         except Exception as e:
             _LOGGER.error(f"Failed to add item {name} to inventory {inventory_id}: {e}")
@@ -39,15 +57,15 @@ class InventoryService(BaseServiceHandler):
         name = data["name"]
 
         try:
-            if self.coordinator.remove_item(inventory_id, name):
+            item = self.coordinator.get_item(inventory_id, name) if self.todo_manager else None
+
+            if self.coordinator.remove_item(inventory_id, name) and item:
+                await self.todo_manager.check_and_remove_item(name, item)
                 await self._save_and_log_success(inventory_id, "Removed item", name)
             else:
                 self._log_item_not_found("Remove item", name, inventory_id)
         except Exception as e:
-            _LOGGER.error(
-                f"Failed to remove item {
-                    name} from inventory {inventory_id}: {e}"
-            )
+            _LOGGER.error(f"Failed to remove item {name} from inventory {inventory_id}: {e}")
 
     async def async_update_item(self, call: ServiceCall) -> None:
         """Update an existing item with new values."""
@@ -61,7 +79,6 @@ class InventoryService(BaseServiceHandler):
             return
 
         update_data: dict[str, Any] = {}
-
         optional_fields = [
             "quantity",
             "unit",
@@ -73,12 +90,25 @@ class InventoryService(BaseServiceHandler):
             "todo_list",
             "location",
         ]
+
         for field in optional_fields:
             if field in data:
                 update_data[field] = data.get(field)
 
         try:
             if self.coordinator.update_item(inventory_id, old_name, new_name, **update_data):
+                updated_item = self.coordinator.get_item(inventory_id, new_name)
+
+                if updated_item:
+                    quantity = updated_item.get("quantity", 0)
+                    auto_add_quantity = updated_item.get("auto_add_to_list_quantity", 0)
+                    auto_add_enabled = updated_item.get("auto_add_enabled", False)
+
+                    if auto_add_enabled and quantity <= auto_add_quantity:
+                        await self.todo_manager.check_and_add_item(new_name, updated_item)
+                    else:
+                        await self.todo_manager.check_and_remove_item(new_name, updated_item)
+
                 await self._save_and_log_success(
                     inventory_id,
                     f"Updated item: {old_name} -> {new_name}",
@@ -87,7 +117,4 @@ class InventoryService(BaseServiceHandler):
             else:
                 self._log_operation_failed("Update item", old_name, inventory_id)
         except Exception as e:
-            _LOGGER.error(
-                f"Failed to update item {
-                    old_name} in inventory {inventory_id}: {e}"
-            )
+            _LOGGER.error(f"Failed to update item {old_name} in inventory {inventory_id}: {e}")
