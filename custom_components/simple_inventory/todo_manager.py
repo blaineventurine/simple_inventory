@@ -73,6 +73,42 @@ class TodoManager:
 
         return []
 
+    async def _find_matching_incomplete_item(
+        self, todo_list: str, item_name: str
+    ) -> dict[str, Any] | None:
+        """Find a matching incomplete item in the todo list."""
+        incomplete_items = await self._get_incomplete_items(todo_list)
+
+        for item in incomplete_items:
+            if self._name_matches(item.get("summary", ""), item_name):
+                return item
+        return None
+
+    def _build_item_params(self, item: dict[str, Any]) -> str:
+        """Build the item parameter for service calls, preferring UID."""
+        item_uid = str(item.get("uid"))
+
+        if item_uid:
+            _LOGGER.debug(f"Using UID: {item_uid}")
+            return item_uid
+
+        summary = str(item.get("summary", ""))
+        _LOGGER.debug(f"Using summary: {summary}")
+        return summary
+
+    async def _update_todo_item(self, todo_list: str, item: dict[str, Any], new_name: str) -> None:
+        """Update a todo item with a new name."""
+        await self.hass.services.async_call(
+            "todo",
+            "update_item",
+            {
+                "item": self._build_item_params(item),
+                "rename": new_name,
+                "entity_id": todo_list,
+            },
+            blocking=True,
+        )
+
     async def check_and_add_item(self, item_name: str, item_data: InventoryItem) -> bool:
         """Check if item should be added to todo list and add it."""
         auto_add_enabled = item_data.get(FIELD_AUTO_ADD_ENABLED, False)
@@ -85,47 +121,21 @@ class TodoManager:
 
         if not (auto_add_enabled and quantity <= auto_add_quantity and todo_list):
             return False
-        try:
-            incomplete_items = await self._get_incomplete_items(todo_list)
-            quantity_needed = str(auto_add_quantity - quantity + 1)
-            matching_item = None
 
-            for item in incomplete_items:
-                if self._name_matches(item.get("summary", ""), item_name):
-                    matching_item = item
-                    break
+        try:
+            matching_item = await self._find_matching_incomplete_item(todo_list, item_name)
+            quantity_needed = str(auto_add_quantity - quantity + 1)
+            new_name = f"{item_name} (x{quantity_needed})"
 
             if matching_item:
-                new_name = f"{item_name} (x{quantity_needed})"
-                update_params = {
-                    "entity_id": todo_list,
-                    "rename": new_name,
-                }
-
-                item_uid = matching_item.get("uid")
-                if item_uid:
-                    update_params["item"] = item_uid
-                    _LOGGER.debug(f"Updating by UID: {item_uid} to {new_name}")
-                else:
-                    update_params["item"] = matching_item.get("summary", "")
-                    _LOGGER.debug(
-                        f"Updating by summary: {matching_item.get('summary')} to {new_name}"
-                    )
-
+                await self._update_todo_item(todo_list, matching_item, new_name)
+            else:
                 await self.hass.services.async_call(
                     "todo",
-                    "update_item",
-                    update_params,
+                    "add_item",
+                    {"item": new_name, "entity_id": todo_list},
                     blocking=True,
                 )
-                return True
-
-            await self.hass.services.async_call(
-                "todo",
-                "add_item",
-                {"item": f"{item_name} (x{quantity_needed})", "entity_id": todo_list},
-                blocking=True,
-            )
             return True
 
         except Exception as e:
@@ -146,60 +156,28 @@ class TodoManager:
             return False
 
         try:
-            incomplete_items = await self._get_incomplete_items(todo_list)
+            matching_item = await self._find_matching_incomplete_item(todo_list, item_name)
+
+            if not matching_item:
+                return False
+
             quantity_needed = auto_add_quantity - quantity + 1
-            matching_item = None
 
-            for item in incomplete_items:
-                if self._name_matches(item.get("summary", ""), item_name):
-                    matching_item = item
-                    break
-
-            if matching_item:
-                if quantity_needed <= 0:
-                    remove_params = {"entity_id": todo_list}
-                    item_uid = matching_item.get("uid")
-
-                    if item_uid:
-                        remove_params["item"] = item_uid
-                        _LOGGER.debug(f"Removing by UID: {item_uid}")
-                    else:
-                        remove_params["item"] = matching_item.get("summary", "")
-                        _LOGGER.debug(f"Removing by summary: {matching_item.get('summary')}")
-
-                    await self.hass.services.async_call(
-                        "todo",
-                        "remove_item",
-                        remove_params,
-                        blocking=True,
-                    )
-                    return True
-
-                new_name = f"{item_name} (x{str(quantity_needed)})"
-                update_params = {
-                    "entity_id": todo_list,
-                    "rename": new_name,
-                }
-
-                item_uid = matching_item.get("uid")
-                if item_uid:
-                    update_params["item"] = item_uid
-                    _LOGGER.debug(f"Updating by UID: {item_uid} to {new_name}")
-                else:
-                    update_params["item"] = matching_item.get("summary", "")
-                    _LOGGER.debug(
-                        f"Updating by summary: {matching_item.get('summary')} to {new_name}"
-                    )
-
+            if quantity_needed <= 0:
                 await self.hass.services.async_call(
                     "todo",
-                    "update_item",
-                    update_params,
+                    "remove_item",
+                    {
+                        "item": self._build_item_params(matching_item),
+                        "entity_id": todo_list,
+                    },
                     blocking=True,
                 )
-                return True
+            else:
+                new_name = f"{item_name} (x{str(quantity_needed)})"
+                await self._update_todo_item(todo_list, matching_item, new_name)
 
-            return False  # No matching incomplete item found
+            return True
 
         except Exception as e:
             _LOGGER.error(f"Failed to remove {item_name} from todo list: {e}")
