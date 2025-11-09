@@ -124,7 +124,7 @@ class TodoManager:
 
         try:
             matching_item = await self._find_matching_incomplete_item(todo_list, item_name)
-            quantity_needed = str(auto_add_quantity - quantity + 1)
+            quantity_needed = auto_add_quantity - quantity + 1
             new_name = f"{item_name} (x{quantity_needed})"
 
             if matching_item:
