@@ -443,11 +443,7 @@ class SimpleInventoryCoordinator:
         auto_add_quantity: Optional[int],
         todo_list: Optional[str],
     ) -> bool:
-        """Validate auto-add configuration.
-
-        Returns True if valid or auto_add not enabled.
-        Returns False if auto_add is enabled but config is invalid.
-        """
+        """Validate auto-add configuration."""
         if not auto_add_enabled:
             return True
 
@@ -470,19 +466,7 @@ class SimpleInventoryCoordinator:
         return True
 
     def _validate_and_clean_name(self, name: str, operation: str, inventory_id: str) -> str:
-        """Validate and clean item name.
-
-        Args:
-            name: The item name to validate
-            operation: The operation being performed (for logging)
-            inventory_id: The inventory ID (for logging)
-
-        Returns:
-            Cleaned name (stripped of whitespace)
-
-        Raises:
-            ValueError: If name is empty or whitespace-only
-        """
+        """Validate and clean item name."""
         if not name or not name.strip():
             raise ValueError(
                 f"Cannot {operation} item with empty name in inventory '{inventory_id}'"
@@ -506,15 +490,7 @@ class SimpleInventoryCoordinator:
     def _process_item_updates(
         self, current_item: InventoryItem, **kwargs: Unpack[InventoryItem]
     ) -> InventoryItem:
-        """Process field updates for an item.
-
-        Args:
-            current_item: The current item data
-            **kwargs: Field updates to apply
-
-        Returns:
-            Updated item data
-        """
+        """Process field updates for an item."""
         updated_item = current_item.copy()
         allowed_fields = self._get_allowed_update_fields()
 
@@ -532,14 +508,7 @@ class SimpleInventoryCoordinator:
         new_name: str,
         item_data: InventoryItem,
     ) -> None:
-        """Handle renaming an item in inventory.
-
-        Args:
-            inventory: The inventory dict
-            old_name: Current item name
-            new_name: New item name
-            item_data: The item data
-        """
+        """Handle renaming an item in inventory."""
         if old_name != new_name:
             _LOGGER.debug(
                 "Renaming item '%s' to '%s' in inventory",
@@ -557,16 +526,7 @@ class SimpleInventoryCoordinator:
         field: str,
         default: str = "",
     ) -> Dict[str, int]:
-        """Group items by a specific field value and count occurrences.
-
-        Args:
-            items: Dictionary of items to group
-            field: The field name to group by
-            default: Default value if field is missing
-
-        Returns:
-            Dictionary mapping field values to counts
-        """
+        """Group items by a specific field value and count occurrences."""
         groups: Dict[str, int] = {}
         for item in items.values():
             field_value: str = str(item.get(field, default))
