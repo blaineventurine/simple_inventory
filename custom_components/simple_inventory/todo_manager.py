@@ -174,7 +174,7 @@ class TodoManager:
                     blocking=True,
                 )
             else:
-                new_name = f"{item_name} (x{str(quantity_needed)})"
+                new_name = f"{item_name} (x{quantity_needed})"
                 await self._update_todo_item(todo_list, matching_item, new_name)
 
             return True
