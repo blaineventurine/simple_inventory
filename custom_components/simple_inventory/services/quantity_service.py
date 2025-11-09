@@ -50,7 +50,9 @@ class QuantityService(BaseServiceHandler):
                 self._log_item_not_found(f"{operation.capitalize()} item", name, inventory_id)
 
         except Exception as e:
-            _LOGGER.error(f"Failed to {operation} item {name} in inventory {inventory_id}: {e}")
+            _LOGGER.error(
+                "Failed to %s item %s in inventory %s: %s", operation, name, inventory_id, e
+            )
 
     async def async_increment_item(self, call: ServiceCall) -> None:
         """Increment item quantity."""
