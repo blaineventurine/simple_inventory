@@ -50,6 +50,40 @@ class SimpleInventoryCoordinator:
         }
         self._listeners: list[Callable[[], None]] = []
 
+    _INTEGER_FIELDS = {
+        FIELD_QUANTITY,
+        FIELD_AUTO_ADD_TO_LIST_QUANTITY,
+        FIELD_EXPIRY_ALERT_DAYS,
+    }
+
+    _BOOLEAN_FIELDS = {
+        FIELD_AUTO_ADD_ENABLED,
+    }
+
+    _STRING_FIELDS = {
+        FIELD_UNIT,
+        FIELD_CATEGORY,
+        FIELD_EXPIRY_DATE,
+        FIELD_TODO_LIST,
+        FIELD_LOCATION,
+    }
+
+    def _process_field_value(self, field: str, value: Any) -> Any:
+        """Process and coerce field value to correct type."""
+        if field in self._INTEGER_FIELDS:
+            return (
+                max(0, int(value))
+                if value is not None and isinstance(value, (int, str, bool))
+                else 0
+            )
+        elif field in self._BOOLEAN_FIELDS:
+            return bool(value)
+        elif field in self._STRING_FIELDS:
+            return str(value) if value is not None else ""
+        else:
+            _LOGGER.warning("Unknown field '%s' in update", field)
+            return value
+
     async def async_load_data(self) -> InventoryData:
         """Load data from storage and handle migrations if needed."""
         loaded_data = await self._store.async_load()
@@ -73,20 +107,19 @@ class SimpleInventoryCoordinator:
             # Notify sensors to update - either specific inventory or all
             if inventory_id:
                 self.hass.bus.async_fire(f"{DOMAIN}_updated_{inventory_id}")
-                _LOGGER.debug(f"Fired update event for inventory: {inventory_id}")
+                _LOGGER.debug("Fired update event for inventory: %s", inventory_id)
             else:
                 # Notify all inventories
                 for inv_id in self._data["inventories"]:
                     self.hass.bus.async_fire(f"{DOMAIN}_updated_{inv_id}")
-                    _LOGGER.debug(f"Fired update event for inventory: {inv_id}")
+                    _LOGGER.debug("Fired update event for inventory: %s", inv_id)
 
                 # Also fire a general update event
                 self.hass.bus.async_fire(f"{DOMAIN}_updated")
 
-            # Notify listeners
             self.notify_listeners()
         except Exception as ex:
-            _LOGGER.error(f"Failed to save inventory data: {ex}")
+            _LOGGER.error("Failed to save inventory data: %s", ex)
             raise
 
     def get_data(self) -> InventoryData:
@@ -126,87 +159,43 @@ class SimpleInventoryCoordinator:
 
         if old_name not in inventory["items"]:
             _LOGGER.warning(
-                f"Cannot update non-existent item '{
-                    old_name}' in inventory '{inventory_id}'"
+                "Cannot update non-existent item '%s' in inventory '%s'",
+                old_name,
+                inventory_id,
             )
             return False
 
         item_name = new_name if new_name is not None else old_name
-        current_item = inventory["items"][old_name].copy()
-        allowed_fields = {
-            FIELD_AUTO_ADD_ENABLED,
-            FIELD_AUTO_ADD_TO_LIST_QUANTITY,
-            FIELD_CATEGORY,
-            FIELD_EXPIRY_ALERT_DAYS,
-            FIELD_EXPIRY_DATE,
-            FIELD_QUANTITY,
-            FIELD_TODO_LIST,
-            FIELD_UNIT,
-            FIELD_LOCATION,
-        }
-
-        for key, value in kwargs.items():
-            _LOGGER.warning(f"updating '{key}' to '{value}'")
-            if key in allowed_fields:
-                if key in (
-                    FIELD_QUANTITY,
-                    FIELD_AUTO_ADD_TO_LIST_QUANTITY,
-                    FIELD_EXPIRY_ALERT_DAYS,
-                ):
-                    current_item[key] = (
-                        max(0, int(value))
-                        if value is not None and isinstance(value, (int, str, bool))
-                        else 0
-                    )
-                elif key == FIELD_AUTO_ADD_ENABLED:
-                    current_item[key] = bool(value)
-                else:
-                    current_item[key] = str(value) if value is not None else ""
-
+        current_item = inventory["items"][old_name]
+        updated_item = self._process_item_updates(current_item, **kwargs)
         auto_add_being_enabled = kwargs.get(FIELD_AUTO_ADD_ENABLED) is True
+
         if auto_add_being_enabled and not self._validate_auto_add_config(
             old_name,
             inventory_id,
-            current_item.get(FIELD_AUTO_ADD_ENABLED, False),
-            current_item.get(FIELD_AUTO_ADD_TO_LIST_QUANTITY),
-            current_item.get(FIELD_TODO_LIST, ""),
+            updated_item.get(FIELD_AUTO_ADD_ENABLED, False),
+            updated_item.get(FIELD_AUTO_ADD_TO_LIST_QUANTITY),
+            updated_item.get(FIELD_TODO_LIST, ""),
         ):
             return False
 
-        if old_name != item_name:
-            _LOGGER.info(
-                f"Renaming item '{old_name}' to '{
-                    item_name}' in inventory '{inventory_id}'"
-            )
-            del inventory["items"][old_name]
-            inventory["items"][item_name] = current_item
-        else:
-            inventory["items"][item_name] = current_item
-
+        self._handle_item_rename(inventory, old_name, item_name, updated_item)
         return True
 
     def add_item(self, inventory_id: str, **kwargs: Unpack[InventoryItem]) -> bool:
         """Add or update an item in a specific inventory."""
         name = kwargs.get(FIELD_NAME)
-
-        if not name or not name.strip():
-            raise ValueError("Item name cannot be empty")
-
-        name = str(name).strip()
+        name = self._validate_and_clean_name(str(name) if name else "", "add", inventory_id)
         inventory = self.ensure_inventory_exists(inventory_id)
         quantity = kwargs.get(FIELD_QUANTITY, DEFAULT_QUANTITY)
 
         if name in inventory[INVENTORY_ITEMS]:
             _LOGGER.debug(
-                f"Updating quantity of existing item '{
-                    name}' in inventory '{inventory_id}'"
+                "Updating quantity of existing item '%s' in inventory '%s'", name, inventory_id
             )
             inventory[INVENTORY_ITEMS][name][FIELD_QUANTITY] += quantity
         else:
-            _LOGGER.info(
-                f"Adding new item '{
-                    name}' to inventory '{inventory_id}'"
-            )
+            _LOGGER.debug("Adding new item '%s' to inventory '%s'", name, inventory_id)
 
             auto_add_quantity = kwargs.get(
                 FIELD_AUTO_ADD_TO_LIST_QUANTITY,
@@ -248,35 +237,37 @@ class SimpleInventoryCoordinator:
 
     def remove_item(self, inventory_id: str, name: str) -> bool:
         """Remove an item completely from a specific inventory."""
-        if not name or not name.strip():
-            _LOGGER.warning(
-                f"Cannot remove item with empty name from inventory '{
-                    inventory_id}'"
-            )
+        try:
+            name = self._validate_and_clean_name(name, "remove", inventory_id)
+        except ValueError as e:
+            _LOGGER.warning(str(e))
             return False
 
         inventory = self.get_inventory(inventory_id)
         if name in inventory[INVENTORY_ITEMS]:
-            _LOGGER.info(
-                f"Removing item '{
-                    name}' from inventory '{inventory_id}'"
-            )
+            _LOGGER.debug("Removing item '%s' from inventory '%s'", name, inventory_id)
             del inventory[INVENTORY_ITEMS][name]
             return True
 
         _LOGGER.warning(
-            f"Cannot remove non-existent item '{
-                name}' from inventory '{inventory_id}'"
+            "Cannot remove non-existent item '%s' from inventory '%s'", name, inventory_id
         )
         return False
 
     def increment_item(self, inventory_id: str, name: str, amount: int = 1) -> bool:
         """Increment item quantity in a specific inventory."""
-        if not name or not name.strip() or amount < 0:
+        if amount < 0:
             _LOGGER.warning(
-                f"Cannot increment item with invalid parameters: name='{
-                    name}', amount={amount}"
+                "Cannot increment item with negative amount: %d in inventory '%s'",
+                amount,
+                inventory_id,
             )
+            return False
+
+        try:
+            name = self._validate_and_clean_name(name, "increment", inventory_id)
+        except ValueError as e:
+            _LOGGER.warning(str(e))
             return False
 
         inventory = self.get_inventory(inventory_id)
@@ -284,25 +275,36 @@ class SimpleInventoryCoordinator:
             current_quantity = inventory[INVENTORY_ITEMS][name][FIELD_QUANTITY]
             new_quantity = current_quantity + amount
             _LOGGER.debug(
-                f"Incrementing item '{name}' in inventory '{
-                    inventory_id}' from {current_quantity} to {new_quantity}"
+                "Incrementing item '%s' in inventory '%s' from %d to %d",
+                name,
+                inventory_id,
+                current_quantity,
+                new_quantity,
             )
             inventory[INVENTORY_ITEMS][name][FIELD_QUANTITY] = new_quantity
             return True
 
         _LOGGER.warning(
-            f"Cannot increment non-existent item '{
-                name}' in inventory '{inventory_id}'"
+            "Cannot increment non-existent item '%s' from inventory '%s'",
+            name,
+            inventory_id,
         )
         return False
 
     def decrement_item(self, inventory_id: str, name: str, amount: int = 1) -> bool:
         """Decrement item quantity in a specific inventory."""
-        if not name or not name.strip() or amount < 0:
+        if amount < 0:
             _LOGGER.warning(
-                f"Cannot decrement item with invalid parameters: name='{
-                    name}', amount={amount}"
+                "Cannot decrement item with negative amount: %d in inventory '%s'",
+                amount,
+                inventory_id,
             )
+            return False
+
+        try:
+            name = self._validate_and_clean_name(name, "decrement", inventory_id)
+        except ValueError as e:
+            _LOGGER.warning(str(e))
             return False
 
         inventory = self.get_inventory(inventory_id)
@@ -310,15 +312,19 @@ class SimpleInventoryCoordinator:
             current_quantity = inventory[INVENTORY_ITEMS][name][FIELD_QUANTITY]
             new_quantity = max(0, current_quantity - amount)
             _LOGGER.debug(
-                f"Decrementing item '{name}' in inventory '{
-                    inventory_id}' from {current_quantity} to {new_quantity}"
+                "Decrementing item '%s' in inventory '%s' from %d to %d",
+                name,
+                inventory_id,
+                current_quantity,
+                new_quantity,
             )
             inventory[INVENTORY_ITEMS][name][FIELD_QUANTITY] = new_quantity
             return True
 
         _LOGGER.warning(
-            f"Cannot decrement non-existent item '{
-                name}' in inventory '{inventory_id}'"
+            "Cannot decrement non-existent item '%s' from inventory '%s'",
+            name,
+            inventory_id,
         )
         return False
 
@@ -366,8 +372,9 @@ class SimpleInventoryCoordinator:
                             )
                     except ValueError:
                         _LOGGER.warning(
-                            f"Invalid expiry date format for {
-                                item_name}: {expiry_date_str}"
+                            "Invalid expiry date format for %s: %s",
+                            item_name,
+                            expiry_date_str,
                         )
 
         expiring_items.sort(key=lambda x: x["days_until_expiry"])
@@ -394,27 +401,12 @@ class SimpleInventoryCoordinator:
         """Get statistics for a specific inventory."""
         inventory = self.get_inventory(inventory_id)
         items = inventory.get("items", {})
-
         total_items = len(items)
         total_quantity = sum(item.get(FIELD_QUANTITY, DEFAULT_QUANTITY) for item in items.values())
-
-        categories = {}
-        for item in items.values():
-            category = item.get(FIELD_CATEGORY, DEFAULT_CATEGORY)
-            if category:
-                if category not in categories:
-                    categories[category] = 0
-                categories[category] += 1
-
-        locations = {}
-        for item in items.values():
-            location = item.get(FIELD_LOCATION, DEFAULT_LOCATION)
-            if location:
-                if location not in locations:
-                    locations[location] = 0
-                locations[location] += 1
-
+        categories = self._group_items_by_field(items, FIELD_CATEGORY, DEFAULT_CATEGORY)
+        locations = self._group_items_by_field(items, FIELD_LOCATION, DEFAULT_LOCATION)
         below_threshold = []
+
         for name, item in items.items():
             quantity = item.get(FIELD_QUANTITY, 0)
             threshold = item.get(
@@ -476,3 +468,108 @@ class SimpleInventoryCoordinator:
             return False
 
         return True
+
+    def _validate_and_clean_name(self, name: str, operation: str, inventory_id: str) -> str:
+        """Validate and clean item name.
+
+        Args:
+            name: The item name to validate
+            operation: The operation being performed (for logging)
+            inventory_id: The inventory ID (for logging)
+
+        Returns:
+            Cleaned name (stripped of whitespace)
+
+        Raises:
+            ValueError: If name is empty or whitespace-only
+        """
+        if not name or not name.strip():
+            raise ValueError(
+                f"Cannot {operation} item with empty name in inventory '{inventory_id}'"
+            )
+        return name.strip()
+
+    def _get_allowed_update_fields(self) -> set[str]:
+        """Get the set of fields that can be updated."""
+        return {
+            FIELD_AUTO_ADD_ENABLED,
+            FIELD_AUTO_ADD_TO_LIST_QUANTITY,
+            FIELD_CATEGORY,
+            FIELD_EXPIRY_ALERT_DAYS,
+            FIELD_EXPIRY_DATE,
+            FIELD_QUANTITY,
+            FIELD_TODO_LIST,
+            FIELD_UNIT,
+            FIELD_LOCATION,
+        }
+
+    def _process_item_updates(
+        self, current_item: InventoryItem, **kwargs: Unpack[InventoryItem]
+    ) -> InventoryItem:
+        """Process field updates for an item.
+
+        Args:
+            current_item: The current item data
+            **kwargs: Field updates to apply
+
+        Returns:
+            Updated item data
+        """
+        updated_item = current_item.copy()
+        allowed_fields = self._get_allowed_update_fields()
+
+        for key, value in kwargs.items():
+            if key in allowed_fields:
+                processed_value = self._process_field_value(key, value)
+                updated_item[key] = processed_value  # type: ignore[literal-required]
+
+        return updated_item
+
+    def _handle_item_rename(
+        self,
+        inventory: Dict[str, Any],
+        old_name: str,
+        new_name: str,
+        item_data: InventoryItem,
+    ) -> None:
+        """Handle renaming an item in inventory.
+
+        Args:
+            inventory: The inventory dict
+            old_name: Current item name
+            new_name: New item name
+            item_data: The item data
+        """
+        if old_name != new_name:
+            _LOGGER.debug(
+                "Renaming item '%s' to '%s' in inventory",
+                old_name,
+                new_name,
+            )
+            del inventory["items"][old_name]
+            inventory["items"][new_name] = item_data
+        else:
+            inventory["items"][old_name] = item_data
+
+    def _group_items_by_field(
+        self,
+        items: Dict[str, InventoryItem],
+        field: str,
+        default: str = "",
+    ) -> Dict[str, int]:
+        """Group items by a specific field value and count occurrences.
+
+        Args:
+            items: Dictionary of items to group
+            field: The field name to group by
+            default: Default value if field is missing
+
+        Returns:
+            Dictionary mapping field values to counts
+        """
+        groups: Dict[str, int] = {}
+        for item in items.values():
+            field_value: str = str(item.get(field, default))
+            if field_value:
+                groups[field_value] = groups.get(field_value, 0) + 1
+        return groups
