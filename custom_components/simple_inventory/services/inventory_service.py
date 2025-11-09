@@ -57,7 +57,7 @@ class InventoryService(BaseServiceHandler):
         name = data["name"]
 
         try:
-            item = self.coordinator.get_item(inventory_id, name) if self.todo_manager else None
+            item = self.coordinator.get_item(inventory_id, name)
 
             if self.coordinator.remove_item(inventory_id, name):
                 if item:
