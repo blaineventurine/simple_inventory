@@ -163,26 +163,15 @@ class SimpleInventoryCoordinator:
                 else:
                     current_item[key] = str(value) if value is not None else ""
 
-        final_auto_add_enabled = current_item.get(FIELD_AUTO_ADD_ENABLED, False)
-        if final_auto_add_enabled:
-            final_auto_add_quantity = current_item.get(FIELD_AUTO_ADD_TO_LIST_QUANTITY)
-            final_todo_list = current_item.get(FIELD_TODO_LIST, "")
-            auto_add_being_enabled = kwargs.get(FIELD_AUTO_ADD_ENABLED) is True
-
-            if auto_add_being_enabled:
-                if final_auto_add_quantity is None or final_auto_add_quantity < 0:
-                    _LOGGER.error(
-                        f"Cannot enable auto-add without valid quantity for item '{
-                            old_name}' in inventory '{inventory_id}'"
-                    )
-                    return False
-
-                if not final_todo_list or not final_todo_list.strip():
-                    _LOGGER.error(
-                        f"Cannot enable auto-add without todo list for item '{
-                            old_name}' in inventory '{inventory_id}'"
-                    )
-                    return False
+        auto_add_being_enabled = kwargs.get(FIELD_AUTO_ADD_ENABLED) is True
+        if auto_add_being_enabled and not self._validate_auto_add_config(
+            old_name,
+            inventory_id,
+            current_item.get(FIELD_AUTO_ADD_ENABLED, False),
+            current_item.get(FIELD_AUTO_ADD_TO_LIST_QUANTITY),
+            current_item.get(FIELD_TODO_LIST, ""),
+        ):
+            return False
 
         if old_name != item_name:
             _LOGGER.info(
@@ -244,24 +233,14 @@ class SimpleInventoryCoordinator:
                 FIELD_LOCATION: kwargs.get(FIELD_LOCATION, DEFAULT_LOCATION),
             }
 
-            if new_item[FIELD_AUTO_ADD_ENABLED]:
-                if (
-                    new_item[FIELD_AUTO_ADD_TO_LIST_QUANTITY] is None
-                    or new_item[FIELD_AUTO_ADD_TO_LIST_QUANTITY] < 0
-                ):
-                    _LOGGER.error(
-                        f"Auto-add enabled but no valid quantity specified for new item '{
-                            name}' in inventory '{inventory_id}'"
-                    )
-                    return False
-
-                todo_list = new_item[FIELD_TODO_LIST]
-                if not todo_list or not todo_list.strip():
-                    _LOGGER.error(
-                        f"Auto-add enabled but no todo list specified for new item '{
-                            name}' in inventory '{inventory_id}'"
-                    )
-                    return False
+            if not self._validate_auto_add_config(
+                name,
+                inventory_id,
+                new_item[FIELD_AUTO_ADD_ENABLED],
+                new_item[FIELD_AUTO_ADD_TO_LIST_QUANTITY],
+                new_item[FIELD_TODO_LIST],
+            ):
+                return False
 
             inventory[INVENTORY_ITEMS][name] = new_item
 
@@ -463,3 +442,37 @@ class SimpleInventoryCoordinator:
             "below_threshold": below_threshold,
             "expiring_items": expiring_items,
         }
+
+    def _validate_auto_add_config(
+        self,
+        item_name: str,
+        inventory_id: str,
+        auto_add_enabled: bool,
+        auto_add_quantity: Optional[int],
+        todo_list: Optional[str],
+    ) -> bool:
+        """Validate auto-add configuration.
+
+        Returns True if valid or auto_add not enabled.
+        Returns False if auto_add is enabled but config is invalid.
+        """
+        if not auto_add_enabled:
+            return True
+
+        if auto_add_quantity is None or auto_add_quantity < 0:
+            _LOGGER.error(
+                "Auto-add enabled but no valid quantity specified for item '%s' in inventory '%s'",
+                item_name,
+                inventory_id,
+            )
+            return False
+
+        if not todo_list or not todo_list.strip():
+            _LOGGER.error(
+                "Auto-add enabled but no todo list specified for item '%s' in inventory '%s'",
+                item_name,
+                inventory_id,
+            )
+            return False
+
+        return True
