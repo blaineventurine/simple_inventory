@@ -201,13 +201,22 @@
     },
     "get_items": {
       "name": "Obtener Artículos",
-      "description": "Devuelve la lista completa de artículos de un inventario",
+      "description": "Devuelve la lista completa de artículos de un inventario. Se puede especificar inventory_id o inventory_name.",
       "fields": {
         "inventory_id": {
           "name": "ID del Inventario",
           "description": "ID del inventario"
+        },
+        "inventory_name": {
+          "name": "Nombre del Inventario",
+          "description": "Nombre del inventario (insensible a mayúsculas)"
         }
       }
+    },
+    "get_items_from_all_inventories": {
+      "name": "Obtener Artículos de Todos los Inventarios",
+      "description": "Devuelve la lista completa de artículos agrupados por inventario",
+      "fields": {}
     }
   },
   "common": {

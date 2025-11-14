@@ -60,6 +60,7 @@ This integration exposes the following actions:
 - `increment_item`
 - `decrement_item`
 - `get_items` (returns data)
+- `get_items_from_all_inventories` (returns data)
 
 which can be used in automations. For example, if I call `simple_inventory.increment_item` with:
 
@@ -77,10 +78,16 @@ it will increment the amount by 1. The amount field is how much you want to incr
 
 Use the `simple_inventory.get_items` service to get the full list of items for a specific inventory. This service supports responses; in Developer Tools → Services, set `return_response: true` to receive the data back.
 
-Example call:
+You can specify the inventory either by its ID or by its name (case-insensitive). Examples:
 
+By inventory ID:
 ```yaml
 inventory_id: "01JYFPCDMBRBRK4MB3C26S2FKH"
+```
+
+By inventory name:
+```yaml
+inventory_name: "Kitchen Freezer"
 ```
 
 Example response:
@@ -99,6 +106,38 @@ Example response:
       "auto_add_to_list_quantity": 1,
       "todo_list": "todo.grocery_list",
       "location": "Fridge"
+    }
+  ]
+}
+```
+
+### Retrieve items from all inventories
+
+Use the `simple_inventory.get_items_from_all_inventories` service to fetch every inventory at once. Like the per-inventory call, set `return_response: true` when calling this service to receive the aggregated data.
+
+Example call:
+
+```yaml
+service: simple_inventory.get_items_from_all_inventories
+return_response: true
+```
+
+Example response:
+
+```json
+{
+  "inventories": [
+    {
+      "inventory_id": "01JYFPCDMBRBRK4MB3C26S2FKH",
+      "inventory_name": "Kitchen Fridge",
+      "description": "Fresh items",
+      "items": [
+        {
+          "name": "Milk",
+          "quantity": 1,
+          "unit": "L"
+        }
+      ]
     }
   ]
 }

@@ -41,6 +41,22 @@ class RemoveItemServiceData(TypedDict):
     name: str
 
 
+class GetItemsServiceData(TypedDict, total=False):
+    """Type for get items service call data.
+    
+    Either inventory_id or inventory_name must be provided, but not both.
+    """
+
+    inventory_id: str
+    inventory_name: str
+
+
+class GetAllItemsServiceData(TypedDict, total=False):
+    """Type for get items from all inventories service call data."""
+
+    pass
+
+
 class InventoryItem(TypedDict, total=False):
     """Type definition for inventory item data."""
 

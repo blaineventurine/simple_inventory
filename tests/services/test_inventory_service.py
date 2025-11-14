@@ -240,3 +240,215 @@ class TestInventoryService:
 
         assert mock_coordinator.add_item.call_count == 3
         assert mock_coordinator.async_save_data.call_count == 3
+
+    @pytest.mark.asyncio
+    async def test_async_get_items_returns_sorted_items(
+        self: Self,
+        inventory_service: InventoryService,
+        mock_coordinator: MagicMock,
+    ) -> None:
+        """Test that get_items returns data sorted by item name."""
+        mock_coordinator.get_all_items.return_value = {
+            "Banana": {"quantity": 2, "unit": "pcs"},
+            "apple": {"quantity": 1, "unit": "pcs"},
+            "carrot": {"quantity": 5, "unit": "pcs"},
+        }
+
+        call = MagicMock()
+        call.data = {"inventory_id": "fridge"}
+
+        result = await inventory_service.async_get_items(call)
+
+        assert [item["name"] for item in result["items"]] == ["apple", "Banana", "carrot"]
+        assert result["items"][0]["quantity"] == 1
+        mock_coordinator.get_all_items.assert_called_once_with("fridge")
+
+    @pytest.mark.asyncio
+    async def test_async_get_items_by_name(
+        self: Self,
+        inventory_service: InventoryService,
+        mock_coordinator: MagicMock,
+        hass: MagicMock,
+    ) -> None:
+        """Test that get_items can be called with inventory_name instead of inventory_id."""
+        mock_coordinator.get_all_items.return_value = {
+            "Milk": {"quantity": 2, "unit": "L"},
+            "Bread": {"quantity": 1, "unit": "loaf"},
+        }
+
+        # Create a mock config entry
+        entry = MagicMock()
+        entry.entry_id = "fridge_123"
+        entry.data = {"name": "My Fridge"}
+        hass.config_entries.async_entries.return_value = [entry]
+
+        call = MagicMock()
+        call.data = {"inventory_name": "My Fridge"}
+
+        result = await inventory_service.async_get_items(call)
+
+        assert len(result["items"]) == 2
+        assert [item["name"] for item in result["items"]] == ["Bread", "Milk"]
+        mock_coordinator.get_all_items.assert_called_once_with("fridge_123")
+
+    @pytest.mark.asyncio
+    async def test_async_get_items_by_name_case_insensitive(
+        self: Self,
+        inventory_service: InventoryService,
+        mock_coordinator: MagicMock,
+        hass: MagicMock,
+    ) -> None:
+        """Test that inventory_name lookup is case-insensitive."""
+        mock_coordinator.get_all_items.return_value = {"Item": {"quantity": 1}}
+
+        entry = MagicMock()
+        entry.entry_id = "test_123"
+        entry.data = {"name": "My Fridge"}
+        hass.config_entries.async_entries.return_value = [entry]
+
+        call = MagicMock()
+        call.data = {"inventory_name": "my fridge"}  # lowercase
+
+        result = await inventory_service.async_get_items(call)
+
+        assert len(result["items"]) == 1
+        mock_coordinator.get_all_items.assert_called_once_with("test_123")
+
+    @pytest.mark.asyncio
+    async def test_async_get_items_by_name_not_found(
+        self: Self,
+        inventory_service: InventoryService,
+        mock_coordinator: MagicMock,
+        hass: MagicMock,
+    ) -> None:
+        """Test that get_items raises error when inventory_name is not found."""
+        hass.config_entries.async_entries.return_value = []
+
+        call = MagicMock()
+        call.data = {"inventory_name": "Non-existent Inventory"}
+
+        with pytest.raises(ValueError, match="Inventory with name 'Non-existent Inventory' not found"):
+            await inventory_service.async_get_items(call)
+
+        mock_coordinator.get_all_items.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_async_get_items_missing_both_parameters(
+        self: Self,
+        inventory_service: InventoryService,
+        mock_coordinator: MagicMock,
+    ) -> None:
+        """Test that get_items raises error when neither inventory_id nor inventory_name is provided."""
+        call = MagicMock()
+        call.data = {}
+
+        with pytest.raises(ValueError, match="Either 'inventory_id' or 'inventory_name' must be provided"):
+            await inventory_service.async_get_items(call)
+
+        mock_coordinator.get_all_items.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_async_get_items_empty_inventory_id(
+        self: Self,
+        inventory_service: InventoryService,
+        mock_coordinator: MagicMock,
+    ) -> None:
+        """Test that get_items raises error when inventory_id is empty string."""
+        call = MagicMock()
+        call.data = {"inventory_id": ""}
+
+        with pytest.raises(ValueError, match="Either 'inventory_id' or 'inventory_name' must be provided"):
+            await inventory_service.async_get_items(call)
+
+        mock_coordinator.get_all_items.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_async_get_items_empty_inventory_name(
+        self: Self,
+        inventory_service: InventoryService,
+        mock_coordinator: MagicMock,
+    ) -> None:
+        """Test that get_items raises error when inventory_name is empty string."""
+        call = MagicMock()
+        call.data = {"inventory_name": ""}
+
+        with pytest.raises(ValueError, match="Either 'inventory_id' or 'inventory_name' must be provided"):
+            await inventory_service.async_get_items(call)
+
+        mock_coordinator.get_all_items.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_async_get_items_from_all_inventories_groups_by_inventory(
+        self: Self,
+        inventory_service: InventoryService,
+        mock_coordinator: MagicMock,
+        hass: MagicMock,
+    ) -> None:
+        """Test that get_items_from_all_inventories returns grouped data with sorted inventories and items."""
+        inventory_data = {
+            "inv_b": {
+                "items": {
+                    "Zucchini": {"quantity": 1},
+                    "Apple": {"quantity": 3},
+                }
+            },
+            "inv_a": {
+                "items": {
+                    "Bread": {"quantity": 2},
+                }
+            },
+        }
+
+        mock_coordinator.get_data.return_value = {"inventories": inventory_data}
+
+        def get_all_items_side_effect(inventory_id: str):
+            return inventory_data[inventory_id]["items"]
+
+        mock_coordinator.get_all_items.side_effect = get_all_items_side_effect
+
+        entry_a = MagicMock()
+        entry_a.entry_id = "inv_a"
+        entry_a.title = "A Pantry"
+        entry_a.data = {"name": "A Pantry", "description": "Dry goods"}
+
+        entry_b = MagicMock()
+        entry_b.entry_id = "inv_b"
+        entry_b.title = "B Fridge"
+        entry_b.data = {"name": "B Fridge", "description": "Cold storage"}
+
+        hass.config_entries.async_entries.return_value = [entry_b, entry_a]
+
+        call = MagicMock()
+        call.data = {}
+
+        result = await inventory_service.async_get_items_from_all_inventories(call)
+
+        assert [inv["inventory_name"] for inv in result["inventories"]] == ["A Pantry", "B Fridge"]
+        assert result["inventories"][0]["description"] == "Dry goods"
+        assert [item["name"] for item in result["inventories"][0]["items"]] == ["Bread"]
+        assert [item["name"] for item in result["inventories"][1]["items"]] == ["Apple", "Zucchini"]
+
+    @pytest.mark.asyncio
+    async def test_async_get_items_from_all_inventories_fallback_name(
+        self: Self,
+        inventory_service: InventoryService,
+        mock_coordinator: MagicMock,
+        hass: MagicMock,
+    ) -> None:
+        """Test that get_items_from_all_inventories falls back to inventory_id when config entry is missing."""
+        inventory_data = {
+            "inv_missing": {"items": {"Beans": {"quantity": 4}}},
+        }
+
+        mock_coordinator.get_data.return_value = {"inventories": inventory_data}
+        mock_coordinator.get_all_items.return_value = {"Beans": {"quantity": 4}}
+
+        hass.config_entries.async_entries.return_value = []
+
+        call = MagicMock()
+        call.data = {}
+
+        result = await inventory_service.async_get_items_from_all_inventories(call)
+
+        assert result["inventories"][0]["inventory_id"] == "inv_missing"
+        assert result["inventories"][0]["inventory_name"] == "inv_missing"

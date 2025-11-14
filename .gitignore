@@ -172,3 +172,6 @@ coverage
 update.sh
 
 mutants/
+
+# Uv lock file
+uv.lock

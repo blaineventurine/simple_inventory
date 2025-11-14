@@ -52,5 +52,9 @@ class ServiceHandler:
         """Return full item list for an inventory."""
         return await self.inventory_service.async_get_items(call)
 
+    async def async_get_items_from_all_inventories(self, call: ServiceCall):
+        """Return grouped items for all inventories."""
+        return await self.inventory_service.async_get_items_from_all_inventories(call)
+
 
 __all__ = ["ServiceHandler", "InventoryService", "QuantityService"]

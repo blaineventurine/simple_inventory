@@ -209,13 +209,22 @@
     },
     "get_items": {
       "name": "Get Items",
-      "description": "Return the full list of items for an inventory",
+      "description": "Return the full list of items for an inventory. Can specify either inventory_id or inventory_name.",
       "fields": {
         "inventory_id": {
           "name": "Inventory ID",
           "description": "ID of the inventory"
+        },
+        "inventory_name": {
+          "name": "Inventory Name",
+          "description": "Name of the inventory (case-insensitive)"
         }
       }
+    },
+    "get_items_from_all_inventories": {
+      "name": "Get Items From All Inventories",
+      "description": "Return the full list of items grouped by inventory",
+      "fields": {}
     }
   },
   "common": {

@@ -5,8 +5,11 @@ from typing import Any, cast
 
 from homeassistant.core import ServiceCall
 
+from ..const import DOMAIN
 from ..types import (
     AddItemServiceData,
+    GetAllItemsServiceData,
+    GetItemsServiceData,
     RemoveItemServiceData,
     UpdateItemServiceData,
 )
@@ -95,11 +98,34 @@ class InventoryService(BaseServiceHandler):
     async def async_get_items(self, call: ServiceCall) -> dict[str, list[dict[str, Any]]]:
         """Return full list of items for an inventory.
 
+        Can be called with either inventory_id or inventory_name.
         Response shape:
         { "items": [{"name": str, ...item fields...}, ...] }
         """
-        data = cast(dict[str, Any], call.data)
-        inventory_id = data["inventory_id"]
+        data = cast(GetItemsServiceData, call.data)
+        
+        # Resolve inventory_id from either inventory_id or inventory_name
+        if "inventory_id" in data and data["inventory_id"]:
+            inventory_id = data["inventory_id"]
+        elif "inventory_name" in data and data["inventory_name"]:
+            # Look up inventory by name
+            inventory_name = data["inventory_name"]
+            all_entries = self.hass.config_entries.async_entries(DOMAIN)
+            
+            # Find entry matching the name (case-insensitive)
+            matching_entry = None
+            for entry in all_entries:
+                entry_name = entry.data.get("name", "").lower()
+                if entry_name == inventory_name.lower():
+                    matching_entry = entry
+                    break
+            
+            if not matching_entry:
+                raise ValueError(f"Inventory with name '{inventory_name}' not found")
+            
+            inventory_id = matching_entry.entry_id
+        else:
+            raise ValueError("Either 'inventory_id' or 'inventory_name' must be provided")
 
         items_map = self.coordinator.get_all_items(inventory_id)
         items_list = [{"name": name, **details} for name, details in items_map.items()]
@@ -108,3 +134,43 @@ class InventoryService(BaseServiceHandler):
         items_list.sort(key=lambda item: item.get("name", "").lower())
 
         return {"items": items_list}
+
+    async def async_get_items_from_all_inventories(
+        self, call: ServiceCall
+    ) -> dict[str, list[dict[str, Any]]]:
+        """Return full list of items grouped by inventory."""
+        _ = cast(GetAllItemsServiceData, call.data)  # ensures schema adherence, unused
+
+        inventories_data: list[dict[str, Any]] = []
+        all_entries = self.hass.config_entries.async_entries(DOMAIN)
+        entry_lookup = {entry.entry_id: entry for entry in all_entries}
+
+        inventories = self.coordinator.get_data().get("inventories", {})
+
+        for inventory_id in inventories:
+            items_map = self.coordinator.get_all_items(inventory_id)
+            items_list = [{"name": name, **details} for name, details in items_map.items()]
+            items_list.sort(key=lambda item: item.get("name", "").lower())
+
+            entry = entry_lookup.get(inventory_id)
+            inventory_name = ""
+            description = ""
+
+            if entry:
+                inventory_name = entry.data.get("name") or entry.title or inventory_id
+                description = entry.data.get("description", "")
+            else:
+                inventory_name = inventory_id
+
+            inventories_data.append(
+                {
+                    "inventory_id": inventory_id,
+                    "inventory_name": inventory_name,
+                    "description": description,
+                    "items": items_list,
+                }
+            )
+
+        inventories_data.sort(key=lambda inv: inv.get("inventory_name", "").lower())
+
+        return {"inventories": inventories_data}

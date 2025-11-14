@@ -10,6 +10,7 @@ SERVICE_INCREMENT_ITEM: Final = "increment_item"
 SERVICE_REMOVE_ITEM: Final = "remove_item"
 SERVICE_UPDATE_ITEM: Final = "update_item"
 SERVICE_GET_ITEMS: Final = "get_items"
+SERVICE_GET_ALL_ITEMS: Final = "get_items_from_all_inventories"
 
 # Item Fields (for data structure), needs to match params constants in frontend
 FIELD_AUTO_ADD_ENABLED: Final = "auto_add_enabled"

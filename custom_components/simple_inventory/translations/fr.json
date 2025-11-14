@@ -209,13 +209,22 @@
     },
     "get_items": {
       "name": "Obtenir les articles",
-      "description": "Retourne la liste complète des articles d'un inventaire",
+      "description": "Retourne la liste complète des articles d'un inventaire. Peut spécifier soit inventory_id soit inventory_name.",
       "fields": {
         "inventory_id": {
           "name": "ID de l'inventaire",
           "description": "ID de l'inventaire"
+        },
+        "inventory_name": {
+          "name": "Nom de l'inventaire",
+          "description": "Nom de l'inventaire (insensible à la casse)"
         }
       }
+    },
+    "get_items_from_all_inventories": {
+      "name": "Obtenir tous les articles",
+      "description": "Retourne la liste complète des articles regroupés par inventaire",
+      "fields": {}
     }
   },
   "common": {

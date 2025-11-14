@@ -12,6 +12,7 @@ from .const import (
     SERVICE_REMOVE_ITEM,
     SERVICE_UPDATE_ITEM,
     SERVICE_GET_ITEMS,
+    SERVICE_GET_ALL_ITEMS,
 )
 from .coordinator import SimpleInventoryCoordinator
 from .schemas.service_schemas import (
@@ -20,6 +21,7 @@ from .schemas.service_schemas import (
     REMOVE_ITEM_SCHEMA,
     UPDATE_ITEM_SCHEMA,
     GET_ITEMS_SCHEMA,
+    GET_ALL_ITEMS_SCHEMA,
 )
 from .services import ServiceHandler
 from .todo_manager import TodoManager
@@ -79,6 +81,14 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             SERVICE_GET_ITEMS,
             service_handler.async_get_items,
             schema=GET_ITEMS_SCHEMA,
+            supports_response=True,
+        )
+
+        hass.services.async_register(
+            DOMAIN,
+            SERVICE_GET_ALL_ITEMS,
+            service_handler.async_get_items_from_all_inventories,
+            schema=GET_ALL_ITEMS_SCHEMA,
             supports_response=True,
         )
 

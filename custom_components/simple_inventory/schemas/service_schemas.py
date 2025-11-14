@@ -51,8 +51,30 @@ QUANTITY_UPDATE_SCHEMA = vol.Schema(
     }
 )
 
-# Read-only: return all items for an inventory
-GET_ITEMS_SCHEMA = vol.Schema({INVENTORY_ID: cv.string})
+# Accepts either inventory_id OR inventory_name
+def validate_get_items(data: dict) -> dict:
+    """Validate that exactly one of inventory_id or inventory_name is provided."""
+    has_id = "inventory_id" in data and data["inventory_id"]
+    has_name = "inventory_name" in data and data["inventory_name"]
+    
+    if not (has_id or has_name):
+        raise vol.Invalid("Either 'inventory_id' or 'inventory_name' is required")
+    if has_id and has_name:
+        raise vol.Invalid("Cannot specify both 'inventory_id' and 'inventory_name'")
+    
+    return data
+
+GET_ITEMS_SCHEMA = vol.Schema(
+    vol.All(
+        {
+            vol.Optional("inventory_id"): cv.string,
+            vol.Optional("inventory_name"): cv.string,
+        },
+        validate_get_items,
+    )
+)
+
+GET_ALL_ITEMS_SCHEMA = vol.Schema({})
 
 ALL_SCHEMAS = {
     "add_item": ADD_ITEM_SCHEMA,
@@ -61,4 +83,5 @@ ALL_SCHEMAS = {
     "increment_item": QUANTITY_UPDATE_SCHEMA,
     "decrement_item": QUANTITY_UPDATE_SCHEMA,
     "get_items": GET_ITEMS_SCHEMA,
+    "get_items_from_all_inventories": GET_ALL_ITEMS_SCHEMA,
 }
