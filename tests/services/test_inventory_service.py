@@ -1,6 +1,7 @@
 """Tests for InventoryService."""
 
 import logging
+from typing import Any, cast
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -268,8 +269,9 @@ class TestInventoryService:
 
         result = await inventory_service.async_get_items(call)
 
-        assert [item["name"] for item in result["items"]] == ["apple", "Banana", "carrot"]
-        assert result["items"][0]["quantity"] == 1
+        items = cast(list[dict[str, Any]], result["items"])
+        assert [item["name"] for item in items] == ["apple", "Banana", "carrot"]
+        assert items[0]["quantity"] == 1
         mock_coordinator.get_all_items.assert_called_once_with("fridge")
 
     @pytest.mark.asyncio
@@ -295,9 +297,10 @@ class TestInventoryService:
         call.data = {"inventory_name": "My Fridge"}
 
         result = await inventory_service.async_get_items(call)
+        items = cast(list[dict[str, Any]], result["items"])
 
-        assert len(result["items"]) == 2
-        assert [item["name"] for item in result["items"]] == ["Bread", "Milk"]
+        assert len(items) == 2
+        assert [item["name"] for item in items] == ["Bread", "Milk"]
         mock_coordinator.get_all_items.assert_called_once_with("fridge_123")
 
     @pytest.mark.asyncio
@@ -319,8 +322,9 @@ class TestInventoryService:
         call.data = {"inventory_name": "my fridge"}  # lowercase
 
         result = await inventory_service.async_get_items(call)
+        items = cast(list[dict[str, Any]], result["items"])
 
-        assert len(result["items"]) == 1
+        assert len(items) == 1
         mock_coordinator.get_all_items.assert_called_once_with("test_123")
 
     @pytest.mark.asyncio
@@ -418,7 +422,7 @@ class TestInventoryService:
 
         mock_coordinator.get_data.return_value = {"inventories": inventory_data}
 
-        def get_all_items_side_effect(inventory_id: str):
+        def get_all_items_side_effect(inventory_id: str) -> dict[str, Any]:
             return inventory_data[inventory_id]["items"]
 
         mock_coordinator.get_all_items.side_effect = get_all_items_side_effect
@@ -440,10 +444,15 @@ class TestInventoryService:
 
         result = await inventory_service.async_get_items_from_all_inventories(call)
 
-        assert [inv["inventory_name"] for inv in result["inventories"]] == ["A Pantry", "B Fridge"]
-        assert result["inventories"][0]["description"] == "Dry goods"
-        assert [item["name"] for item in result["inventories"][0]["items"]] == ["Bread"]
-        assert [item["name"] for item in result["inventories"][1]["items"]] == ["Apple", "Zucchini"]
+        inventories = cast(list[dict[str, Any]], result["inventories"])
+        assert [inv["inventory_name"] for inv in inventories] == ["A Pantry", "B Fridge"]
+        assert inventories[0]["description"] == "Dry goods"
+
+        first_inventory_items = cast(list[dict[str, Any]], inventories[0]["items"])
+        assert [item["name"] for item in first_inventory_items] == ["Bread"]
+
+        second_inventory_items = cast(list[dict[str, Any]], inventories[1]["items"])
+        assert [item["name"] for item in second_inventory_items] == ["Apple", "Zucchini"]
 
     @pytest.mark.asyncio
     async def test_async_get_items_from_all_inventories_fallback_name(
@@ -466,9 +475,10 @@ class TestInventoryService:
         call.data = {}
 
         result = await inventory_service.async_get_items_from_all_inventories(call)
+        inventories = cast(list[dict[str, Any]], result["inventories"])
 
-        assert result["inventories"][0]["inventory_id"] == "inv_missing"
-        assert result["inventories"][0]["inventory_name"] == "inv_missing"
+        assert inventories[0]["inventory_id"] == "inv_missing"
+        assert inventories[0]["inventory_name"] == "inv_missing"
 
     @pytest.mark.asyncio
     async def test_async_add_item_with_todo_manager(
@@ -574,6 +584,7 @@ class TestInventoryService:
 
         result = await inventory_service.async_get_items(call)
 
-        item = result["items"][0]
+        items = cast(list[dict[str, Any]], result["items"])
+        item = items[0]
         assert item["description"] == "Pantry staple (kitchen)"
         assert item["auto_add_id_to_description_enabled"] is True
