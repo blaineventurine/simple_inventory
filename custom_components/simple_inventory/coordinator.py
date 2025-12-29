@@ -19,8 +19,10 @@ from .const import (
     DEFAULT_UNIT,
     DOMAIN,
     FIELD_AUTO_ADD_ENABLED,
+    FIELD_AUTO_ADD_ID_TO_DESCRIPTION_ENABLED,
     FIELD_AUTO_ADD_TO_LIST_QUANTITY,
     FIELD_CATEGORY,
+    FIELD_DESCRIPTION,
     FIELD_EXPIRY_ALERT_DAYS,
     FIELD_EXPIRY_DATE,
     FIELD_LOCATION,
@@ -58,11 +60,13 @@ class SimpleInventoryCoordinator:
 
     _BOOLEAN_FIELDS = {
         FIELD_AUTO_ADD_ENABLED,
+        FIELD_AUTO_ADD_ID_TO_DESCRIPTION_ENABLED,
     }
 
     _STRING_FIELDS = {
         FIELD_UNIT,
         FIELD_CATEGORY,
+        FIELD_DESCRIPTION,
         FIELD_EXPIRY_DATE,
         FIELD_TODO_LIST,
         FIELD_LOCATION,
@@ -477,8 +481,10 @@ class SimpleInventoryCoordinator:
         """Get the set of fields that can be updated."""
         return {
             FIELD_AUTO_ADD_ENABLED,
+            FIELD_AUTO_ADD_ID_TO_DESCRIPTION_ENABLED,
             FIELD_AUTO_ADD_TO_LIST_QUANTITY,
             FIELD_CATEGORY,
+            FIELD_DESCRIPTION,
             FIELD_EXPIRY_ALERT_DAYS,
             FIELD_EXPIRY_DATE,
             FIELD_QUANTITY,
@@ -501,6 +507,18 @@ class SimpleInventoryCoordinator:
 
         return updated_item
 
+    def _process_description_update(self, current_description: str, inventory_id: str = "") -> str:
+        """Process description field update, appending inventory id if provided."""
+        _LOGGER.debug(
+            "Processing description update: '%s' with inventory_id: '%s'",
+            current_description,
+            inventory_id,
+        )
+        base_description = current_description.rsplit(" (", 1)[0]
+        if inventory_id:
+            return f"{base_description} ({inventory_id})"
+        return base_description
+
     def _handle_item_rename(
         self,
         inventory: Dict[str, Any],
@@ -509,7 +527,7 @@ class SimpleInventoryCoordinator:
         item_data: InventoryItem,
     ) -> None:
         """Handle renaming an item in inventory."""
-        if old_name != new_name:
+        if old_name != new_name and new_name not in inventory["items"]:
             _LOGGER.debug(
                 "Renaming item '%s' to '%s' in inventory",
                 old_name,

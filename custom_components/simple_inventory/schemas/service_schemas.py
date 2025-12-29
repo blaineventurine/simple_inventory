@@ -15,19 +15,21 @@ OLD_NAME = vol.Required("old_name")
 
 ITEM_SCHEMA = {
     NAME: cv.string,
-    vol.Optional("quantity"): vol.All(vol.Coerce(int), vol.Range(min=0)),
-    vol.Optional("unit"): cv.string,
-    vol.Optional("category"): cv.string,
-    vol.Optional("expiry_date"): cv.string,
     vol.Optional("auto_add_enabled"): cv.boolean,
-    vol.Optional("expiry_alert_days"): vol.All(
-        vol.Coerce(int), vol.Range(min=DEFAULT_EXPIRY_ALERT_DAYS, max=365)
-    ),
+    vol.Optional("auto_add_id_to_description_enabled"): cv.boolean,
     vol.Optional("auto_add_to_list_quantity"): vol.All(
         vol.Coerce(int), vol.Range(min=DEFAULT_AUTO_ADD_TO_LIST_QUANTITY)
     ),
-    vol.Optional("todo_list"): cv.string,
+    vol.Optional("category"): cv.string,
+    vol.Optional("description"): cv.string,
+    vol.Optional("expiry_alert_days"): vol.All(
+        vol.Coerce(int), vol.Range(min=DEFAULT_EXPIRY_ALERT_DAYS, max=365)
+    ),
+    vol.Optional("expiry_date"): cv.string,
     vol.Optional("location"): cv.string,
+    vol.Optional("quantity"): vol.All(vol.Coerce(int), vol.Range(min=0)),
+    vol.Optional("todo_list"): cv.string,
+    vol.Optional("unit"): cv.string,
 }
 
 ADD_ITEM_SCHEMA = vol.Schema({INVENTORY_ID: cv.string, **ITEM_SCHEMA})

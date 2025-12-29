@@ -26,15 +26,17 @@ class InventoryService(BaseServiceHandler):
     """Handle inventory-specific operations (add, remove, update items)."""
 
     _UPDATEABLE_FIELDS = [
-        "quantity",
-        "unit",
-        "category",
-        "expiry_date",
         "auto_add_enabled",
+        "auto_add_id_to_description_enabled",
         "auto_add_to_list_quantity",
+        "category",
+        "description",
         "expiry_alert_days",
-        "todo_list",
+        "expiry_date",
         "location",
+        "quantity",
+        "todo_list",
+        "unit",
     ]
 
     def __init__(

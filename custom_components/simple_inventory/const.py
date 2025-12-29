@@ -14,8 +14,10 @@ SERVICE_GET_ALL_ITEMS: Final = "get_items_from_all_inventories"
 
 # Item Fields (for data structure), needs to match params constants in frontend
 FIELD_AUTO_ADD_ENABLED: Final = "auto_add_enabled"
+FIELD_AUTO_ADD_ID_TO_DESCRIPTION_ENABLED: Final = "auto_add_id_to_description_enabled"
 FIELD_AUTO_ADD_TO_LIST_QUANTITY: Final = "auto_add_to_list_quantity"
 FIELD_CATEGORY: Final = "category"
+FIELD_DESCRIPTION: Final = "description"
 FIELD_EXPIRY_ALERT_DAYS: Final = "expiry_alert_days"
 FIELD_EXPIRY_DATE: Final = "expiry_date"
 FIELD_ITEMS: Final = "items"
