@@ -96,6 +96,18 @@
         "todo_list": {
           "name": "Lista de Tareas",
           "description": "Entidad de lista de tareas a la que agregar"
+        },
+        "location": {
+          "name": "Ubicación",
+          "description": "Ubicación del artículo dentro del inventario"
+        },
+        "description": {
+          "name": "Descripción",
+          "description": "Descripción opcional del artículo"
+        },
+        "auto_add_id_to_description_enabled": {
+          "name": "Añadir automáticamente el ID del inventario a la descripción",
+          "description": "Activa la adición automática del ID del inventario a la descripción"
         }
       }
     },
@@ -151,7 +163,10 @@
     },
     "update_item": {
       "name": "Actualizar Artículo",
-      "description": "Actualizar un artículo de inventario existente",
+      "description": {
+        "name": "Descripción",
+        "description": "Descripción opcional del artículo"
+      },
       "fields": {
         "inventory_id": {
           "name": "ID del Inventario",
@@ -197,6 +212,14 @@
           "name": "Días de Alerta",
           "description": "Número de días de anticipación para avisar sobre artículos que vencen"
         }
+      },
+      "location": {
+        "name": "Ubicación",
+        "description": "Ubicación del artículo dentro del inventario"
+      },
+      "auto_add_id_to_description_enabled": {
+        "name": "Añadir automáticamente el ID del inventario a la descripción",
+        "description": "Activa la adición automática del ID del inventario a la descripción"
       }
     },
     "get_items": {

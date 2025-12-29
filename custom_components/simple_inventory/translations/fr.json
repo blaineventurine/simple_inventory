@@ -97,9 +97,17 @@
           "name": "Liste de tâches",
           "description": "Entité de liste de tâches à laquelle ajouter"
         },
+        "description": {
+          "name": "Description",
+          "description": "Description facultative de l'article"
+        },
+        "auto_add_id_to_description_enabled": {
+          "name": "Ajouter automatiquement l'ID de l'inventaire à la description",
+          "description": "Active l'ajout automatique de l'identifiant de l'inventaire à la description"
+        },
         "location": {
           "name": "Emplacement",
-          "description": "Emplacement de l'article"
+          "description": "Emplacement de l'article dans l'inventaire"
         }
       }
     },
@@ -201,9 +209,17 @@
           "name": "Délai d'alerte",
           "description": "Nombre de jours pour prévenir en avance de l'expiration"
         },
+        "description": {
+          "name": "Description",
+          "description": "Description facultative de l'article"
+        },
+        "auto_add_id_to_description_enabled": {
+          "name": "ajouter automatiquement l'id de l'inventaire à la description",
+          "description": "active l'ajout automatique de l'identifiant de l'inventaire à la description"
+        },
         "location": {
           "name": "Emplacement",
-          "description": "Emplacement dans l'inventaire"
+          "description": "Emplacement de l'article dans l'inventaire"
         }
       }
     },

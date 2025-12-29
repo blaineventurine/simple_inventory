@@ -4,7 +4,7 @@ import logging
 from typing import Any, cast
 
 from homeassistant.core import HomeAssistant, ServiceCall
-from homeassistant.util.json import JsonObjectType
+from homeassistant.util.json import JsonObjectType, JsonValueType
 
 from ..const import DOMAIN
 from ..coordinator import SimpleInventoryCoordinator
@@ -191,7 +191,10 @@ class InventoryService(BaseServiceHandler):
         ]
         items_list.sort(key=lambda item: cast(str, item.get("name", "")).lower())
 
-        return cast(JsonObjectType, {"items": items_list})
+        return cast(
+            JsonObjectType,
+            {"items": cast(list[JsonValueType], items_list)},
+        )
 
     async def async_get_items_from_all_inventories(self, call: ServiceCall) -> JsonObjectType:
         """Return full list of items grouped by inventory."""
@@ -221,15 +224,18 @@ class InventoryService(BaseServiceHandler):
             else:
                 inventory_name = inventory_id
 
-            inventory_payload: JsonObjectType = {
-                "inventory_id": inventory_id,
-                "inventory_name": inventory_name,
-                "description": description,
-                "items": items_list,
-            }
+            inventory_payload: JsonObjectType = cast(
+                JsonObjectType,
+                {
+                    "inventory_id": inventory_id,
+                    "inventory_name": inventory_name,
+                    "description": description,
+                    "items": cast(list[JsonValueType], items_list),
+                },
+            )
 
             inventories_data.append(inventory_payload)
 
-        inventories_data.sort(key=lambda inv: inv.get("inventory_name", "").lower())
+        inventories_data.sort(key=lambda inv: cast(str, inv.get("inventory_name", "")).lower())
 
-        return {"inventories": inventories_data}
+        return cast(JsonObjectType, {"inventories": cast(list[JsonValueType], inventories_data)})

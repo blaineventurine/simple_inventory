@@ -513,3 +513,67 @@ class TestInventoryService:
 
         # Should remove from todo list since quantity > threshold
         mock_todo_manager.check_and_remove_item.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_async_add_item_forwards_description_fields(
+        self: Self,
+        inventory_service: InventoryService,
+        add_item_service_call: ServiceCall,
+        mock_coordinator: MagicMock,
+    ) -> None:
+        """Ensure add_item forwards description-related fields."""
+        add_item_service_call.data["description"] = "Pantry staple"
+        add_item_service_call.data["auto_add_id_to_description_enabled"] = True
+
+        await inventory_service.async_add_item(add_item_service_call)
+
+        call_kwargs = mock_coordinator.add_item.call_args.kwargs
+        assert call_kwargs["description"] == "Pantry staple"
+        assert call_kwargs["auto_add_id_to_description_enabled"] is True
+
+    @pytest.mark.asyncio
+    async def test_async_update_item_forwards_description_fields(
+        self: Self,
+        inventory_service: InventoryService,
+        update_item_service_call: ServiceCall,
+        mock_coordinator: MagicMock,
+    ) -> None:
+        """Ensure update_item forwards description-related fields."""
+        mock_coordinator.get_item.side_effect = [
+            {"name": "milk", "quantity": 2},
+            {"name": "whole_milk", "quantity": 2},
+        ]
+        mock_coordinator.update_item.return_value = True
+
+        update_item_service_call.data["description"] = "Shelf stable"
+        update_item_service_call.data["auto_add_id_to_description_enabled"] = True
+
+        await inventory_service.async_update_item(update_item_service_call)
+
+        call_kwargs = mock_coordinator.update_item.call_args.kwargs
+        assert call_kwargs["description"] == "Shelf stable"
+        assert call_kwargs["auto_add_id_to_description_enabled"] is True
+
+    @pytest.mark.asyncio
+    async def test_async_get_items_includes_description_fields(
+        self: Self,
+        inventory_service: InventoryService,
+        mock_coordinator: MagicMock,
+    ) -> None:
+        """Ensure get_items surfaces description-related fields."""
+        mock_coordinator.get_all_items.return_value = {
+            "Milk": {
+                "quantity": 1,
+                "description": "Pantry staple (kitchen)",
+                "auto_add_id_to_description_enabled": True,
+            }
+        }
+
+        call = MagicMock()
+        call.data = {"inventory_id": "kitchen"}
+
+        result = await inventory_service.async_get_items(call)
+
+        item = result["items"][0]
+        assert item["description"] == "Pantry staple (kitchen)"
+        assert item["auto_add_id_to_description_enabled"] is True

@@ -11,6 +11,8 @@ from typing_extensions import Self
 from custom_components.simple_inventory.const import (
     DEFAULT_EXPIRY_ALERT_DAYS,
     DOMAIN,
+    FIELD_AUTO_ADD_ID_TO_DESCRIPTION_ENABLED,
+    FIELD_DESCRIPTION,
 )
 from custom_components.simple_inventory.coordinator import (
     SimpleInventoryCoordinator,
@@ -58,6 +60,8 @@ def loaded_coordinator(
                         "quantity": 2,
                         "todo_list": "todo.shopping",
                         "unit": "liters",
+                        "description": "Whole milk",
+                        "auto_add_id_to_description_enabled": False,
                     },
                     "bread": {
                         "auto_add_enabled": False,
@@ -68,6 +72,8 @@ def loaded_coordinator(
                         "quantity": 1,
                         "todo_list": "",
                         "unit": "loaf",
+                        "description": "",
+                        "auto_add_id_to_description_enabled": False,
                     },
                 }
             }
@@ -705,3 +711,56 @@ class TestSimpleInventoryCoordinator:
 
             # Verify expiring items
             assert len(stats["expiring_items"]) == 2  # milk, yogurt
+
+    async def test_add_item_applies_description_suffix(
+        self: Self, coordinator: SimpleInventoryCoordinator
+    ) -> None:
+        """ensure description suffix is appended when flag enabled."""
+        result = coordinator.add_item(
+            "kitchen",
+            name="coffee",
+            quantity=1,
+            description="Pantry staple",
+            auto_add_id_to_description_enabled=True,
+        )
+        assert result is True
+
+        item = coordinator.get_item("kitchen", "coffee")
+        assert item is not None
+        assert item[FIELD_DESCRIPTION] == "Pantry staple (kitchen)"
+        assert item[FIELD_AUTO_ADD_ID_TO_DESCRIPTION_ENABLED] is True
+
+    async def test_update_item_recalculates_description_on_flag_toggle(
+        self: Self, loaded_coordinator: SimpleInventoryCoordinator
+    ) -> None:
+        """Ensure description updates when the flag changes."""
+        milk = loaded_coordinator.get_item("kitchen", "milk")
+        assert milk is not None
+        milk[FIELD_DESCRIPTION] = "Fresh milk (kitchen)"
+        milk[FIELD_AUTO_ADD_ID_TO_DESCRIPTION_ENABLED] = True
+
+        # Disable flag -> suffix removed
+        result = loaded_coordinator.update_item(
+            "kitchen",
+            "milk",
+            "milk",
+            auto_add_id_to_description_enabled=False,
+        )
+        assert result is True
+        updated = loaded_coordinator.get_item("kitchen", "milk")
+        assert updated is not None
+        assert updated[FIELD_DESCRIPTION] == "Fresh milk"
+        assert updated[FIELD_AUTO_ADD_ID_TO_DESCRIPTION_ENABLED] is False
+
+        # Enable flag again -> suffix re-added
+        result = loaded_coordinator.update_item(
+            "kitchen",
+            "milk",
+            "milk",
+            auto_add_id_to_description_enabled=True,
+        )
+        assert result is True
+        updated_again = loaded_coordinator.get_item("kitchen", "milk")
+        assert updated_again is not None
+        assert updated_again[FIELD_DESCRIPTION] == "Fresh milk (kitchen)"
+        assert updated_again[FIELD_AUTO_ADD_ID_TO_DESCRIPTION_ENABLED] is True

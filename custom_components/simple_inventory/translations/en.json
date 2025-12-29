@@ -100,6 +100,14 @@
         "location": {
           "name": "Location",
           "description": "Location of the item within the inventory"
+        },
+        "description": {
+          "name": "Description",
+          "description": "Optional description of the item"
+        },
+        "auto_add_id_to_description_enabled": {
+          "name": "Auto Add Inventory ID to Description Enabled",
+          "description": "Enable automatic addition of inventory ID to description"
         }
       }
     },
@@ -204,6 +212,14 @@
         "location": {
           "name": "Location",
           "description": "Location within the inventory"
+        },
+        "description": {
+          "name": "Description",
+          "description": "Optional description of the item"
+        },
+        "auto_add_id_to_description_enabled": {
+          "name": "Auto Add Inventory ID to Description Enabled",
+          "description": "Enable automatic addition of inventory ID to description"
         }
       }
     },

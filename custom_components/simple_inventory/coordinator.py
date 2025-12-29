@@ -171,7 +171,7 @@ class SimpleInventoryCoordinator:
 
         item_name = new_name if new_name is not None else old_name
         current_item = inventory["items"][old_name]
-        updated_item = self._process_item_updates(current_item, **kwargs)
+        updated_item = self._process_item_updates(current_item, inventory_id, **kwargs)
         auto_add_being_enabled = kwargs.get(FIELD_AUTO_ADD_ENABLED) is True
 
         if auto_add_being_enabled and not self._validate_auto_add_config(
@@ -212,12 +212,22 @@ class SimpleInventoryCoordinator:
             if expiry_alert_days is not None:
                 expiry_alert_days = max(0, int(expiry_alert_days))
 
+            auto_add_id_enabled = bool(kwargs.get(FIELD_AUTO_ADD_ID_TO_DESCRIPTION_ENABLED, False))
+
+            description = self._process_description_update(
+                kwargs.get(FIELD_DESCRIPTION, ""),
+                inventory_id,
+                auto_add_id_enabled,
+            )
+
             new_item: InventoryItem = {
                 FIELD_AUTO_ADD_ENABLED: kwargs.get(
                     FIELD_AUTO_ADD_ENABLED, DEFAULT_AUTO_ADD_ENABLED
                 ),
+                FIELD_AUTO_ADD_ID_TO_DESCRIPTION_ENABLED: auto_add_id_enabled,
                 FIELD_AUTO_ADD_TO_LIST_QUANTITY: auto_add_quantity,
                 FIELD_CATEGORY: kwargs.get(FIELD_CATEGORY, DEFAULT_CATEGORY),
+                FIELD_DESCRIPTION: description,
                 FIELD_EXPIRY_ALERT_DAYS: expiry_alert_days,
                 FIELD_EXPIRY_DATE: kwargs.get(FIELD_EXPIRY_DATE, DEFAULT_EXPIRY_DATE),
                 FIELD_QUANTITY: max(0, quantity),
@@ -494,7 +504,7 @@ class SimpleInventoryCoordinator:
         }
 
     def _process_item_updates(
-        self, current_item: InventoryItem, **kwargs: Unpack[InventoryItem]
+        self, current_item: InventoryItem, inventory_id: str, **kwargs: Unpack[InventoryItem]
     ) -> InventoryItem:
         """Process field updates for an item."""
         updated_item = current_item.copy()
@@ -505,19 +515,41 @@ class SimpleInventoryCoordinator:
                 processed_value = self._process_field_value(key, value)
                 updated_item[key] = processed_value  # type: ignore[literal-required]
 
+        if FIELD_DESCRIPTION in kwargs or FIELD_AUTO_ADD_ID_TO_DESCRIPTION_ENABLED in kwargs:
+            description_value = updated_item.get(FIELD_DESCRIPTION, "")
+            auto_add_id_enabled = bool(
+                updated_item.get(FIELD_AUTO_ADD_ID_TO_DESCRIPTION_ENABLED, False)
+            )
+            updated_item[FIELD_DESCRIPTION] = self._process_description_update(
+                description_value,
+                inventory_id,
+                auto_add_id_enabled,
+            )
         return updated_item
 
-    def _process_description_update(self, current_description: str, inventory_id: str = "") -> str:
-        """Process description field update, appending inventory id if provided."""
-        _LOGGER.debug(
-            "Processing description update: '%s' with inventory_id: '%s'",
-            current_description,
-            inventory_id,
-        )
-        base_description = current_description.rsplit(" (", 1)[0]
-        if inventory_id:
-            return f"{base_description} ({inventory_id})"
-        return base_description
+    def _process_description_update(
+        self,
+        description: str | None,
+        inventory_id: str,
+        auto_add_id_enabled: bool,
+    ) -> str:
+        """Normalize description content, adding/removing the inventory id suffix."""
+        normalized_description = (description or "").rstrip()
+        if not inventory_id:
+            return normalized_description
+
+        suffix = f" ({inventory_id})"
+        if normalized_description.endswith(suffix):
+            normalized_description = normalized_description[: -len(suffix)].rstrip()
+
+        if auto_add_id_enabled:
+            return (
+                f"{normalized_description} ({inventory_id})"
+                if normalized_description
+                else f"({inventory_id})"
+            )
+
+        return normalized_description
 
     def _handle_item_rename(
         self,

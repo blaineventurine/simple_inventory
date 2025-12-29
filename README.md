@@ -81,11 +81,13 @@ Use the `simple_inventory.get_items` service to get the full list of items for a
 You can specify the inventory either by its ID or by its name (case-insensitive). Examples:
 
 By inventory ID:
+
 ```yaml
 inventory_id: "01JYFPCDMBRBRK4MB3C26S2FKH"
 ```
 
 By inventory name:
+
 ```yaml
 inventory_name: "Kitchen Freezer"
 ```
@@ -104,6 +106,8 @@ Example response:
       "expiry_alert_days": 3,
       "auto_add_enabled": true,
       "auto_add_to_list_quantity": 1,
+      "description": "From cows, not almonds",
+      "auto_add_id_to_description_enabled": 1,
       "todo_list": "todo.grocery_list",
       "location": "Fridge"
     }

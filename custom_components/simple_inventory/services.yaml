@@ -54,6 +54,16 @@ add_item:
       example: Basement Refrigerator
       required: false
       default: ""
+    description:
+      description: Item description
+      example: "Junk food"
+      required: false
+      default: ""
+    auto_add_id_to_description_enabled:
+      description: Appends the inventory ID to the description
+      example: 1
+      required: false
+      default: 0
 
 remove_item:
   description: Remove an item from an inventory
@@ -153,6 +163,16 @@ update_item:
       example: Basement Refrigerator
       required: false
       default: ""
+    description:
+      description: Item description
+      example: "Junk food"
+      required: false
+      default: ""
+    auto_add_id_to_description_enabled:
+      description: Appends the inventory ID to the description
+      example: 1
+      required: false
+      default: 0
 
 get_items:
   description: Return the full list of items for an inventory. Use return_response. Can specify either inventory_id or inventory_name (but not both).

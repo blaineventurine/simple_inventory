@@ -3,12 +3,14 @@
 import logging
 from typing import Any, cast
 
+from homeassistant.components.todo import TodoListEntityFeature
 from homeassistant.core import HomeAssistant
 
 from .const import (
     DEFAULT_AUTO_ADD_TO_LIST_QUANTITY,
     FIELD_AUTO_ADD_ENABLED,
     FIELD_AUTO_ADD_TO_LIST_QUANTITY,
+    FIELD_DESCRIPTION,
     FIELD_QUANTITY,
     FIELD_TODO_LIST,
 )
@@ -153,27 +155,53 @@ class TodoManager:
         """Build todo item name with quantity."""
         return f"{item_name} (x{quantity_needed})"
 
-    async def _add_todo_item(self, todo_list: str, item_name: str) -> None:
-        """Add a new item to the todo list."""
-        await self.hass.services.async_call(
-            "todo",
-            "add_item",
-            {"item": item_name, "entity_id": todo_list},
-            blocking=True,
-        )
+    def _supports_description(self, todo_list_entity: str) -> bool:
+        """Return True if the todo entity can store descriptions."""
+        if todo_list_entity == "todo.shopping_list":
+            return False
 
-    async def _update_todo_item(self, todo_list: str, item: dict[str, Any], new_name: str) -> None:
-        """Update a todo item with a new name."""
-        await self.hass.services.async_call(
-            "todo",
-            "update_item",
-            {
-                "item": self._build_item_params(item),
-                "rename": new_name,
-                "entity_id": todo_list,
-            },
-            blocking=True,
-        )
+        state = self.hass.states.get(todo_list_entity)
+        if not state:
+            return True
+
+        supported = int(state.attributes.get("supported_features", 0))
+        return bool(supported & TodoListEntityFeature.SET_DESCRIPTION_ON_ITEM)
+
+    def _resolve_item_description(self, item_data: InventoryItem) -> str:
+        """Fetch the item's description string (may be empty)."""
+        return str(item_data.get(FIELD_DESCRIPTION, "") or "").strip()
+
+    async def _add_todo_item(
+        self, todo_list: str, item_name: str, description: str | None = None
+    ) -> None:
+        """Add a new item to the todo list."""
+        service_data: dict[str, Any] = {
+            "item": item_name,
+            "entity_id": todo_list,
+        }
+
+        if description is not None:
+            service_data["description"] = description
+
+        await self.hass.services.async_call("todo", "add_item", service_data, blocking=True)
+
+    async def _update_todo_item(
+        self,
+        todo_list: str,
+        item: dict[str, Any],
+        new_name: str,
+        description: str | None = None,
+    ) -> None:
+        """Update a todo item with a new name (and description if supported)."""
+        service_data: dict[str, Any] = {
+            "item": self._build_item_params(item),
+            "rename": new_name,
+            "entity_id": todo_list,
+        }
+        if description is not None:
+            service_data["description"] = description
+
+        await self.hass.services.async_call("todo", "update_item", service_data, blocking=True)
 
     async def _remove_todo_item(self, todo_list: str, item: dict[str, Any]) -> None:
         """Remove an item from the todo list."""
@@ -202,15 +230,18 @@ class TodoManager:
         if not todo_list:
             return False
 
+        supports_description = self._supports_description(todo_list)
+        description = self._resolve_item_description(item_data) if supports_description else None
+
         try:
             matching_item = await self._find_matching_incomplete_item(todo_list, item_name)
             quantity_needed = self._calculate_quantity_needed(quantity, auto_add_quantity)
             new_name = self._build_todo_item_name(item_name, quantity_needed)
 
             if matching_item:
-                await self._update_todo_item(todo_list, matching_item, new_name)
+                await self._update_todo_item(todo_list, matching_item, new_name, description)
             else:
-                await self._add_todo_item(todo_list, new_name)
+                await self._add_todo_item(todo_list, new_name, description)
 
             return True
 
@@ -233,6 +264,9 @@ class TodoManager:
         if not todo_list:
             return False
 
+        supports_description = self._supports_description(todo_list)
+        description = self._resolve_item_description(item_data) if supports_description else None
+
         try:
             matching_item = await self._find_matching_incomplete_item(todo_list, item_name)
 
@@ -245,7 +279,7 @@ class TodoManager:
                 await self._remove_todo_item(todo_list, matching_item)
             else:
                 new_name = self._build_todo_item_name(item_name, quantity_needed)
-                await self._update_todo_item(todo_list, matching_item, new_name)
+                await self._update_todo_item(todo_list, matching_item, new_name, description)
 
             return True
 

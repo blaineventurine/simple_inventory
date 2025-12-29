@@ -403,7 +403,9 @@ class TestTodoManager:
             assert result is True
             mock_calc.assert_called_once_with(1, 2)
             mock_build_name.assert_called_once_with("bread", 2)
-            mock_update.assert_called_once_with("todo.shopping_list", matching_item, "bread (x2)")
+            mock_update.assert_called_once_with(
+                "todo.shopping_list", matching_item, "bread (x2)", None
+            )
 
     @pytest.mark.asyncio
     async def test_remove_item_at_threshold(
