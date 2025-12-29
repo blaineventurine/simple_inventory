@@ -1,5 +1,6 @@
 """Test configuration and fixtures."""
 
+import logging
 import sys
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -13,6 +14,7 @@ from homeassistant.core import HomeAssistant, ServiceCall
 from custom_components.simple_inventory.coordinator import (
     SimpleInventoryCoordinator,
 )
+from custom_components.simple_inventory.services import ServiceHandler
 from custom_components.simple_inventory.services.base_service import (
     BaseServiceHandler,
 )
@@ -88,6 +90,7 @@ def mock_todo_manager() -> TodoManager:
     """Create a mock todo manager."""
     todo_manager = MagicMock()
     todo_manager.check_and_add_item = AsyncMock(return_value=True)
+    todo_manager.check_and_remove_item = AsyncMock(return_value=True)
     return todo_manager
 
 
@@ -107,10 +110,12 @@ def base_service_handler(
 
 @pytest.fixture
 def inventory_service(
-    hass: HomeAssistant, mock_coordinator: SimpleInventoryCoordinator
+    hass: HomeAssistant,
+    mock_coordinator: SimpleInventoryCoordinator,
+    mock_todo_manager: TodoManager,
 ) -> InventoryService:
     """Create an InventoryService instance."""
-    return InventoryService(hass, mock_coordinator)
+    return InventoryService(hass, mock_coordinator, mock_todo_manager)
 
 
 @pytest.fixture
@@ -358,8 +363,6 @@ def mock_datetime() -> Generator[MagicMock, None, None]:
 @pytest.fixture
 def caplog_info(caplog: pytest.LogCaptureFixture) -> pytest.LogCaptureFixture:
     """Set caplog to INFO level for testing."""
-    import logging
-
     caplog.set_level(logging.INFO)
     return caplog
 
@@ -367,8 +370,6 @@ def caplog_info(caplog: pytest.LogCaptureFixture) -> pytest.LogCaptureFixture:
 @pytest.fixture
 def caplog_debug(caplog: pytest.LogCaptureFixture) -> pytest.LogCaptureFixture:
     """Set caplog to DEBUG level for testing."""
-    import logging
-
     caplog.set_level(logging.DEBUG)
     return caplog
 
@@ -386,14 +387,13 @@ def full_service_setup(
     mock_todo_manager: TodoManager,
 ) -> dict[str, Any]:
     """Create a complete service setup for integration testing."""
-    from custom_components.simple_inventory.services import ServiceHandler
 
     return {
         "hass": hass,
         "coordinator": mock_coordinator,
         "todo_manager": mock_todo_manager,
         "service_handler": ServiceHandler(hass, mock_coordinator, mock_todo_manager),
-        "inventory_service": InventoryService(hass, mock_coordinator),
+        "inventory_service": InventoryService(hass, mock_coordinator, mock_todo_manager),
         "quantity_service": QuantityService(hass, mock_coordinator, mock_todo_manager),
     }
 

@@ -55,7 +55,9 @@ class TestServiceHandler:
             assert service_handler.coordinator is mock_coordinator
             assert service_handler.todo_manager is mock_todo_manager
 
-            mock_inventory_service.assert_called_once_with(mock_hass, mock_coordinator)
+            mock_inventory_service.assert_called_once_with(
+                mock_hass, mock_coordinator, mock_todo_manager
+            )
             mock_quantity_service.assert_called_once_with(
                 mock_hass, mock_coordinator, mock_todo_manager
             )

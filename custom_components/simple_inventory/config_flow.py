@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import re
 from typing import Any
 
 import homeassistant.helpers.config_validation as cv
@@ -21,7 +22,6 @@ DEFAULT_ICON = "mdi:package-variant"
 
 async def clean_inventory_name(hass: HomeAssistant, name: str) -> str:
     """Remove the word 'inventory' from the name, unless it's the only word."""
-    import re
 
     try:
         current_lang = hass.config.language

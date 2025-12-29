@@ -28,19 +28,24 @@ class BaseServiceHandler:
     ) -> None:
         """Save data and log successful operation."""
         await self.coordinator.async_save_data(inventory_id)
-        _LOGGER.info(f"{operation}: {item_name} in inventory: {inventory_id}")
+        _LOGGER.debug("%s: %s in inventory: %s", operation, item_name, inventory_id)
 
     def _log_item_not_found(self, operation: str, item_name: str, inventory_id: str) -> None:
         """Log when an item is not found."""
         _LOGGER.warning(
-            f"{operation} failed - Item not found: {item_name} in inventory: {inventory_id}"
+            "%s failed - Item not found: %s in inventory: %s",
+            operation,
+            item_name,
+            inventory_id,
         )
 
     def _log_operation_failed(self, operation: str, item_name: str, inventory_id: str) -> None:
         """Log when an operation fails."""
         _LOGGER.error(
-            f"{operation} failed for item: {
-                item_name} in inventory: {inventory_id}"
+            "%s failed for item: %s in inventory: %s",
+            operation,
+            item_name,
+            inventory_id,
         )
 
     def _extract_item_kwargs(

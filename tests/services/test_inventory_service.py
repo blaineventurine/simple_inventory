@@ -1,7 +1,7 @@
 """Tests for InventoryService."""
 
 import logging
-from unittest.mock import MagicMock
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from homeassistant.core import ServiceCall
@@ -91,10 +91,11 @@ class TestInventoryService:
     ) -> None:
         """Test successful item removal."""
         mock_coordinator.remove_item.return_value = True
+        mock_coordinator.get_item.return_value = {"name": "milk", "quantity": 2}
 
         await inventory_service.async_remove_item(basic_service_call)
 
-        mock_coordinator.remove_item.assert_called_once_with("kitchen", "milk")
+        mock_coordinator.get_item.assert_any_call("kitchen", "milk")
         mock_coordinator.async_save_data.assert_called_once_with("kitchen")
 
     @pytest.mark.asyncio
@@ -144,9 +145,17 @@ class TestInventoryService:
         mock_coordinator: MagicMock,
     ) -> None:
         """Test successful item update."""
+        mock_coordinator.get_item.side_effect = [
+            {"name": "milk", "quantity": 2},  # First call: check old item exists
+            {"name": "whole_milk", "quantity": 3},  # Second call: get updated item
+        ]
+        mock_coordinator.update_item.return_value = True
+
         await inventory_service.async_update_item(update_item_service_call)
 
-        mock_coordinator.get_item.assert_called_once_with("kitchen", "milk")
+        assert mock_coordinator.get_item.call_count == 2
+        mock_coordinator.get_item.assert_any_call("kitchen", "milk")
+        mock_coordinator.get_item.assert_any_call("kitchen", "whole_milk")
         mock_coordinator.update_item.assert_called_once_with(
             "kitchen",
             "milk",
@@ -452,3 +461,47 @@ class TestInventoryService:
 
         assert result["inventories"][0]["inventory_id"] == "inv_missing"
         assert result["inventories"][0]["inventory_name"] == "inv_missing"
+        
+    @pytest.mark.asyncio
+    async def test_async_add_item_with_todo_manager(
+        self: Self,
+        mock_coordinator: MagicMock,
+        add_item_service_call: ServiceCall,
+    ) -> None:
+        """Test adding item with todo manager integration."""
+        mock_todo_manager = AsyncMock()
+        inventory_service = InventoryService(MagicMock(), mock_coordinator, mock_todo_manager)
+
+        # Item below threshold
+        mock_coordinator.get_item.return_value = {
+            "name": "milk",
+            "quantity": 1,
+            "auto_add_to_list_quantity": 2,
+            "auto_add_enabled": True,
+        }
+
+        await inventory_service.async_add_item(add_item_service_call)
+
+        mock_todo_manager.check_and_add_item.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_async_update_item_with_todo_manager(
+        self: Self,
+        mock_coordinator: MagicMock,
+        update_item_service_call: ServiceCall,
+    ) -> None:
+        """Test updating item with todo manager integration."""
+        mock_todo_manager = MagicMock()
+        inventory_service = InventoryService(MagicMock(), mock_coordinator, mock_todo_manager)
+
+        mock_coordinator.get_item.return_value = {
+            "name": "whole_milk",
+            "quantity": 3,
+            "auto_add_enabled": True,
+            "auto_add_to_list_quantity": 2,
+        }
+
+        await inventory_service.async_update_item(update_item_service_call)
+
+        # Should remove from todo list since quantity > threshold
+        mock_todo_manager.check_and_remove_item.assert_called_once()

@@ -36,13 +36,13 @@ class TestBaseServiceHandler:
         caplog: pytest.LogCaptureFixture,
     ) -> None:
         """Test saving data and logging success."""
-        with caplog.at_level(logging.INFO):
+        with caplog.at_level(logging.DEBUG):
             await base_service_handler._save_and_log_success("kitchen", "Added item", "milk")
 
         mock_coordinator.async_save_data.assert_called_once_with("kitchen")
 
         assert "Added item: milk in inventory: kitchen" in caplog.text
-        assert caplog.records[0].levelname == "INFO"
+        assert caplog.records[0].levelname == "DEBUG"
 
     @pytest.mark.asyncio
     async def test_save_and_log_success_with_special_characters(
@@ -52,7 +52,7 @@ class TestBaseServiceHandler:
         caplog: pytest.LogCaptureFixture,
     ) -> None:
         """Test saving and logging with special characters in names."""
-        with caplog.at_level(logging.INFO):
+        with caplog.at_level(logging.DEBUG):
             await base_service_handler._save_and_log_success(
                 "my-pantry_01", "Updated item", "café-latte"
             )

@@ -393,10 +393,10 @@ class TestSimpleInventoryCoordinator:
 
     async def test_add_item_empty_name(self: Self, coordinator: SimpleInventoryCoordinator) -> None:
         """Test adding an item with empty name."""
-        with pytest.raises(ValueError, match="Item name cannot be empty"):
+        with pytest.raises(ValueError, match="Cannot add item with empty name"):
             coordinator.add_item("kitchen", name="", quantity=1)
 
-        with pytest.raises(ValueError, match="Item name cannot be empty"):
+        with pytest.raises(ValueError, match="Cannot add item with empty name"):
             coordinator.add_item("kitchen", name="  ", quantity=1)
 
     async def test_add_item_negative_quantity(
