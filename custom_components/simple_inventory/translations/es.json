@@ -184,18 +184,15 @@
       "name": "Quitar Artículo"
     },
     "update_item": {
-      "auto_add_id_to_description_enabled": {
-        "description": "Activa la adición automática del ID del inventario a la descripción",
-        "name": "Añadir automáticamente el ID del inventario a la descripción"
-      },
-      "description": {
-        "description": "Descripción opcional del artículo",
-        "name": "Descripción"
-      },
+      "description": "Actualizar un artículo existente del inventario",
       "fields": {
         "auto_add_enabled": {
           "description": "Habilitar auto-agregar a lista de tareas",
           "name": "Auto Agregar Habilitado"
+        },
+        "auto_add_id_to_description_enabled": {
+          "description": "Activa la adición automática del ID del inventario a la descripción",
+          "name": "Añadir automáticamente el ID del inventario a la descripción"
         },
         "auto_add_to_list_quantity": {
           "description": "Umbral para auto-agregar",
@@ -204,6 +201,10 @@
         "category": {
           "description": "Categoría",
           "name": "Categoría"
+        },
+        "description": {
+          "description": "Descripción opcional del artículo",
+          "name": "Descripción"
         },
         "expiry_alert_days": {
           "description": "Número de días de anticipación para avisar sobre artículos que vencen",
@@ -216,6 +217,10 @@
         "inventory_id": {
           "description": "ID del inventario",
           "name": "ID del Inventario"
+        },
+        "location": {
+          "description": "Ubicación del artículo dentro del inventario",
+          "name": "Ubicación"
         },
         "name": {
           "description": "Nuevo nombre del artículo",
@@ -237,10 +242,6 @@
           "description": "Unidad de medida",
           "name": "Unidad"
         }
-      },
-      "location": {
-        "description": "Ubicación del artículo dentro del inventario",
-        "name": "Ubicación"
       },
       "name": "Actualizar Artículo"
     }
