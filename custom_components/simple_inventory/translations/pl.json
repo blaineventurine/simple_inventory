@@ -1,0 +1,249 @@
+{
+    "common": {
+        "inventory_word": "magazyn"
+    },
+    "config": {
+        "error": {
+            "name_exists": "Nazwa magazynu już istnieje"
+        },
+        "step": {
+            "add_inventory": {
+                "data": {
+                    "description": "Opis",
+                    "icon": "Ikona",
+                    "name": "Nazwa magazynu"
+                },
+                "data_description": {
+                    "description": "Opcjonalny opis tego magazynu",
+                    "icon": "Kliknij pole ikony, aby otworzyć wybór ikon Material Design"
+                },
+                "description": "Utwórz nowy magazyn, aby śledzić swoje przedmioty.",
+                "title": "Dodaj magazyn"
+            }
+        }
+    },
+    "entity": {
+        "sensor": {
+            "all_expiring_items": {
+                "name": "Wszystkie przedmioty wkrótce wygasające"
+            },
+            "expiring_items": {
+                "name": "{inventory_name} przedmioty wkrótce wygasające"
+            },
+            "inventory": {
+                "name": "Magazyn {inventory_name}"
+            }
+        }
+    },
+    "options": {
+        "error": {
+            "name_exists": "Nazwa magazynu już istnieje"
+        },
+        "step": {
+            "init": {
+                "data": {
+                    "description": "Opis",
+                    "icon": "Ikona",
+                    "name": "Nazwa magazynu"
+                },
+                "data_description": {
+                    "description": "Opcjonalny opis tego magazynu",
+                    "icon": "Kliknij pole ikony, aby przeglądać dostępne ikony"
+                },
+                "description": "Zaktualizuj ustawienia dla {current_name}",
+                "title": "Konfiguruj magazyn"
+            }
+        }
+    },
+    "services": {
+        "add_item": {
+            "description": "Dodaj przedmiot do magazynu",
+            "fields": {
+                "auto_add_enabled": {
+                    "description": "Włącz automatyczne dodawanie do listy zadań",
+                    "name": "Automatyczne dodawanie włączone"
+                },
+                "auto_add_id_to_description_enabled": {
+                    "description": "Włącz automatyczne dodawanie ID magazynu do opisu",
+                    "name": "Automatyczne dodawanie ID magazynu do opisu włączone"
+                },
+                "auto_add_to_list_quantity": {
+                    "description": "Próg ilości dla automatycznego dodawania",
+                    "name": "Próg automatycznego dodawania"
+                },
+                "category": {
+                    "description": "Kategoria przedmiotu",
+                    "name": "Kategoria"
+                },
+                "description": {
+                    "description": "Opcjonalny opis przedmiotu",
+                    "name": "Opis"
+                },
+                "expiry_alert_days": {
+                    "description": "Liczba dni wyprzedzenia dla ostrzeżenia o wygasających przedmiotach",
+                    "name": "Dni ostrzeżenia"
+                },
+                "expiry_date": {
+                    "description": "Data ważności",
+                    "name": "Data ważności"
+                },
+                "inventory_id": {
+                    "description": "ID magazynu, do którego dodać",
+                    "name": "ID magazynu"
+                },
+                "location": {
+                    "description": "Lokalizacja przedmiotu w magazynie",
+                    "name": "Lokalizacja"
+                },
+                "name": {
+                    "description": "Nazwa przedmiotu",
+                    "name": "Nazwa przedmiotu"
+                },
+                "quantity": {
+                    "description": "Ilość przedmiotu",
+                    "name": "Ilość"
+                },
+                "todo_list": {
+                    "description": "Encja listy zadań do dodania",
+                    "name": "Lista zadań"
+                },
+                "unit": {
+                    "description": "Jednostka miary",
+                    "name": "Jednostka"
+                }
+            },
+            "name": "Dodaj przedmiot"
+        },
+        "decrement_item": {
+            "description": "Zmniejsz ilość przedmiotu",
+            "fields": {
+                "amount": {
+                    "description": "Ilość do zmniejszenia",
+                    "name": "Ilość"
+                },
+                "inventory_id": {
+                    "description": "ID magazynu",
+                    "name": "ID magazynu"
+                },
+                "name": {
+                    "description": "Nazwa przedmiotu",
+                    "name": "Nazwa przedmiotu"
+                }
+            },
+            "name": "Zmniejsz ilość przedmiotu"
+        },
+        "get_items": {
+            "description": "Zwróć pełną listę przedmiotów dla magazynu. Można podać inventory_id lub inventory_name.",
+            "fields": {
+                "inventory_id": {
+                    "description": "ID magazynu",
+                    "name": "ID magazynu"
+                },
+                "inventory_name": {
+                    "description": "Nazwa magazynu (wielkość liter nie ma znaczenia)",
+                    "name": "Nazwa magazynu"
+                }
+            },
+            "name": "Pobierz przedmioty"
+        },
+        "get_items_from_all_inventories": {
+            "description": "Zwróć pełną listę przedmiotów pogrupowaną według magazynu",
+            "fields": {},
+            "name": "Pobierz przedmioty ze wszystkich magazynów"
+        },
+        "increment_item": {
+            "description": "Zwiększ ilość przedmiotu",
+            "fields": {
+                "amount": {
+                    "description": "Ilość do zwiększenia",
+                    "name": "Ilość"
+                },
+                "inventory_id": {
+                    "description": "ID magazynu",
+                    "name": "ID magazynu"
+                },
+                "name": {
+                    "description": "Nazwa przedmiotu",
+                    "name": "Nazwa przedmiotu"
+                }
+            },
+            "name": "Zwiększ ilość przedmiotu"
+        },
+        "remove_item": {
+            "description": "Usuń przedmiot z magazynu",
+            "fields": {
+                "inventory_id": {
+                    "description": "ID magazynu, z którego usunąć",
+                    "name": "ID magazynu"
+                },
+                "name": {
+                    "description": "Nazwa przedmiotu do usunięcia",
+                    "name": "Nazwa przedmiotu"
+                }
+            },
+            "name": "Usuń przedmiot"
+        },
+        "update_item": {
+            "description": "Zaktualizuj istniejący przedmiot w magazynie",
+            "fields": {
+                "auto_add_enabled": {
+                    "description": "Włącz automatyczne dodawanie do listy zadań",
+                    "name": "Automatyczne dodawanie włączone"
+                },
+                "auto_add_id_to_description_enabled": {
+                    "description": "Włącz automatyczne dodawanie ID magazynu do opisu",
+                    "name": "Automatyczne dodawanie ID magazynu do opisu włączone"
+                },
+                "auto_add_to_list_quantity": {
+                    "description": "Próg automatycznego dodawania",
+                    "name": "Próg automatycznego dodawania"
+                },
+                "category": {
+                    "description": "Kategoria",
+                    "name": "Kategoria"
+                },
+                "description": {
+                    "description": "Opcjonalny opis przedmiotu",
+                    "name": "Opis"
+                },
+                "expiry_alert_days": {
+                    "description": "Liczba dni wyprzedzenia dla ostrzeżenia o wygasających przedmiotach",
+                    "name": "Dni ostrzeżenia"
+                },
+                "expiry_date": {
+                    "description": "Data ważności",
+                    "name": "Data ważności"
+                },
+                "inventory_id": {
+                    "description": "ID magazynu",
+                    "name": "ID magazynu"
+                },
+                "location": {
+                    "description": "Lokalizacja w magazynie",
+                    "name": "Lokalizacja"
+                },
+                "name": {
+                    "description": "Nowa nazwa przedmiotu",
+                    "name": "Nowa nazwa"
+                },
+                "old_name": {
+                    "description": "Obecna nazwa przedmiotu",
+                    "name": "Obecna nazwa"
+                },
+                "quantity": {
+                    "description": "Nowa ilość",
+                    "name": "Ilość"
+                },
+                "todo_list": {
+                    "description": "Encja listy zadań",
+                    "name": "Lista zadań"
+                },
+                "unit": {
+                    "description": "Jednostka miary",
+                    "name": "Jednostka"
+                }
+            },
+            "name": "Zaktualizuj przedmiot"
+        }
+    }
+}
