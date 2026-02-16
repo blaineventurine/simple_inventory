@@ -52,9 +52,15 @@ jobs:
         id: version
         run: |
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            echo "version=${{ github.event.inputs.version }}" >> $GITHUB_OUTPUT
+            VERSION="${{ github.event.inputs.version }}"
           else
-            echo "version=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+            VERSION="${GITHUB_REF#refs/tags/}"
+          fi
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          if echo "$VERSION" | grep -qE '(a|b|rc|alpha|beta|dev)[0-9]*$'; then
+            echo "prerelease=true" >> $GITHUB_OUTPUT
+          else
+            echo "prerelease=false" >> $GITHUB_OUTPUT
           fi
 
       - name: Update version in files
@@ -95,7 +101,7 @@ jobs:
           release_name: Release ${{ steps.version.outputs.version }}
           body: ${{ steps.changelog.outputs.CHANGELOG }}
           draft: false
-          prerelease: false
+          prerelease: ${{ steps.version.outputs.prerelease == 'true' }}
 
       - name: Create ZIP for HACS
         run: |
