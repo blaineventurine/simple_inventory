@@ -28,6 +28,7 @@ add_item:
       selector:
         number:
           min: 0
+          step: 0.1
     unit:
       description: Unit of measurement
       example: "boxes"
@@ -36,8 +37,8 @@ add_item:
       selector:
         text:
     category:
-      description: Category of the item
-      example: "Prepared Foods"
+      description: Category of the item. Supports multiple categories as a comma-separated list.
+      example: "Prepared Foods, Frozen"
       required: false
       default: ""
       selector:
@@ -89,8 +90,8 @@ add_item:
         entity:
           domain: todo
     location:
-      description: Location of the item
-      example: Basement Refrigerator
+      description: Location of the item. Supports multiple locations as a comma-separated list.
+      example: "Basement Refrigerator, Kitchen Pantry"
       required: false
       default: ""
       selector:
@@ -102,6 +103,7 @@ add_item:
       default: ""
       selector:
         text:
+          multiline: true
     auto_add_id_to_description_enabled:
       description: Appends the inventory ID to the description
       example: true
@@ -171,7 +173,8 @@ increment_item:
       default: 1
       selector:
         number:
-          min: 1
+          min: 0.1
+          step: 0.1
 
 decrement_item:
   description: Decrement the quantity of an item
@@ -201,7 +204,8 @@ decrement_item:
       default: 1
       selector:
         number:
-          min: 1
+          min: 0.1
+          step: 0.1
 
 update_item:
   description: Update an existing inventory item
@@ -237,6 +241,7 @@ update_item:
       selector:
         number:
           min: 0
+          step: 0.1
     unit:
       description: Unit of measurement
       example: "boxes"
@@ -244,8 +249,8 @@ update_item:
       selector:
         text:
     category:
-      description: Category
-      example: "Frozen Foods"
+      description: Category. Supports multiple categories as a comma-separated list.
+      example: "Frozen Foods, Prepared Foods"
       required: false
       selector:
         text:
@@ -291,8 +296,8 @@ update_item:
         number:
           min: 0
     location:
-      description: Location of the item
-      example: Basement Refrigerator
+      description: Location of the item. Supports multiple locations as a comma-separated list.
+      example: "Basement Refrigerator, Kitchen Pantry"
       required: false
       default: ""
       selector:
@@ -304,6 +309,7 @@ update_item:
       default: ""
       selector:
         text:
+          multiline: true
     auto_add_id_to_description_enabled:
       description: Appends the inventory ID to the description
       example: true
