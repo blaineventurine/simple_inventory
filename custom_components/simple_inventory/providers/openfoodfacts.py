@@ -46,7 +46,9 @@ class OpenFoodFactsProvider(BarcodeProvider):
             resp.raise_for_status()
             data: dict[str, Any] = await resp.json()
         except (aiohttp.ClientError, TimeoutError):
-            _LOGGER.debug("Open Food Facts lookup failed for barcode %s", barcode)
+            _LOGGER.debug(
+                "Lookup failed for barcode %s using provider %s", barcode, self.provider_name
+            )
             return None
 
         if data.get("status") != 1:

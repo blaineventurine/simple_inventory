@@ -23,6 +23,7 @@ async def async_lookup_barcode_all_providers(
 
     async def _query_provider(provider: Any) -> dict[str, Any]:
         try:
+            _LOGGER.debug("Querying provider %s for barcode %s", provider.provider_name, barcode)
             product = await provider.async_lookup(barcode)
             if product is None:
                 return {"provider": provider.provider_name, "found": False}
