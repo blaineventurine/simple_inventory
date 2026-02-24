@@ -10,7 +10,7 @@ from homeassistant.components import websocket_api
 from homeassistant.core import HomeAssistant, callback
 
 from .const import DOMAIN
-from .providers.registry import create_provider
+from .providers.lookup import async_lookup_barcode_all_providers
 from .services.domain_data import get_coordinators, get_repository
 
 _LOGGER = logging.getLogger(__name__)
@@ -480,20 +480,29 @@ async def _handle_lookup_barcode_product(
     connection: websocket_api.ActiveConnection,
     msg: dict[str, Any],
 ) -> None:
-    """Look up a barcode in an external product database."""
+    """Look up a barcode, checking internal inventory first, then external providers."""
     barcode = msg["barcode"]
-    repository = get_repository(hass)
-    config = await repository.get_barcode_provider_config() if repository else {}
-    provider_name = config.get("provider")
-    provider = create_provider(hass, provider_name)
-    try:
-        product = await provider.async_lookup(barcode)
-    finally:
-        await provider.async_close()
-    if product is None:
-        connection.send_result(msg["id"], {"found": False, "barcode": barcode})
-    else:
-        connection.send_result(msg["id"], {"found": True, "barcode": barcode, "product": product})
+
+    # Check if an item with this barcode already exists in any inventory
+    coordinators = get_coordinators(hass)
+    if coordinators:
+        coordinator = next(iter(coordinators.values()))
+        existing = await coordinator.async_lookup_by_barcode(barcode)
+        if existing:
+            item = existing[0]
+            product: dict[str, Any] = {"name": item.get("name", "")}
+            if item.get("description"):
+                product["description"] = item["description"]
+            if item.get("category"):
+                product["category"] = item["category"]
+            if item.get("unit"):
+                product["unit"] = item["unit"]
+            results = [{"provider": "inventory", "found": True, "product": product}]
+            connection.send_result(msg["id"], {"barcode": barcode, "results": results})
+            return
+
+    results = await async_lookup_barcode_all_providers(hass, barcode)
+    connection.send_result(msg["id"], {"barcode": barcode, "results": results})
 
 
 async def _handle_get_barcode_provider_config(

@@ -7,7 +7,7 @@ from homeassistant.core import HomeAssistant, ServiceCall
 from homeassistant.util.json import JsonObjectType
 
 from ..const import DOMAIN
-from ..providers.registry import create_provider
+from ..providers.lookup import async_lookup_barcode_all_providers
 from ..todo_manager import TodoManager
 from .domain_data import get_coordinators, get_repository
 from .inventory_service import InventoryService
@@ -112,19 +112,28 @@ class ServiceHandler:
         return cast(JsonObjectType, result)
 
     async def async_lookup_barcode_product(self, call: ServiceCall) -> JsonObjectType:
-        """Look up a barcode in an external product database."""
+        """Look up a barcode, checking internal inventory first, then external providers."""
         barcode: str = call.data["barcode"]
-        repository = get_repository(self.hass)
-        config = await repository.get_barcode_provider_config() if repository else {}
-        provider_name = config.get("provider")
-        provider = create_provider(self.hass, provider_name)
-        try:
-            product = await provider.async_lookup(barcode)
-        finally:
-            await provider.async_close()
-        if product is None:
-            return cast(JsonObjectType, {"found": False, "barcode": barcode})
-        return cast(JsonObjectType, {"found": True, "barcode": barcode, "product": product})
+
+        # Check if an item with this barcode already exists in any inventory
+        coordinators = get_coordinators(self.hass)
+        if coordinators:
+            coordinator = next(iter(coordinators.values()))
+            existing = await coordinator.async_lookup_by_barcode(barcode)
+            if existing:
+                item = existing[0]
+                product: dict[str, str] = {"name": item.get("name", "")}
+                if item.get("description"):
+                    product["description"] = item["description"]
+                if item.get("category"):
+                    product["category"] = item["category"]
+                if item.get("unit"):
+                    product["unit"] = item["unit"]
+                results = [{"provider": "inventory", "found": True, "product": product}]
+                return cast(JsonObjectType, {"barcode": barcode, "results": results})
+
+        results = await async_lookup_barcode_all_providers(self.hass, barcode)
+        return cast(JsonObjectType, {"barcode": barcode, "results": results})
 
     async def async_get_item_consumption_rates(self, call: ServiceCall) -> JsonObjectType:
         """Return consumption rates for a single item."""

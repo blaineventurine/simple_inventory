@@ -1277,14 +1277,17 @@ class SimpleInventoryCoordinator:
         if not inventory_id:
             return normalized
 
-        suffix = f" ({inventory_id})"
-        if normalized.endswith(suffix):
-            normalized = normalized[: -len(suffix)].rstrip()
-        elif normalized == f"({inventory_id})":
-            normalized = ""
+        id_tag = f"({inventory_id})"
+
+        # Strip the ID tag from the description regardless of position
+        if id_tag in normalized:
+            # Remove " (id)" or "(id)" and clean up extra whitespace
+            normalized = normalized.replace(f" {id_tag}", "")
+            normalized = normalized.replace(id_tag, "")
+            normalized = normalized.strip()
 
         if auto_add_id_enabled:
-            return f"{normalized} ({inventory_id})" if normalized else f"({inventory_id})"
+            return f"{normalized} {id_tag}" if normalized else id_tag
 
         return normalized
 

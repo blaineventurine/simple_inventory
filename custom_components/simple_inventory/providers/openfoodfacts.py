@@ -13,7 +13,6 @@ from .base import BarcodeProvider, ProductInfo
 
 _LOGGER = logging.getLogger(__name__)
 
-_API_URL = "https://world.openfoodfacts.org/api/v2/product/{barcode}.json"
 _FIELDS = "product_name,brands,categories,generic_name,quantity,image_url"
 _USER_AGENT = "SimpleInventory/1.0 (HomeAssistant Integration)"
 _TIMEOUT = aiohttp.ClientTimeout(total=10)
@@ -22,6 +21,8 @@ _MAX_CATEGORIES = 3
 
 class OpenFoodFactsProvider(BarcodeProvider):
     """Barcode lookup via Open Food Facts API."""
+
+    _API_BASE = "https://world.openfoodfacts.org"
 
     def __init__(self, hass: HomeAssistant) -> None:
         self._hass = hass
@@ -33,7 +34,7 @@ class OpenFoodFactsProvider(BarcodeProvider):
     async def async_lookup(self, barcode: str) -> ProductInfo | None:
         """Look up a barcode on Open Food Facts."""
         session = async_get_clientsession(self._hass)
-        url = _API_URL.format(barcode=barcode)
+        url = f"{self._API_BASE}/api/v2/product/{barcode}.json"
 
         try:
             resp = await session.get(
