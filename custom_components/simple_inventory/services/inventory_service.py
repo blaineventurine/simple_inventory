@@ -9,8 +9,23 @@ from homeassistant.core import HomeAssistant, ServiceCall
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.util.json import JsonObjectType, JsonValueType
 
-from ..const import DOMAIN
-from ..coordinator import SimpleInventoryCoordinator
+from ..const import (
+    DOMAIN,
+    FIELD_AUTO_ADD_ENABLED,
+    FIELD_AUTO_ADD_ID_TO_DESCRIPTION_ENABLED,
+    FIELD_AUTO_ADD_TO_LIST_QUANTITY,
+    FIELD_CATEGORY,
+    FIELD_DESCRIPTION,
+    FIELD_DESIRED_QUANTITY,
+    FIELD_EXPIRY_ALERT_DAYS,
+    FIELD_EXPIRY_DATE,
+    FIELD_LOCATION,
+    FIELD_PRICE,
+    FIELD_QUANTITY,
+    FIELD_TODO_LIST,
+    FIELD_TODO_QUANTITY_PLACEMENT,
+    FIELD_UNIT,
+)
 from ..storage.repository import InventoryRepository
 from ..todo_manager import TodoManager
 from ..types import (
@@ -30,20 +45,20 @@ class InventoryService(BaseServiceHandler):
     """Handle inventory-specific operations (add, remove, update items)."""
 
     _UPDATEABLE_FIELDS = [
-        "auto_add_enabled",
-        "auto_add_id_to_description_enabled",
-        "auto_add_to_list_quantity",
-        "category",
-        "description",
-        "desired_quantity",
-        "expiry_alert_days",
-        "expiry_date",
-        "location",
-        "price",
-        "quantity",
-        "todo_list",
-        "todo_quantity_placement",
-        "unit",
+        FIELD_AUTO_ADD_ENABLED,
+        FIELD_AUTO_ADD_ID_TO_DESCRIPTION_ENABLED,
+        FIELD_AUTO_ADD_TO_LIST_QUANTITY,
+        FIELD_CATEGORY,
+        FIELD_DESCRIPTION,
+        FIELD_DESIRED_QUANTITY,
+        FIELD_EXPIRY_ALERT_DAYS,
+        FIELD_EXPIRY_DATE,
+        FIELD_LOCATION,
+        FIELD_PRICE,
+        FIELD_QUANTITY,
+        FIELD_TODO_LIST,
+        FIELD_TODO_QUANTITY_PLACEMENT,
+        FIELD_UNIT,
     ]
 
     def __init__(
@@ -59,18 +74,6 @@ class InventoryService(BaseServiceHandler):
     # ---------------------------------------------------------------------
     # Internal helpers
     # ---------------------------------------------------------------------
-
-    def _get_coordinator_optional(self, inventory_id: str) -> SimpleInventoryCoordinator | None:
-        return get_coordinators(self.hass).get(inventory_id)
-
-    def _require_coordinator(self, inventory_id: str) -> SimpleInventoryCoordinator | None:
-        coordinator = self._get_coordinator_optional(inventory_id)
-        if coordinator is None:
-            _LOGGER.error(
-                "No coordinator loaded for inventory '%s'; cannot process service call",
-                inventory_id,
-            )
-        return coordinator
 
     async def _handle_todo_auto_add(self, item_name: str, item: InventoryItem) -> None:
         """Handle auto-add to todo list based on item configuration."""
@@ -141,9 +144,10 @@ class InventoryService(BaseServiceHandler):
             # Resolve name for todo cleanup before removal
             resolved_name = name
             if not resolved_name and barcode:
-                item_by_bc = await coordinator.repository.get_item_by_barcode(inventory_id, barcode)
-                if item_by_bc:
-                    resolved_name = item_by_bc.get("name")
+                matches = await coordinator.async_lookup_by_barcode(barcode)
+                match = next((m for m in matches if m.get("inventory_id") == inventory_id), None)
+                if match:
+                    resolved_name = match.get("name")
 
             if resolved_name:
                 item = await coordinator.async_get_item(inventory_id, resolved_name)

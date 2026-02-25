@@ -8,6 +8,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from homeassistant.core import HomeAssistant, ServiceCall
+from homeassistant.exceptions import ServiceValidationError
 
 from custom_components.simple_inventory.const import DOMAIN
 from custom_components.simple_inventory.services.base_service import BaseServiceHandler
@@ -31,8 +32,7 @@ def mock_coordinator() -> MagicMock:
         return_value={"quantity": 5, "auto_add_to_list_quantity": 2}
     )
     coordinator.async_save_data = AsyncMock()
-    coordinator.repository = MagicMock()
-    coordinator.repository.get_item_by_barcode = AsyncMock(return_value=None)
+    coordinator.async_lookup_by_barcode = AsyncMock(return_value=[])
     return coordinator
 
 
@@ -291,8 +291,7 @@ async def test_concurrent_decrement_operations(
         c.async_decrement_item = AsyncMock(return_value=True)
         c.async_get_item = AsyncMock(return_value={"quantity": 1, "auto_add_to_list_quantity": 2})
         c.async_save_data = AsyncMock()
-        c.repository = MagicMock()
-        c.repository.get_item_by_barcode = AsyncMock(return_value=None)
+        c.async_lookup_by_barcode = AsyncMock(return_value=[])
         coordinators[inv_id] = c
         hass.data[DOMAIN]["coordinators"][inv_id] = c
 
@@ -326,7 +325,9 @@ async def test_async_increment_item_with_barcode(
     mock_coordinator: MagicMock,
     mock_todo_manager: MagicMock,
 ) -> None:
-    mock_coordinator.repository.get_item_by_barcode = AsyncMock(return_value={"name": "milk"})
+    mock_coordinator.async_lookup_by_barcode = AsyncMock(
+        return_value=[{"name": "milk", "inventory_id": "kitchen"}]
+    )
 
     call = MagicMock(spec=ServiceCall)
     call.data = {"inventory_id": "kitchen", "barcode": "BC-123", "amount": 2}
@@ -346,7 +347,9 @@ async def test_async_decrement_item_with_barcode(
     mock_coordinator: MagicMock,
     mock_todo_manager: MagicMock,
 ) -> None:
-    mock_coordinator.repository.get_item_by_barcode = AsyncMock(return_value={"name": "milk"})
+    mock_coordinator.async_lookup_by_barcode = AsyncMock(
+        return_value=[{"name": "milk", "inventory_id": "kitchen"}]
+    )
 
     call = MagicMock(spec=ServiceCall)
     call.data = {"inventory_id": "kitchen", "barcode": "BC-456", "amount": 1}
@@ -358,3 +361,96 @@ async def test_async_decrement_item_with_barcode(
         "kitchen", None, 1, barcode="BC-456", price=None
     )
     mock_coordinator.async_save_data.assert_awaited_once_with("kitchen")
+
+
+# ---------------------------------------------------------------------------
+# async_scan_barcode tests
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_scan_barcode_decrement_calls_todo_add(
+    quantity_service: QuantityService,
+    mock_coordinator: MagicMock,
+    mock_todo_manager: MagicMock,
+) -> None:
+    """Decrement via scan_barcode must call check_and_add_item."""
+    item_data = {"name": "Milk", "quantity": 0.0}
+    mock_coordinator.async_scan_barcode = AsyncMock(
+        return_value={
+            "action": "decrement",
+            "success": True,
+            "item_name": "Milk",
+            "inventory_id": "kitchen",
+            "amount": 1.0,
+        }
+    )
+    mock_coordinator.async_get_item = AsyncMock(return_value=item_data)
+
+    await quantity_service.async_scan_barcode("BC-123", "decrement", 1.0, "kitchen")
+
+    mock_todo_manager.check_and_add_item.assert_awaited_once_with("Milk", item_data)
+    mock_todo_manager.check_and_remove_item.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_scan_barcode_increment_calls_todo_remove(
+    quantity_service: QuantityService,
+    mock_coordinator: MagicMock,
+    mock_todo_manager: MagicMock,
+) -> None:
+    """Increment via scan_barcode must call check_and_remove_item."""
+    item_data = {"name": "Milk", "quantity": 2.0}
+    mock_coordinator.async_scan_barcode = AsyncMock(
+        return_value={
+            "action": "increment",
+            "success": True,
+            "item_name": "Milk",
+            "inventory_id": "kitchen",
+            "amount": 1.0,
+        }
+    )
+    mock_coordinator.async_get_item = AsyncMock(return_value=item_data)
+
+    await quantity_service.async_scan_barcode("BC-123", "increment", 1.0, "kitchen")
+
+    mock_todo_manager.check_and_remove_item.assert_awaited_once_with("Milk", item_data)
+    mock_todo_manager.check_and_add_item.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_scan_barcode_lookup_skips_todo(
+    quantity_service: QuantityService,
+    mock_coordinator: MagicMock,
+    mock_todo_manager: MagicMock,
+) -> None:
+    """Lookup action must not touch the todo manager."""
+    mock_coordinator.async_scan_barcode = AsyncMock(
+        return_value={"action": "lookup", "item": {}, "inventory_id": "kitchen"}
+    )
+
+    await quantity_service.async_scan_barcode("BC-123", "lookup", inventory_id="kitchen")
+
+    mock_todo_manager.check_and_add_item.assert_not_awaited()
+    mock_todo_manager.check_and_remove_item.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_scan_barcode_no_inventories_raises(
+    quantity_service: QuantityService,
+    hass_with_coordinator: HomeAssistant,
+) -> None:
+    """Should raise ServiceValidationError when no inventories are configured."""
+    hass_with_coordinator.data[DOMAIN]["coordinators"] = {}
+
+    with pytest.raises(ServiceValidationError, match="No inventories configured"):
+        await quantity_service.async_scan_barcode("BC-123", "increment")
+
+
+@pytest.mark.asyncio
+async def test_scan_barcode_unknown_inventory_raises(
+    quantity_service: QuantityService,
+) -> None:
+    """Should raise ServiceValidationError for an unknown inventory_id."""
+    with pytest.raises(ServiceValidationError, match="No coordinator available"):
+        await quantity_service.async_scan_barcode("BC-123", "increment", inventory_id="unknown")

@@ -498,11 +498,25 @@ class TestHandleLookupByBarcode:
         )
 
 
+def _make_mock_service_handler(scan_result=None, scan_error=None) -> MagicMock:
+    """Build a minimal mock service_handler with a quantity_service."""
+    mock_qs = MagicMock()
+    if scan_error:
+        mock_qs.async_scan_barcode = AsyncMock(side_effect=scan_error)
+    else:
+        mock_qs.async_scan_barcode = AsyncMock(
+            return_value=scan_result
+            or {"action": "increment", "success": True, "item_name": "milk", "inventory_id": "inv1"}
+        )
+    handler = MagicMock()
+    handler.quantity_service = mock_qs
+    return handler
+
+
 class TestHandleScanBarcode:
-    async def test_scan_success(
-        self, hass_mock: MagicMock, mock_connection: MagicMock, mock_coordinator_ws: MagicMock
-    ) -> None:
-        hass_mock.data[DOMAIN]["coordinators"]["inv1"] = mock_coordinator_ws
+    async def test_scan_success(self, hass_mock: MagicMock, mock_connection: MagicMock) -> None:
+        mock_sh = _make_mock_service_handler()
+        hass_mock.data[DOMAIN]["service_handler"] = mock_sh
         msg = {
             "id": 80,
             "type": f"{DOMAIN}/scan_barcode",
@@ -513,15 +527,16 @@ class TestHandleScanBarcode:
 
         await _handle_scan_barcode(hass_mock, mock_connection, msg)
 
-        mock_coordinator_ws.async_scan_barcode.assert_awaited_once_with(
-            "123456", "increment", 1.0, None, price=None
+        mock_sh.quantity_service.async_scan_barcode.assert_awaited_once_with(
+            barcode="123456", action="increment", amount=1.0, inventory_id=None, price=None
         )
         mock_connection.send_result.assert_called_once()
 
     async def test_scan_with_inventory_id(
-        self, hass_mock: MagicMock, mock_connection: MagicMock, mock_coordinator_ws: MagicMock
+        self, hass_mock: MagicMock, mock_connection: MagicMock
     ) -> None:
-        hass_mock.data[DOMAIN]["coordinators"]["inv1"] = mock_coordinator_ws
+        mock_sh = _make_mock_service_handler()
+        hass_mock.data[DOMAIN]["service_handler"] = mock_sh
         msg = {
             "id": 81,
             "type": f"{DOMAIN}/scan_barcode",
@@ -532,11 +547,14 @@ class TestHandleScanBarcode:
 
         await _handle_scan_barcode(hass_mock, mock_connection, msg)
 
-        mock_coordinator_ws.async_scan_barcode.assert_awaited_once()
+        mock_sh.quantity_service.async_scan_barcode.assert_awaited_once_with(
+            barcode="123456", action="decrement", amount=1.0, inventory_id="inv1", price=None
+        )
 
-    async def test_scan_no_inventories(
+    async def test_scan_no_service_handler(
         self, hass_mock: MagicMock, mock_connection: MagicMock
     ) -> None:
+        """Returns an error when the service handler is not yet available."""
         msg = {
             "id": 82,
             "type": f"{DOMAIN}/scan_barcode",
@@ -550,49 +568,13 @@ class TestHandleScanBarcode:
             82, "no_inventories", "No inventories configured"
         )
 
-    async def test_scan_decrement_calls_todo_add(
-        self, hass_mock: MagicMock, mock_connection: MagicMock, mock_coordinator_ws: MagicMock
-    ) -> None:
-        """WebSocket scan_barcode decrement must trigger check_and_add_item."""
-        item_data = {"name": "Milk", "quantity": 0.0, "auto_add_enabled": True}
-        mock_coordinator_ws.async_scan_barcode = AsyncMock(
-            return_value={
-                "action": "decrement",
-                "success": True,
-                "item_name": "Milk",
-                "inventory_id": "inv1",
-                "amount": 1.0,
-            }
-        )
-        mock_coordinator_ws.async_get_item = AsyncMock(return_value=item_data)
-
-        mock_todo_manager = MagicMock()
-        mock_todo_manager.check_and_add_item = AsyncMock()
-        mock_todo_manager.check_and_remove_item = AsyncMock()
-        hass_mock.data[DOMAIN]["coordinators"]["inv1"] = mock_coordinator_ws
-        hass_mock.data[DOMAIN]["todo_manager"] = mock_todo_manager
-
-        msg = {
-            "id": 84,
-            "type": f"{DOMAIN}/scan_barcode",
-            "barcode": "123456",
-            "action": "decrement",
-            "amount": 1.0,
-            "inventory_id": "inv1",
-        }
-
-        await _handle_scan_barcode(hass_mock, mock_connection, msg)
-
-        mock_todo_manager.check_and_add_item.assert_awaited_once_with("Milk", item_data)
-        mock_todo_manager.check_and_remove_item.assert_not_called()
-
     async def test_scan_error_forwarded(
-        self, hass_mock: MagicMock, mock_connection: MagicMock, mock_coordinator_ws: MagicMock
+        self, hass_mock: MagicMock, mock_connection: MagicMock
     ) -> None:
-        hass_mock.data[DOMAIN]["coordinators"]["inv1"] = mock_coordinator_ws
-        mock_coordinator_ws.async_scan_barcode = AsyncMock(
-            side_effect=ServiceValidationError("No item found for barcode '000' in any inventory")
+        mock_sh = _make_mock_service_handler(
+            scan_error=ServiceValidationError("No item found for barcode '000' in any inventory")
         )
+        hass_mock.data[DOMAIN]["service_handler"] = mock_sh
         msg = {
             "id": 83,
             "type": f"{DOMAIN}/scan_barcode",

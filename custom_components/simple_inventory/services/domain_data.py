@@ -11,6 +11,7 @@ from ..types import SimpleInventoryDomainData
 
 if TYPE_CHECKING:
     from ..todo_manager import TodoManager
+    from . import ServiceHandler
 
 
 def get_domain_data(hass: HomeAssistant) -> SimpleInventoryDomainData | None:
@@ -43,3 +44,11 @@ def get_todo_manager(hass: HomeAssistant) -> "TodoManager | None":
     if domain_data is None:
         return None
     return domain_data.get("todo_manager")
+
+
+def get_service_handler(hass: HomeAssistant) -> "ServiceHandler | None":
+    """Return the service handler if available."""
+    domain_data = get_domain_data(hass)
+    if domain_data is None:
+        return None
+    return domain_data.get("service_handler")
