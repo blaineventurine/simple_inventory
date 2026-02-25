@@ -270,6 +270,86 @@ class TestServiceHandler:
         )
         assert result == expected
 
+    @pytest.mark.asyncio
+    async def test_async_get_inventory_consumption_rates_success(
+        self: Self,
+        mock_hass: MagicMock,
+        mock_todo_manager: MagicMock,
+    ) -> None:
+        """async_get_inventory_consumption_rates calls the coordinator and returns result."""
+        expected = {"inventory_id": "kitchen", "items": [], "summary": {}}
+        mock_coordinator = MagicMock()
+        mock_coordinator.async_get_inventory_consumption_rates = AsyncMock(return_value=expected)
+
+        call = MagicMock()
+        call.data = {"inventory_id": "kitchen"}
+
+        with (
+            patch("custom_components.simple_inventory.services.InventoryService"),
+            patch("custom_components.simple_inventory.services.QuantityService"),
+            patch(
+                "custom_components.simple_inventory.services.get_coordinators",
+                return_value={"kitchen": mock_coordinator},
+            ),
+        ):
+            handler = ServiceHandler(mock_hass, mock_todo_manager)
+            result = await handler.async_get_inventory_consumption_rates(call)
+
+        mock_coordinator.async_get_inventory_consumption_rates.assert_awaited_once_with(
+            "kitchen", window_days=None
+        )
+        assert result == expected
+
+    @pytest.mark.asyncio
+    async def test_async_get_inventory_consumption_rates_window_days(
+        self: Self,
+        mock_hass: MagicMock,
+        mock_todo_manager: MagicMock,
+    ) -> None:
+        """window_days is forwarded to the coordinator."""
+        mock_coordinator = MagicMock()
+        mock_coordinator.async_get_inventory_consumption_rates = AsyncMock(return_value={})
+
+        call = MagicMock()
+        call.data = {"inventory_id": "kitchen", "window_days": 30}
+
+        with (
+            patch("custom_components.simple_inventory.services.InventoryService"),
+            patch("custom_components.simple_inventory.services.QuantityService"),
+            patch(
+                "custom_components.simple_inventory.services.get_coordinators",
+                return_value={"kitchen": mock_coordinator},
+            ),
+        ):
+            handler = ServiceHandler(mock_hass, mock_todo_manager)
+            await handler.async_get_inventory_consumption_rates(call)
+
+        mock_coordinator.async_get_inventory_consumption_rates.assert_awaited_once_with(
+            "kitchen", window_days=30
+        )
+
+    @pytest.mark.asyncio
+    async def test_async_get_inventory_consumption_rates_no_coordinator(
+        self: Self,
+        mock_hass: MagicMock,
+        mock_todo_manager: MagicMock,
+    ) -> None:
+        """Raises ValueError when inventory_id has no coordinator."""
+        call = MagicMock()
+        call.data = {"inventory_id": "missing"}
+
+        with (
+            patch("custom_components.simple_inventory.services.InventoryService"),
+            patch("custom_components.simple_inventory.services.QuantityService"),
+            patch(
+                "custom_components.simple_inventory.services.get_coordinators",
+                return_value={},
+            ),
+        ):
+            handler = ServiceHandler(mock_hass, mock_todo_manager)
+            with pytest.raises(ValueError, match="missing"):
+                await handler.async_get_inventory_consumption_rates(call)
+
     def test_exports(self: Self) -> None:
         """Test that __all__ exports are correct."""
         from custom_components.simple_inventory.services import __all__

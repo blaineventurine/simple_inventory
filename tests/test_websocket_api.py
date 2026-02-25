@@ -13,6 +13,7 @@ from custom_components.simple_inventory.websocket_api import (
     _handle_get_barcode_provider_config,
     _handle_get_history,
     _handle_get_inventory_consumption_rates,
+    _handle_get_inventory_statistics,
     _handle_get_item,
     _handle_get_item_consumption_rates,
     _handle_import,
@@ -75,6 +76,17 @@ def mock_coordinator_ws() -> MagicMock:
                 "most_consumed": [],
                 "running_out_soonest": [],
             },
+        }
+    )
+    coordinator.async_get_inventory_statistics = AsyncMock(
+        return_value={
+            "total_items": 2,
+            "total_quantity": 5.0,
+            "total_value": 12.50,
+            "categories": {"Dairy": 1},
+            "locations": {"Fridge": 2},
+            "below_threshold": [],
+            "expiring_items": [],
         }
     )
     coordinator.async_lookup_by_barcode = AsyncMock(
@@ -469,6 +481,42 @@ class TestHandleGetInventoryConsumptionRates:
 
         mock_coordinator_ws.async_get_inventory_consumption_rates.assert_awaited_once_with(
             "inv1", window_days=90
+        )
+
+
+class TestHandleGetInventoryStatistics:
+    async def test_success(
+        self, hass_mock: MagicMock, mock_connection: MagicMock, mock_coordinator_ws: MagicMock
+    ) -> None:
+        hass_mock.data[DOMAIN]["coordinators"]["inv1"] = mock_coordinator_ws
+        msg = {
+            "id": 65,
+            "type": f"{DOMAIN}/get_inventory_statistics",
+            "inventory_id": "inv1",
+        }
+
+        await _handle_get_inventory_statistics(hass_mock, mock_connection, msg)
+
+        mock_coordinator_ws.async_get_inventory_statistics.assert_awaited_once_with("inv1")
+        mock_connection.send_result.assert_called_once()
+        result = mock_connection.send_result.call_args[0][1]
+        assert result["total_items"] == 2
+        assert "below_threshold" in result
+        assert "expiring_items" in result
+
+    async def test_inventory_not_found(
+        self, hass_mock: MagicMock, mock_connection: MagicMock
+    ) -> None:
+        msg = {
+            "id": 66,
+            "type": f"{DOMAIN}/get_inventory_statistics",
+            "inventory_id": "missing",
+        }
+
+        await _handle_get_inventory_statistics(hass_mock, mock_connection, msg)
+
+        mock_connection.send_error.assert_called_once_with(
+            66, "inventory_not_found", "Inventory 'missing' not found"
         )
 
 

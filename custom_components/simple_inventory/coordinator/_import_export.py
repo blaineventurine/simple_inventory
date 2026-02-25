@@ -199,6 +199,9 @@ class _ImportExportMixin:
             FIELD_AUTO_ADD_ENABLED: bool(
                 item_data.get(FIELD_AUTO_ADD_ENABLED, DEFAULT_AUTO_ADD_ENABLED)
             ),
+            FIELD_AUTO_ADD_ID_TO_DESCRIPTION_ENABLED: bool(
+                item_data.get(FIELD_AUTO_ADD_ID_TO_DESCRIPTION_ENABLED, False)
+            ),
             FIELD_AUTO_ADD_TO_LIST_QUANTITY: float(
                 item_data.get(FIELD_AUTO_ADD_TO_LIST_QUANTITY, DEFAULT_AUTO_ADD_TO_LIST_QUANTITY)
             ),
