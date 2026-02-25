@@ -106,6 +106,13 @@ GET_ITEMS_SCHEMA = vol.Schema(
 
 GET_ALL_ITEMS_SCHEMA = vol.Schema({})
 
+GET_INVENTORY_CONSUMPTION_RATES_SCHEMA = vol.Schema(
+    {
+        INVENTORY_ID: cv.string,
+        vol.Optional("window_days"): vol.All(vol.Coerce(int), vol.Range(min=1)),
+    }
+)
+
 GET_ITEM_CONSUMPTION_RATES_SCHEMA = vol.Schema(
     {
         INVENTORY_ID: cv.string,
@@ -146,6 +153,7 @@ ALL_SCHEMAS = {
     "decrement_item": QUANTITY_UPDATE_SCHEMA,
     "get_items": GET_ITEMS_SCHEMA,
     "get_items_from_all_inventories": GET_ALL_ITEMS_SCHEMA,
+    "get_inventory_consumption_rates": GET_INVENTORY_CONSUMPTION_RATES_SCHEMA,
     "get_item_consumption_rates": GET_ITEM_CONSUMPTION_RATES_SCHEMA,
     "lookup_barcode_product": LOOKUP_BARCODE_PRODUCT_SCHEMA,
     "lookup_by_barcode": LOOKUP_BY_BARCODE_SCHEMA,

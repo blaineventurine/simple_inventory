@@ -156,6 +156,20 @@
       },
       "name": "Décrémenter un article"
     },
+    "get_inventory_consumption_rates": {
+      "description": "Obtenir les analyses de consommation pour tous les articles d'un inventaire basées sur leur historique de décréments",
+      "fields": {
+        "inventory_id": {
+          "description": "ID de l'inventaire",
+          "name": "ID de l'inventaire"
+        },
+        "window_days": {
+          "description": "Nombre de jours à consulter pour les données de consommation (omettre pour tout l'historique)",
+          "name": "Jours de fenêtre"
+        }
+      },
+      "name": "Obtenir les taux de consommation de l'inventaire"
+    },
     "get_item_consumption_rates": {
       "description": "Obtenir les analyses de consommation pour un article spécifique basées sur son historique de décréments",
       "fields": {

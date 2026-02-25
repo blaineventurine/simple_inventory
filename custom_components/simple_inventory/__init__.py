@@ -16,6 +16,7 @@ from .const import (
     SERVICE_ADD_ITEM,
     SERVICE_DECREMENT_ITEM,
     SERVICE_GET_ALL_ITEMS,
+    SERVICE_GET_INVENTORY_CONSUMPTION_RATES,
     SERVICE_GET_ITEM_CONSUMPTION_RATES,
     SERVICE_GET_ITEMS,
     SERVICE_INCREMENT_ITEM,
@@ -29,6 +30,7 @@ from .coordinator import SimpleInventoryCoordinator
 from .schemas.service_schemas import (
     ADD_ITEM_SCHEMA,
     GET_ALL_ITEMS_SCHEMA,
+    GET_INVENTORY_CONSUMPTION_RATES_SCHEMA,
     GET_ITEM_CONSUMPTION_RATES_SCHEMA,
     GET_ITEMS_SCHEMA,
     LOOKUP_BARCODE_PRODUCT_SCHEMA,
@@ -54,6 +56,7 @@ _SERVICE_NAMES = (
     SERVICE_ADD_ITEM,
     SERVICE_DECREMENT_ITEM,
     SERVICE_GET_ALL_ITEMS,
+    SERVICE_GET_INVENTORY_CONSUMPTION_RATES,
     SERVICE_GET_ITEM_CONSUMPTION_RATES,
     SERVICE_GET_ITEMS,
     SERVICE_INCREMENT_ITEM,
@@ -126,6 +129,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                 SERVICE_GET_ALL_ITEMS,
                 service_handler.async_get_items_from_all_inventories,
                 GET_ALL_ITEMS_SCHEMA,
+                _OPT,
+            ),
+            (
+                SERVICE_GET_INVENTORY_CONSUMPTION_RATES,
+                service_handler.async_get_inventory_consumption_rates,
+                GET_INVENTORY_CONSUMPTION_RATES_SCHEMA,
                 _OPT,
             ),
             (

@@ -18,6 +18,7 @@ from ..const import (
     DEFAULT_TODO_QUANTITY_PLACEMENT,
     DEFAULT_UNIT,
     FIELD_AUTO_ADD_ENABLED,
+    FIELD_AUTO_ADD_ID_TO_DESCRIPTION_ENABLED,
     FIELD_AUTO_ADD_TO_LIST_QUANTITY,
     FIELD_CATEGORY,
     FIELD_DESCRIPTION,
@@ -224,9 +225,11 @@ class _ImportExportMixin:
             "expiry_date",
             "expiry_alert_days",
             "auto_add_enabled",
+            "auto_add_id_to_description_enabled",
             "auto_add_to_list_quantity",
             "desired_quantity",
             "todo_list",
+            "todo_quantity_placement",
             "barcodes",
         ]
         writer = csv.DictWriter(output, fieldnames=fieldnames, extrasaction="ignore")
@@ -244,9 +247,15 @@ class _ImportExportMixin:
                 "expiry_date": item.get(FIELD_EXPIRY_DATE, ""),
                 "expiry_alert_days": item.get(FIELD_EXPIRY_ALERT_DAYS, 0),
                 "auto_add_enabled": int(item.get(FIELD_AUTO_ADD_ENABLED, False)),
+                "auto_add_id_to_description_enabled": int(
+                    item.get(FIELD_AUTO_ADD_ID_TO_DESCRIPTION_ENABLED, False)
+                ),
                 "auto_add_to_list_quantity": item.get(FIELD_AUTO_ADD_TO_LIST_QUANTITY, 0),
                 "desired_quantity": item.get(FIELD_DESIRED_QUANTITY, 0),
                 "todo_list": item.get(FIELD_TODO_LIST, ""),
+                "todo_quantity_placement": item.get(
+                    FIELD_TODO_QUANTITY_PLACEMENT, DEFAULT_TODO_QUANTITY_PLACEMENT
+                ),
                 "barcodes": ", ".join(item.get("barcodes", [])),
             }
             writer.writerow(row)
@@ -269,11 +278,17 @@ class _ImportExportMixin:
                 FIELD_EXPIRY_DATE: row.get("expiry_date", ""),
                 FIELD_EXPIRY_ALERT_DAYS: int(row.get("expiry_alert_days", 0) or 0),
                 FIELD_AUTO_ADD_ENABLED: bool(int(row.get("auto_add_enabled", 0) or 0)),
+                FIELD_AUTO_ADD_ID_TO_DESCRIPTION_ENABLED: bool(
+                    int(row.get("auto_add_id_to_description_enabled", 0) or 0)
+                ),
                 FIELD_AUTO_ADD_TO_LIST_QUANTITY: float(
                     row.get("auto_add_to_list_quantity", 0) or 0
                 ),
                 FIELD_DESIRED_QUANTITY: float(row.get("desired_quantity", 0) or 0),
                 FIELD_TODO_LIST: row.get("todo_list", ""),
+                FIELD_TODO_QUANTITY_PLACEMENT: row.get(
+                    "todo_quantity_placement", DEFAULT_TODO_QUANTITY_PLACEMENT
+                ),
             }
             items.append(item)
         return items

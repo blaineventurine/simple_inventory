@@ -44,6 +44,7 @@ def async_register_websocket_commands(hass: HomeAssistant) -> None:
     websocket_api.async_register_command(hass, ws_import)
     websocket_api.async_register_command(hass, ws_get_item_consumption_rates)
     websocket_api.async_register_command(hass, ws_get_inventory_consumption_rates)
+    websocket_api.async_register_command(hass, ws_get_inventory_statistics)
     websocket_api.async_register_command(hass, ws_lookup_by_barcode)
     websocket_api.async_register_command(hass, ws_lookup_barcode_product)
     websocket_api.async_register_command(hass, ws_get_barcode_provider_config)
@@ -326,6 +327,36 @@ async def _handle_get_inventory_consumption_rates(
     connection.send_result(msg["id"], result)
 
 
+async def _handle_get_inventory_statistics(
+    hass: HomeAssistant,
+    connection: websocket_api.ActiveConnection,
+    msg: dict[str, Any],
+) -> None:
+    """Return aggregate statistics for an inventory."""
+    inventory_id = msg["inventory_id"]
+    if (coordinator := _get_coordinator(hass, connection, msg, inventory_id)) is None:
+        return
+
+    result = await coordinator.async_get_inventory_statistics(inventory_id)
+    connection.send_result(msg["id"], result)
+
+
+@websocket_api.websocket_command(
+    {
+        vol.Required("type"): f"{DOMAIN}/get_inventory_statistics",
+        vol.Required("inventory_id"): str,
+    }
+)
+@websocket_api.async_response
+async def ws_get_inventory_statistics(
+    hass: HomeAssistant,
+    connection: websocket_api.ActiveConnection,
+    msg: dict[str, Any],
+) -> None:
+    """WS command: get inventory statistics."""
+    await _handle_get_inventory_statistics(hass, connection, msg)
+
+
 @websocket_api.websocket_command(
     {
         vol.Required("type"): f"{DOMAIN}/subscribe",
@@ -347,7 +378,7 @@ def ws_subscribe(
         vol.Required("type"): f"{DOMAIN}/get_item_consumption_rates",
         vol.Required("inventory_id"): str,
         vol.Required("item_name"): str,
-        vol.Optional("window_days"): vol.Any(vol.In([30, 60, 90]), None),
+        vol.Optional("window_days"): vol.Any(vol.All(vol.Coerce(int), vol.Range(min=1)), None),
     }
 )
 @websocket_api.async_response
@@ -364,7 +395,7 @@ async def ws_get_item_consumption_rates(
     {
         vol.Required("type"): f"{DOMAIN}/get_inventory_consumption_rates",
         vol.Required("inventory_id"): str,
-        vol.Optional("window_days"): vol.Any(vol.In([30, 60, 90]), None),
+        vol.Optional("window_days"): vol.Any(vol.All(vol.Coerce(int), vol.Range(min=1)), None),
     }
 )
 @websocket_api.async_response

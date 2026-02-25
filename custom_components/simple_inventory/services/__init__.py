@@ -122,6 +122,22 @@ class ServiceHandler:
         results = await async_lookup_barcode_all_providers(self.hass, barcode)
         return cast(JsonObjectType, {"barcode": barcode, "results": results})
 
+    async def async_get_inventory_consumption_rates(self, call: ServiceCall) -> JsonObjectType:
+        """Return consumption rates for all items in an inventory."""
+        data = call.data
+        inventory_id: str = data["inventory_id"]
+        window_days: int | None = data.get("window_days")
+
+        coordinators = get_coordinators(self.hass)
+        coordinator = coordinators.get(inventory_id)
+        if coordinator is None:
+            raise ValueError(f"No coordinator available for inventory '{inventory_id}'")
+
+        result = await coordinator.async_get_inventory_consumption_rates(
+            inventory_id, window_days=window_days
+        )
+        return cast(JsonObjectType, result)
+
     async def async_get_item_consumption_rates(self, call: ServiceCall) -> JsonObjectType:
         """Return consumption rates for a single item."""
         data = call.data
