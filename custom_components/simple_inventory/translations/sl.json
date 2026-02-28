@@ -156,6 +156,20 @@
       },
       "name": "Zmanjšaj količino"
     },
+    "get_inventory_consumption_rates": {
+      "description": "Pridobi analitiko porabe za vse predmete v zalogi na podlagi zgodovine zmanjševanja količine",
+      "fields": {
+        "inventory_id": {
+          "description": "ID zaloge",
+          "name": "ID zaloge"
+        },
+        "window_days": {
+          "description": "Število dni za analizo porabe (izpustite za celotno zgodovino)",
+          "name": "Obdobje (dni)"
+        }
+      },
+      "name": "Pridobi analitiko porabe zaloge"
+    },
     "get_item_consumption_rates": {
       "description": "Pridobi analitiko porabe za določen predmet na podlagi zgodovine zmanjševanja količine",
       "fields": {

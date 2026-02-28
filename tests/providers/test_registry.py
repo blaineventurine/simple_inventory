@@ -19,6 +19,7 @@ from custom_components.simple_inventory.providers.registry import (
     create_provider,
     get_all_providers,
 )
+from custom_components.simple_inventory.providers.upcitemdb import UPCItemDBProvider
 
 
 @pytest.fixture
@@ -38,6 +39,10 @@ class TestCreateProvider:
     def test_creates_openpetfoodfacts_provider(self, hass_mock: MagicMock) -> None:
         provider = create_provider(hass_mock, "openpetfoodfacts")
         assert isinstance(provider, OpenPetFoodFactsProvider)
+
+    def test_creates_upcitemdb_provider(self, hass_mock: MagicMock) -> None:
+        provider = create_provider(hass_mock, "upcitemdb")
+        assert isinstance(provider, UPCItemDBProvider)
 
     def test_default_provider(self, hass_mock: MagicMock) -> None:
         provider = create_provider(hass_mock)
@@ -60,17 +65,18 @@ class TestProviderRegistry:
         assert "openfoodfacts" in PROVIDER_REGISTRY
         assert "openbeautyfacts" in PROVIDER_REGISTRY
         assert "openpetfoodfacts" in PROVIDER_REGISTRY
+        assert "upcitemdb" in PROVIDER_REGISTRY
 
-    def test_registry_has_three_providers(self) -> None:
-        assert len(PROVIDER_REGISTRY) == 3
+    def test_registry_has_four_providers(self) -> None:
+        assert len(PROVIDER_REGISTRY) == 4
 
 
 class TestGetAllProviders:
     def test_returns_all_providers(self, hass_mock: MagicMock) -> None:
         providers = get_all_providers(hass_mock)
-        assert len(providers) == 3
+        assert len(providers) == 4
         names = {p.provider_name for p in providers}
-        assert names == {"openfoodfacts", "openbeautyfacts", "openpetfoodfacts"}
+        assert names == {"openfoodfacts", "openbeautyfacts", "openpetfoodfacts", "upcitemdb"}
 
     def test_returns_provider_instances(self, hass_mock: MagicMock) -> None:
         providers = get_all_providers(hass_mock)
