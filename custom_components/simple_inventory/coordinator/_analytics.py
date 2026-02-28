@@ -11,6 +11,7 @@ from ..const import (
     FIELD_QUANTITY,
     FIELD_UNIT,
 )
+from ._protocol import _CoordinatorProtocol
 
 
 def _compute_avg_restock_days(timestamps: list[str]) -> float | None:
@@ -22,7 +23,7 @@ def _compute_avg_restock_days(timestamps: list[str]) -> float | None:
     return round(sum(gaps) / len(gaps), 1)
 
 
-class _AnalyticsMixin:
+class _AnalyticsMixin(_CoordinatorProtocol):
     """Mixin providing consumption analytics methods."""
 
     @staticmethod

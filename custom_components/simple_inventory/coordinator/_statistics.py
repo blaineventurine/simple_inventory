@@ -25,11 +25,12 @@ from ..const import (
     FIELD_UNIT,
     compute_quantity_needed,
 )
+from ._protocol import _CoordinatorProtocol
 
 _LOGGER = logging.getLogger(__name__)
 
 
-class _StatisticsMixin:
+class _StatisticsMixin(_CoordinatorProtocol):
     """Mixin providing inventory statistics and expiry methods."""
 
     async def async_get_inventory_statistics(self, inventory_id: str) -> dict[str, Any]:

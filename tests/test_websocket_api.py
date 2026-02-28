@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -546,7 +547,9 @@ class TestHandleLookupByBarcode:
         )
 
 
-def _make_mock_service_handler(scan_result=None, scan_error=None) -> MagicMock:
+def _make_mock_service_handler(
+    scan_result: Any = None, scan_error: Exception | None = None
+) -> MagicMock:
     """Build a minimal mock service_handler with a quantity_service."""
     mock_qs = MagicMock()
     if scan_error:

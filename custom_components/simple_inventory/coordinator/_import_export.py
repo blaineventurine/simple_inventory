@@ -33,9 +33,10 @@ from ..const import (
     FIELD_TODO_QUANTITY_PLACEMENT,
     FIELD_UNIT,
 )
+from ._protocol import _CoordinatorProtocol
 
 
-class _ImportExportMixin:
+class _ImportExportMixin(_CoordinatorProtocol):
     """Mixin providing JSON/CSV import and export methods."""
 
     async def async_export_inventory(
