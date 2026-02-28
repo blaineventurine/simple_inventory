@@ -602,6 +602,47 @@ async def test_async_get_inventory_statistics_counts(
 
 
 @pytest.mark.asyncio
+async def test_async_get_items_expiring_soon_includes_expired_with_zero_threshold(
+    coordinator: SimpleInventoryCoordinator, mock_repository: MagicMock
+) -> None:
+    """Items already past expiry with threshold=0 must still appear."""
+    today = datetime.now().date()
+    expired = (today - timedelta(days=1)).strftime("%Y-%m-%d")
+    future = (today + timedelta(days=30)).strftime("%Y-%m-%d")
+
+    mock_repository.list_items_with_details = AsyncMock(
+        return_value=[
+            {
+                "name": "expired_no_threshold",
+                "expiry_date": expired,
+                "expiry_alert_days": 0,
+                "quantity": 1,
+            },
+            {
+                "name": "future_no_threshold",
+                "expiry_date": future,
+                "expiry_alert_days": 0,
+                "quantity": 1,
+            },
+            {
+                "name": "expired_with_threshold",
+                "expiry_date": expired,
+                "expiry_alert_days": 7,
+                "quantity": 1,
+            },
+        ]
+    )
+
+    items = await coordinator.async_get_items_expiring_soon("kitchen_123")
+
+    names = [it["name"] for it in items]
+    # expired items included regardless of threshold; future item with threshold=0 excluded
+    assert "expired_no_threshold" in names
+    assert "expired_with_threshold" in names
+    assert "future_no_threshold" not in names
+
+
+@pytest.mark.asyncio
 async def test_async_get_items_expiring_soon_filters_and_sorts(
     coordinator: SimpleInventoryCoordinator, mock_repository: MagicMock
 ) -> None:

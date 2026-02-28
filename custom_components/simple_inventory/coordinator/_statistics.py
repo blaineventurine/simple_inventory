@@ -103,7 +103,7 @@ class _StatisticsMixin(_CoordinatorProtocol):
                 threshold = int(item.get(FIELD_EXPIRY_ALERT_DAYS, DEFAULT_EXPIRY_ALERT_DAYS))
                 quantity = float(item.get(FIELD_QUANTITY, DEFAULT_QUANTITY))
 
-                if not expiry_str or not threshold or quantity <= 0:
+                if not expiry_str or quantity <= 0:
                     continue
 
                 try:
