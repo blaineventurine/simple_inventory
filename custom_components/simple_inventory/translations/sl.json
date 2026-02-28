@@ -1,0 +1,365 @@
+{
+  "common": {
+    "inventory_word": "zaloga"
+  },
+  "config": {
+    "error": {
+      "name_exists": "Ime zaloge že obstaja"
+    },
+    "step": {
+      "add_inventory": {
+        "data": {
+          "description": "Opis",
+          "icon": "Ikona",
+          "name": "Ime zaloge"
+        },
+        "data_description": {
+          "description": "Neobvezen opis zaloge",
+          "icon": "Kliknite polje za ikono, da odprete okno za izbiranje ikon (Material Design Icons)"
+        },
+        "description": "Ustvarite novo zalogo za spremljanje predmetov.",
+        "title": "Dodaj zalogo"
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "all_expiring_items": {
+        "name": "Vsi predmeti, ki kmalu potečejo"
+      },
+      "expiring_items": {
+        "name": "{inventory_name} – predmeti, ki kmalu potečejo"
+      },
+      "inventory": {
+        "name": "{inventory_name} zaloga"
+      }
+    }
+  },
+  "options": {
+    "error": {
+      "name_exists": "Ime zaloge že obstaja"
+    },
+    "step": {
+      "init": {
+        "data": {
+          "description": "Opis",
+          "icon": "Ikona",
+          "name": "Ime zaloge"
+        },
+        "data_description": {
+          "description": "Neobvezen opis zaloge",
+          "icon": "Kliknite polje za ikono, da odprete okno za izbiranje ikon (Material Design Icons)"
+        },
+        "description": "Posodobite nastavitve za {current_name}",
+        "title": "Nastavitve zaloge"
+      }
+    }
+  },
+  "services": {
+    "add_item": {
+      "description": "Dodaj predmet v zalogo",
+      "fields": {
+        "auto_add_enabled": {
+          "description": "Omogoči samodejno dodajanje na seznam opravil",
+          "name": "Samodejno dodajanje"
+        },
+        "auto_add_id_to_description_enabled": {
+          "description": "Samodejno dodaj ID zaloge v opis",
+          "name": "Dodaj ID zaloge v opis"
+        },
+        "auto_add_to_list_quantity": {
+          "description": "Mejna količina za samodejno dodajanje",
+          "name": "Mejna količina"
+        },
+        "barcode": {
+          "description": "Črtna koda predmeta (UPC, EAN ipd.)",
+          "name": "Črtna koda"
+        },
+        "category": {
+          "description": "Kategorija predmeta",
+          "name": "Kategorija"
+        },
+        "description": {
+          "description": "Neobvezen opis predmeta",
+          "name": "Opis"
+        },
+        "desired_quantity": {
+          "description": "Želena količina za ponovno naročanje (0 = uporabi mejno količino)",
+          "name": "Želena količina"
+        },
+        "expiry_alert_days": {
+          "description": "Koliko dni vnaprej naj se prikaže opozorilo",
+          "name": "Opozorilo (dni)"
+        },
+        "expiry_date": {
+          "description": "Datum poteka",
+          "name": "Datum poteka"
+        },
+        "inventory_id": {
+          "description": "ID zaloge",
+          "name": "ID zaloge"
+        },
+        "location": {
+          "description": "Lokacija v zalogi",
+          "name": "Lokacija"
+        },
+        "name": {
+          "description": "Ime predmeta",
+          "name": "Ime predmeta"
+        },
+        "price": {
+          "description": "Cena na enoto",
+          "name": "Cena"
+        },
+        "quantity": {
+          "description": "Količina",
+          "name": "Količina"
+        },
+        "todo_list": {
+          "description": "Seznam opravil, kamor naj se doda predmet",
+          "name": "Seznam opravil"
+        },
+        "todo_quantity_placement": {
+          "description": "Kje prikazati količino (v imenu, opisu ali nikjer)",
+          "name": "Prikaz količine"
+        },
+        "unit": {
+          "description": "Enota mere",
+          "name": "Enota"
+        }
+      },
+      "name": "Dodaj predmet"
+    },
+    "decrement_item": {
+      "description": "Zmanjšaj količino predmeta",
+      "fields": {
+        "amount": {
+          "description": "Količina za zmanjšanje",
+          "name": "Količina"
+        },
+        "barcode": {
+          "description": "Črtna koda (namesto imena)",
+          "name": "Črtna koda"
+        },
+        "inventory_id": {
+          "description": "ID zaloge",
+          "name": "ID zaloge"
+        },
+        "name": {
+          "description": "Ime predmeta",
+          "name": "Ime predmeta"
+        },
+        "price": {
+          "description": "Cena na enoto za ta vnos",
+          "name": "Cena"
+        }
+      },
+      "name": "Zmanjšaj količino"
+    },
+    "get_item_consumption_rates": {
+      "description": "Pridobi analitiko porabe za določen predmet na podlagi zgodovine zmanjševanja količine",
+      "fields": {
+        "inventory_id": {
+          "description": "ID zaloge",
+          "name": "ID zaloge"
+        },
+        "name": {
+          "description": "Ime predmeta",
+          "name": "Ime predmeta"
+        },
+        "window_days": {
+          "description": "Število dni za analizo porabe (izpustite za celotno zgodovino)",
+          "name": "Obdobje (dni)"
+        }
+      },
+      "name": "Pridobi analitiko porabe"
+    },
+    "get_items": {
+      "description": "Vrni celoten seznam predmetov za zalogo (z ID ali imenom).",
+      "fields": {
+        "inventory_id": {
+          "description": "ID zaloge",
+          "name": "ID zaloge"
+        },
+        "inventory_name": {
+          "description": "Ime zaloge (neobčutljivo na velike/male črke)",
+          "name": "Ime zaloge"
+        }
+      },
+      "name": "Pridobi predmete"
+    },
+    "get_items_from_all_inventories": {
+      "description": "Vrni seznam vseh predmetov, razvrščen po zalogah",
+      "fields": {},
+      "name": "Pridobi predmete iz vseh zalog"
+    },
+    "increment_item": {
+      "description": "Povečaj količino predmeta",
+      "fields": {
+        "amount": {
+          "description": "Količina za povečanje",
+          "name": "Količina"
+        },
+        "barcode": {
+          "description": "Črtna koda (namesto imena)",
+          "name": "Črtna koda"
+        },
+        "inventory_id": {
+          "description": "ID zaloge",
+          "name": "ID zaloge"
+        },
+        "name": {
+          "description": "Ime predmeta",
+          "name": "Ime predmeta"
+        },
+        "price": {
+          "description": "Cena na enoto za ta vnos",
+          "name": "Cena"
+        }
+      },
+      "name": "Povečaj količino"
+    },
+    "lookup_barcode_product": {
+      "description": "Poišči predmet po črtni kodi v zunanji podatkovni bazi",
+      "fields": {
+        "barcode": {
+          "description": "Črtna koda (UPC, EAN ipd.)",
+          "name": "Črtna koda"
+        }
+      },
+      "name": "Iskanje predmeta po črtni kodi"
+    },
+    "lookup_by_barcode": {
+      "description": "Poišči predmet po črtni kodi v vseh zalogah",
+      "fields": {
+        "barcode": {
+          "description": "Črtna koda",
+          "name": "Črtna koda"
+        }
+      },
+      "name": "Iskanje po črtni kodi"
+    },
+    "remove_item": {
+      "description": "Odstrani predmet iz zaloge",
+      "fields": {
+        "barcode": {
+          "description": "Črtna koda (namesto imena)",
+          "name": "Črtna koda"
+        },
+        "inventory_id": {
+          "description": "ID zaloge",
+          "name": "ID zaloge"
+        },
+        "name": {
+          "description": "Ime predmeta",
+          "name": "Ime predmeta"
+        }
+      },
+      "name": "Odstrani predmet"
+    },
+    "scan_barcode": {
+      "description": "Skeniraj črtno kodo in izvedi dejanje (povečaj, zmanjšaj ali poišči)",
+      "fields": {
+        "action": {
+          "description": "Dejanje nad najdenim predmetom",
+          "name": "Dejanje"
+        },
+        "amount": {
+          "description": "Količina za spremembo",
+          "name": "Količina"
+        },
+        "barcode": {
+          "description": "Črtna koda za skeniranje",
+          "name": "Črtna koda"
+        },
+        "inventory_id": {
+          "description": "ID zaloge (neobvezno)",
+          "name": "ID zaloge"
+        },
+        "price": {
+          "description": "Cena na enoto za ta vnos",
+          "name": "Cena"
+        }
+      },
+      "name": "Skeniraj črtno kodo"
+    },
+    "update_item": {
+      "description": "Posodobi obstoječ predmet v zalogi",
+      "fields": {
+        "auto_add_enabled": {
+          "description": "Omogoči samodejno dodajanje na seznam opravil",
+          "name": "Samodejno dodajanje"
+        },
+        "auto_add_id_to_description_enabled": {
+          "description": "Samodejno dodaj ID zaloge v opis",
+          "name": "Dodaj ID zaloge v opis"
+        },
+        "auto_add_to_list_quantity": {
+          "description": "Mejna količina za samodejno dodajanje",
+          "name": "Mejna količina"
+        },
+        "barcode": {
+          "description": "Črtna koda",
+          "name": "Črtna koda"
+        },
+        "category": {
+          "description": "Kategorija",
+          "name": "Kategorija"
+        },
+        "description": {
+          "description": "Opis",
+          "name": "Opis"
+        },
+        "desired_quantity": {
+          "description": "Želena količina",
+          "name": "Želena količina"
+        },
+        "expiry_alert_days": {
+          "description": "Opozorilo (dni)",
+          "name": "Opozorilo (dni)"
+        },
+        "expiry_date": {
+          "description": "Datum poteka",
+          "name": "Datum poteka"
+        },
+        "inventory_id": {
+          "description": "ID zaloge",
+          "name": "ID zaloge"
+        },
+        "location": {
+          "description": "Lokacija v zalogi",
+          "name": "Lokacija"
+        },
+        "name": {
+          "description": "Novo ime predmeta",
+          "name": "Novo ime"
+        },
+        "old_name": {
+          "description": "Trenutno ime predmeta",
+          "name": "Trenutno ime"
+        },
+        "price": {
+          "description": "Cena na enoto",
+          "name": "Cena"
+        },
+        "quantity": {
+          "description": "Nova količina",
+          "name": "Količina"
+        },
+        "todo_list": {
+          "description": "Seznam opravil",
+          "name": "Seznam opravil"
+        },
+        "todo_quantity_placement": {
+          "description": "Kje prikazati količino (v imenu, opisu ali nikjer)",
+          "name": "Prikaz količine"
+        },
+        "unit": {
+          "description": "Enota mere",
+          "name": "Enota"
+        }
+      },
+      "name": "Posodobi predmet"
+    }
+  }
+}
