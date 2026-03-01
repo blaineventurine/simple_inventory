@@ -11,9 +11,11 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from .const import DOMAIN
 from .coordinator import SimpleInventoryCoordinator
 from .sensors import (
-    ExpiryNotificationSensor,
-    GlobalExpiryNotificationSensor,
+    ExpiredItemsSensor,
+    GlobalExpiredItemsSensor,
+    GlobalItemsExpiringSoonSensor,
     InventorySensor,
+    ItemsExpiringSoonSensor,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -39,7 +41,12 @@ async def async_setup_entry(
     entry_type = config_entry.data.get("entry_type", "inventory")
 
     if entry_type == "global":
-        async_add_entities([GlobalExpiryNotificationSensor(hass, coordinator)])
+        async_add_entities(
+            [
+                GlobalItemsExpiringSoonSensor(hass, coordinator),
+                GlobalExpiredItemsSensor(hass, coordinator),
+            ]
+        )
         return
 
     inventory_name = config_entry.data.get("name", "Inventory")
@@ -48,6 +55,7 @@ async def async_setup_entry(
 
     sensors = [
         InventorySensor(hass, coordinator, inventory_name, icon, entry_id),
-        ExpiryNotificationSensor(hass, coordinator, entry_id, inventory_name),
+        ItemsExpiringSoonSensor(hass, coordinator, entry_id, inventory_name),
+        ExpiredItemsSensor(hass, coordinator, entry_id, inventory_name),
     ]
     async_add_entities(sensors)

@@ -69,6 +69,18 @@ def test_handle_update_schedules_task(inventory_sensor: InventorySensor) -> None
         mock_create_task.assert_called_once()
 
 
+def test_handle_update_invalidates_cache(inventory_sensor: InventorySensor) -> None:
+    """_handle_update must evict the per-inventory cache key so the next refresh is fresh."""
+    cache: dict = {"kitchen_123": (0.0, [{"name": "stale"}]), None: (0.0, [])}
+    inventory_sensor.coordinator._expiry_cache = cache
+
+    with patch.object(inventory_sensor.hass, "async_create_task"):
+        inventory_sensor._handle_update(None)
+
+    assert "kitchen_123" not in cache
+    assert None in cache
+
+
 @pytest.mark.asyncio
 async def test_update_state_comprehensive(
     inventory_sensor: InventorySensor,

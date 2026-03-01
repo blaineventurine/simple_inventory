@@ -51,7 +51,10 @@ class InventorySensor(SensorEntity):
 
     @callback
     def _handle_update(self, _event: Event | None = None) -> None:
-        """Schedule an async refresh."""
+        """Invalidate the per-inventory expiry cache and schedule an async refresh."""
+        expiry_cache = getattr(self.coordinator, "_expiry_cache", None)
+        if expiry_cache is not None:
+            expiry_cache.pop(self._entry_id, None)
         self.hass.async_create_task(self._async_update_state())
 
     async def _async_update_state(self) -> None:

@@ -41,7 +41,7 @@ This integration works best with the companion Lovelace card:
 
 Add via Home Assistant UI: **Settings -> Devices & Services -> Add Integration -> Simple Inventory**
 
-When you create your first inventory, a global device is also created automatically. Each inventory becomes a device with two sensors.
+When you create your first inventory, a global device is also created automatically. Each inventory becomes a device with three sensors.
 
 You can edit inventory names, icons, and descriptions in the integration options flow after creation.
 
@@ -172,7 +172,7 @@ Export your inventory to JSON or CSV, and import data back with configurable mer
 
 ### Per-Inventory Sensors
 
-Each inventory creates two sensors:
+Each inventory creates three sensors:
 
 **`sensor.<name>_inventory`** — Main inventory sensor
 - **State**: Total quantity across all items
@@ -188,22 +188,39 @@ Each inventory creates two sensors:
   - `items` — Full list of all items with all fields
 
 **`sensor.<name>_items_expiring_soon`** — Expiry alert sensor
-- **State**: Count of expiring + expired items
-- **Icon**: Changes dynamically (`mdi:calendar-remove` for expired, `mdi:calendar-alert` for expiring, `mdi:calendar-check` when all clear)
+- **State**: Count of items within their alert threshold but not yet expired
+- **Icon**: `mdi:calendar-alert` when items are expiring, `mdi:calendar-check` when all clear
 - **Attributes**:
-  - `expiring_items` — List of items expiring soon
-  - `expired_items` — List of already-expired items
+  - `expiring_items` — List of items expiring soon (days_until_expiry ≥ 0)
+  - `expired_items` — List of already-expired items (for reference)
   - `total_expiring`, `total_expired` — Counts
 
-### Global Sensor
+**`sensor.<name>_expired_items`** — Expired items sensor
+- **State**: Count of items past their expiration date
+- **Icon**: `mdi:calendar-remove` (fixed)
+- **Attributes**:
+  - `expired_items` — List of expired items
+  - `total_expired` — Count
+  - `inventory_id`, `inventory_name`
 
-**`sensor.all_items_expiring_soon`** — Aggregates expiring items across ALL inventories
-- **State**: Total count of expiring items across all inventories
-- **Icon**: Progressive severity (`mdi:calendar-remove` -> `mdi:calendar-alert` -> `mdi:calendar-clock` -> `mdi:calendar-week` -> `mdi:calendar-check`)
+### Global Sensors
+
+**`sensor.all_items_expiring_soon`** — Aggregates expiring-soon items across ALL inventories
+- **State**: Count of items within their alert threshold but not yet expired
+- **Icon**: Progressive severity (`mdi:calendar-alert` → `mdi:calendar-clock` → `mdi:calendar-week` → `mdi:calendar-check`)
 - **Attributes**:
   - `expiring_items`, `expired_items` — Aggregated lists
   - `next_expiring`, `oldest_expired` — Soonest/oldest dates
-  - `inventories_count` — Number of inventories
+  - `inventories_count` — Number of inventories with matching items
+
+**`sensor.all_expired_items`** — Aggregates expired items across ALL inventories
+- **State**: Count of items past their expiration date across all inventories
+- **Icon**: `mdi:calendar-remove` (fixed)
+- **Attributes**:
+  - `expired_items` — Aggregated list of expired items
+  - `total_expired` — Count
+  - `oldest_expired` — The most overdue item
+  - `inventories_count` — Number of inventories with expired items
 
 ## Service Calls
 

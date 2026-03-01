@@ -1,11 +1,15 @@
 """Sensor components for Simple Inventory."""
 
-from .expiry_sensor import ExpiryNotificationSensor
-from .global_expiry_sensor import GlobalExpiryNotificationSensor
+from .expired_items_sensor import ExpiredItemsSensor
+from .expiry_sensor import ItemsExpiringSoonSensor
+from .global_expired_items_sensor import GlobalExpiredItemsSensor
+from .global_expiry_sensor import GlobalItemsExpiringSoonSensor
 from .inventory_sensor import InventorySensor
 
 __all__ = [
     "InventorySensor",
-    "ExpiryNotificationSensor",
-    "GlobalExpiryNotificationSensor",
+    "ItemsExpiringSoonSensor",
+    "GlobalItemsExpiringSoonSensor",
+    "ExpiredItemsSensor",
+    "GlobalExpiredItemsSensor",
 ]

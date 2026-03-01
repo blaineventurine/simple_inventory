@@ -411,6 +411,50 @@ async def test_async_get_items_expiring_soon_global_uses_list_inventories(
 
 
 @pytest.mark.asyncio
+async def test_expiry_cache_returns_cached_result_within_ttl(
+    coordinator: SimpleInventoryCoordinator,
+    mock_repository: MagicMock,
+) -> None:
+    """Second call within TTL should not hit the repository again."""
+    today = datetime.now().date()
+    soon = (today + timedelta(days=1)).strftime("%Y-%m-%d")
+
+    mock_repository.list_items_with_details = AsyncMock(
+        return_value=[{"name": "milk", "expiry_date": soon, "expiry_alert_days": 7, "quantity": 1}]
+    )
+
+    first = await coordinator.async_get_items_expiring_soon("kitchen_123")
+    second = await coordinator.async_get_items_expiring_soon("kitchen_123")
+
+    assert first == second
+    # Repository should only have been called once despite two coordinator calls
+    mock_repository.list_items_with_details.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_expiry_cache_misses_after_ttl(
+    coordinator: SimpleInventoryCoordinator,
+    mock_repository: MagicMock,
+) -> None:
+    """Call after TTL expiry should hit the repository again."""
+    today = datetime.now().date()
+    soon = (today + timedelta(days=1)).strftime("%Y-%m-%d")
+
+    mock_repository.list_items_with_details = AsyncMock(
+        return_value=[{"name": "milk", "expiry_date": soon, "expiry_alert_days": 7, "quantity": 1}]
+    )
+
+    await coordinator.async_get_items_expiring_soon("kitchen_123")
+
+    # Expire the cache by backdating its timestamp
+    coordinator._expiry_cache["kitchen_123"] = (0.0, coordinator._expiry_cache["kitchen_123"][1])
+
+    await coordinator.async_get_items_expiring_soon("kitchen_123")
+
+    assert mock_repository.list_items_with_details.await_count == 2
+
+
+@pytest.mark.asyncio
 async def test_async_add_item_invalid_auto_add_config_returns_none(
     coordinator: SimpleInventoryCoordinator,
 ) -> None:
@@ -640,6 +684,90 @@ async def test_async_get_items_expiring_soon_includes_expired_with_zero_threshol
     assert "expired_no_threshold" in names
     assert "expired_with_threshold" in names
     assert "future_no_threshold" not in names
+
+
+@pytest.mark.asyncio
+async def test_async_get_items_expiring_soon_null_expiry_alert_days(
+    coordinator: SimpleInventoryCoordinator, mock_repository: MagicMock
+) -> None:
+    """NULL expiry_alert_days (old DB rows before migration) must not crash and must include expired items."""
+    today = datetime.now().date()
+    expired = (today - timedelta(days=1)).strftime("%Y-%m-%d")
+    future = (today + timedelta(days=30)).strftime("%Y-%m-%d")
+
+    mock_repository.list_items_with_details = AsyncMock(
+        return_value=[
+            # Expired item with NULL threshold — was causing TypeError before fix
+            {
+                "name": "null_threshold_expired",
+                "expiry_date": expired,
+                "expiry_alert_days": None,
+                "quantity": 1,
+            },
+            # No expiry date + NULL threshold — should be skipped, not crash
+            {
+                "name": "null_threshold_no_date",
+                "expiry_date": "",
+                "expiry_alert_days": None,
+                "quantity": 1,
+            },
+            # Future item with NULL threshold — threshold defaults to 0, so not included
+            {
+                "name": "null_threshold_future",
+                "expiry_date": future,
+                "expiry_alert_days": None,
+                "quantity": 1,
+            },
+            # Normal expired item for comparison
+            {
+                "name": "normal_expired",
+                "expiry_date": expired,
+                "expiry_alert_days": 1,
+                "quantity": 1,
+            },
+        ]
+    )
+
+    items = await coordinator.async_get_items_expiring_soon("kitchen_123")
+
+    names = [it["name"] for it in items]
+    assert "null_threshold_expired" in names, "expired item with NULL threshold must be included"
+    assert "normal_expired" in names, "normal expired item must be included"
+    assert "null_threshold_no_date" not in names, "item with no expiry date must be skipped"
+    assert (
+        "null_threshold_future" not in names
+    ), "future item with NULL (→0) threshold must be excluded"
+
+
+@pytest.mark.asyncio
+async def test_async_get_items_expiring_soon_negative_expiry_alert_days(
+    coordinator: SimpleInventoryCoordinator, mock_repository: MagicMock
+) -> None:
+    """Negative expiry_alert_days (e.g. from unvalidated import) must not exclude expired items."""
+    today = datetime.now().date()
+    expired_3_days_ago = (today - timedelta(days=3)).strftime("%Y-%m-%d")
+
+    mock_repository.list_items_with_details = AsyncMock(
+        return_value=[
+            # expiry_alert_days=-5 would create threshold=-5, excluding items expired <5 days ago
+            # With max(0, threshold), this becomes threshold=0 and the item IS included
+            {
+                "name": "negative_threshold_expired",
+                "expiry_date": expired_3_days_ago,
+                "expiry_alert_days": -5,
+                "quantity": 1,
+            },
+        ]
+    )
+
+    items = await coordinator.async_get_items_expiring_soon("kitchen_123")
+
+    names = [it["name"] for it in items]
+    assert (
+        "negative_threshold_expired" in names
+    ), "expired item with negative threshold must be included (threshold clamped to 0)"
+    expired_items = [it for it in items if it["days_until_expiry"] < 0]
+    assert len(expired_items) == 1, "item must be classified as expired (days_until_expiry < 0)"
 
 
 @pytest.mark.asyncio

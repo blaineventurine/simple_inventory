@@ -1,4 +1,4 @@
-"""Tests for GlobalExpiryNotificationSensor."""
+"""Tests for GlobalItemsExpiringSoonSensor."""
 
 from __future__ import annotations
 
@@ -7,7 +7,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from homeassistant.core import HomeAssistant
 
-from custom_components.simple_inventory.sensors import GlobalExpiryNotificationSensor
+from custom_components.simple_inventory.sensors import GlobalItemsExpiringSoonSensor
 
 
 @pytest.fixture
@@ -15,19 +15,17 @@ def mock_sensor_coordinator() -> MagicMock:
     coordinator = MagicMock()
     coordinator.async_get_items_expiring_soon = AsyncMock(return_value=[])
     coordinator.async_add_listener = MagicMock(return_value=lambda: None)
-    coordinator.repository = MagicMock()
-    coordinator.repository.list_inventories = AsyncMock(return_value=[])
     return coordinator
 
 
 @pytest.fixture
 def global_expiry_sensor(
     hass: HomeAssistant, mock_sensor_coordinator: MagicMock
-) -> GlobalExpiryNotificationSensor:
-    return GlobalExpiryNotificationSensor(hass, mock_sensor_coordinator)
+) -> GlobalItemsExpiringSoonSensor:
+    return GlobalItemsExpiringSoonSensor(hass, mock_sensor_coordinator)
 
 
-def test_init(global_expiry_sensor: GlobalExpiryNotificationSensor) -> None:
+def test_init(global_expiry_sensor: GlobalItemsExpiringSoonSensor) -> None:
     assert global_expiry_sensor._attr_name == "All Items Expiring Soon"
     assert global_expiry_sensor._attr_unique_id == "simple_inventory_all_expiring_items"
     assert global_expiry_sensor._attr_native_unit_of_measurement == "items"
@@ -35,7 +33,7 @@ def test_init(global_expiry_sensor: GlobalExpiryNotificationSensor) -> None:
 
 @pytest.mark.asyncio
 async def test_update_state_multiple_inventories(
-    global_expiry_sensor: GlobalExpiryNotificationSensor,
+    global_expiry_sensor: GlobalItemsExpiringSoonSensor,
     mock_sensor_coordinator: MagicMock,
 ) -> None:
     test_items = [
@@ -62,7 +60,7 @@ async def test_update_state_multiple_inventories(
     ):
         await global_expiry_sensor._async_update_state()
 
-    assert global_expiry_sensor._attr_native_value == 2
+    assert global_expiry_sensor._attr_native_value == 1
 
     attributes = global_expiry_sensor._attr_extra_state_attributes
     assert attributes["inventories_count"] == 2
@@ -72,7 +70,7 @@ async def test_update_state_multiple_inventories(
 
 @pytest.mark.asyncio
 async def test_coordinator_called_without_inventory_id(
-    global_expiry_sensor: GlobalExpiryNotificationSensor,
+    global_expiry_sensor: GlobalItemsExpiringSoonSensor,
     mock_sensor_coordinator: MagicMock,
 ) -> None:
     with patch.object(global_expiry_sensor, "async_write_ha_state"):
@@ -84,7 +82,6 @@ async def test_coordinator_called_without_inventory_id(
 @pytest.mark.parametrize(
     ("most_urgent_days", "expected_icon"),
     [
-        (-1, "mdi:calendar-remove"),  # Has expired items
         (0, "mdi:calendar-alert"),  # Most urgent expires today
         (1, "mdi:calendar-alert"),  # Most urgent expires tomorrow
         (2, "mdi:calendar-clock"),  # Most urgent expires in 2 days
@@ -94,7 +91,7 @@ async def test_coordinator_called_without_inventory_id(
 )
 @pytest.mark.asyncio
 async def test_global_icon_selection(
-    global_expiry_sensor: GlobalExpiryNotificationSensor,
+    global_expiry_sensor: GlobalItemsExpiringSoonSensor,
     mock_sensor_coordinator: MagicMock,
     most_urgent_days: int,
     expected_icon: str,
@@ -109,3 +106,16 @@ async def test_global_icon_selection(
         await global_expiry_sensor._async_update_state()
 
     assert global_expiry_sensor._attr_icon == expected_icon
+
+
+@pytest.mark.asyncio
+async def test_global_icon_no_items(
+    global_expiry_sensor: GlobalItemsExpiringSoonSensor,
+    mock_sensor_coordinator: MagicMock,
+) -> None:
+    mock_sensor_coordinator.async_get_items_expiring_soon.return_value = []
+
+    with patch.object(global_expiry_sensor, "async_write_ha_state"):
+        await global_expiry_sensor._async_update_state()
+
+    assert global_expiry_sensor._attr_icon == "mdi:calendar-check"

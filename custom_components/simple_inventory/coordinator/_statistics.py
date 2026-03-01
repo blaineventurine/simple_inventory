@@ -3,8 +3,11 @@
 from __future__ import annotations
 
 import logging
+import time
 from datetime import datetime, timedelta
 from typing import Any
+
+from homeassistant.util import dt as dt_util
 
 from ..const import (
     DEFAULT_CATEGORY,
@@ -80,10 +83,41 @@ class _StatisticsMixin(_CoordinatorProtocol):
             "expiring_items": expiring_items,
         }
 
+    _EXPIRY_CACHE_TTL = 2.0  # seconds — shared between paired sensors in one update cycle
+
     async def async_get_items_expiring_soon(
         self, inventory_id: str | None = None
     ) -> list[dict[str, Any]]:
-        """Return items expiring within their individual thresholds."""
+        """Return items expiring within their individual thresholds.
+
+        Results are cached for _EXPIRY_CACHE_TTL seconds so that paired sensors
+        (ItemsExpiringSoonSensor + ExpiredItemsSensor) sharing the same update cycle
+        only hit the database once per inventory.
+        """
+        cache: dict[str | None, tuple[float, list[dict[str, Any]]]] = getattr(
+            self, "_expiry_cache", {}
+        )
+        if not hasattr(self, "_expiry_cache"):
+            self._expiry_cache: dict[str | None, tuple[float, list[dict[str, Any]]]] = cache
+
+        cached = cache.get(inventory_id)
+        if cached is not None:
+            ts, result = cached
+            age = time.monotonic() - ts
+            if age < self._EXPIRY_CACHE_TTL:
+                _LOGGER.debug(
+                    "async_get_items_expiring_soon(%s): cache HIT (age=%.3fs, %d items)",
+                    inventory_id,
+                    age,
+                    len(result),
+                )
+                return result
+            _LOGGER.debug(
+                "async_get_items_expiring_soon(%s): cache EXPIRED (age=%.3fs)", inventory_id, age
+            )
+        else:
+            _LOGGER.debug("async_get_items_expiring_soon(%s): cache MISS (no entry)", inventory_id)
+
         await self.async_initialize()
 
         if inventory_id:
@@ -94,16 +128,42 @@ class _StatisticsMixin(_CoordinatorProtocol):
                 inv_id = inventory["id"]
                 inventories[inv_id] = await self.async_list_items(inv_id)
 
-        now = datetime.now().date()
+        now = dt_util.utcnow().date()
+        _LOGGER.debug("async_get_items_expiring_soon(%s): now (UTC) = %s", inventory_id, now)
         expiring: list[dict[str, Any]] = []
 
         for inv_id, items in inventories.items():
+            _LOGGER.debug(
+                "async_get_items_expiring_soon: scanning inventory=%s (%d items)",
+                inv_id,
+                len(items),
+            )
             for item in items:
+                item_name = item.get(FIELD_NAME, "<unknown>")
                 expiry_str = item.get(FIELD_EXPIRY_DATE, "")
-                threshold = int(item.get(FIELD_EXPIRY_ALERT_DAYS, DEFAULT_EXPIRY_ALERT_DAYS))
-                quantity = float(item.get(FIELD_QUANTITY, DEFAULT_QUANTITY))
+                if not expiry_str:
+                    _LOGGER.debug("  %s: no expiry_date — skipped", item_name)
+                    continue
 
-                if not expiry_str or quantity <= 0:
+                try:
+                    raw_threshold = item.get(FIELD_EXPIRY_ALERT_DAYS)
+                    threshold = (
+                        max(0, int(raw_threshold))
+                        if raw_threshold is not None
+                        else DEFAULT_EXPIRY_ALERT_DAYS
+                    )
+                except (TypeError, ValueError):
+                    threshold = DEFAULT_EXPIRY_ALERT_DAYS
+                try:
+                    raw_quantity = item.get(FIELD_QUANTITY)
+                    quantity = float(raw_quantity) if raw_quantity is not None else DEFAULT_QUANTITY
+                except (TypeError, ValueError):
+                    quantity = DEFAULT_QUANTITY
+
+                if quantity <= 0:
+                    _LOGGER.debug(
+                        "  %s: qty=%.2f — skipped (zero/negative quantity)", item_name, quantity
+                    )
                     continue
 
                 try:
@@ -114,19 +174,39 @@ class _StatisticsMixin(_CoordinatorProtocol):
                     )
                     continue
 
-                if expiry_date <= now + timedelta(days=threshold):
+                days = (expiry_date - now).days
+                cutoff = now + timedelta(days=threshold)
+                included = expiry_date <= cutoff
+                _LOGGER.debug(
+                    "  %s: expiry=%s days_until=%d threshold=%d cutoff=%s → %s",
+                    item_name,
+                    expiry_str,
+                    days,
+                    threshold,
+                    cutoff,
+                    "INCLUDED" if included else "excluded",
+                )
+                if included:
                     expiring.append(
                         {
+                            **item,
                             "inventory_id": inv_id,
                             FIELD_NAME: item.get(FIELD_NAME),
                             FIELD_EXPIRY_DATE: expiry_str,
-                            "days_until_expiry": (expiry_date - now).days,
+                            "days_until_expiry": days,
                             "threshold": threshold,
-                            **item,
                         }
                     )
 
         expiring.sort(key=lambda entry: entry["days_until_expiry"])
+        _LOGGER.debug(
+            "async_get_items_expiring_soon(%s): returning %d items (expired=%d, expiring_soon=%d)",
+            inventory_id,
+            len(expiring),
+            sum(1 for e in expiring if e["days_until_expiry"] < 0),
+            sum(1 for e in expiring if e["days_until_expiry"] >= 0),
+        )
+        cache[inventory_id] = (time.monotonic(), expiring)
         return expiring
 
     def _group_items_by_field(
