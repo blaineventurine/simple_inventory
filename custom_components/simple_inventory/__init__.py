@@ -16,6 +16,7 @@ from .const import (
     SERVICE_ADD_ITEM,
     SERVICE_DECREMENT_ITEM,
     SERVICE_GET_ALL_ITEMS,
+    SERVICE_GET_INVENTORY_CONSUMPTION_RATES,
     SERVICE_GET_ITEM_CONSUMPTION_RATES,
     SERVICE_GET_ITEMS,
     SERVICE_INCREMENT_ITEM,
@@ -29,6 +30,7 @@ from .coordinator import SimpleInventoryCoordinator
 from .schemas.service_schemas import (
     ADD_ITEM_SCHEMA,
     GET_ALL_ITEMS_SCHEMA,
+    GET_INVENTORY_CONSUMPTION_RATES_SCHEMA,
     GET_ITEM_CONSUMPTION_RATES_SCHEMA,
     GET_ITEMS_SCHEMA,
     LOOKUP_BARCODE_PRODUCT_SCHEMA,
@@ -47,6 +49,23 @@ _LOGGER = logging.getLogger(__name__)
 
 PLATFORMS = ["sensor"]
 CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
+
+# All service names registered by this integration.  Keep in sync with the
+# registration table in async_setup_entry and with services.yaml.
+_SERVICE_NAMES = (
+    SERVICE_ADD_ITEM,
+    SERVICE_DECREMENT_ITEM,
+    SERVICE_GET_ALL_ITEMS,
+    SERVICE_GET_INVENTORY_CONSUMPTION_RATES,
+    SERVICE_GET_ITEM_CONSUMPTION_RATES,
+    SERVICE_GET_ITEMS,
+    SERVICE_INCREMENT_ITEM,
+    SERVICE_LOOKUP_BARCODE_PRODUCT,
+    SERVICE_LOOKUP_BY_BARCODE,
+    SERVICE_REMOVE_ITEM,
+    SERVICE_SCAN_BARCODE,
+    SERVICE_UPDATE_ITEM,
+)
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
@@ -87,78 +106,58 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         todo_manager = TodoManager(hass)
         service_handler = ServiceHandler(hass, todo_manager)
 
-        _register_service(
-            hass,
-            SERVICE_UPDATE_ITEM,
-            service_handler.async_update_item,
-            UPDATE_ITEM_SCHEMA,
-        )
-        _register_service(
-            hass,
-            SERVICE_ADD_ITEM,
-            service_handler.async_add_item,
-            ADD_ITEM_SCHEMA,
-        )
-        _register_service(
-            hass,
-            SERVICE_REMOVE_ITEM,
-            service_handler.async_remove_item,
-            REMOVE_ITEM_SCHEMA,
-        )
-        _register_service(
-            hass,
-            SERVICE_INCREMENT_ITEM,
-            service_handler.async_increment_item,
-            QUANTITY_UPDATE_SCHEMA,
-        )
-        _register_service(
-            hass,
-            SERVICE_DECREMENT_ITEM,
-            service_handler.async_decrement_item,
-            QUANTITY_UPDATE_SCHEMA,
-        )
-        _register_service(
-            hass,
-            SERVICE_GET_ITEMS,
-            service_handler.async_get_items,
-            GET_ITEMS_SCHEMA,
-            supports_response=SupportsResponse.OPTIONAL,
-        )
-        _register_service(
-            hass,
-            SERVICE_GET_ALL_ITEMS,
-            service_handler.async_get_items_from_all_inventories,
-            GET_ALL_ITEMS_SCHEMA,
-            supports_response=SupportsResponse.OPTIONAL,
-        )
-        _register_service(
-            hass,
-            SERVICE_GET_ITEM_CONSUMPTION_RATES,
-            service_handler.async_get_item_consumption_rates,
-            GET_ITEM_CONSUMPTION_RATES_SCHEMA,
-            supports_response=SupportsResponse.OPTIONAL,
-        )
-        _register_service(
-            hass,
-            SERVICE_LOOKUP_BARCODE_PRODUCT,
-            service_handler.async_lookup_barcode_product,
-            LOOKUP_BARCODE_PRODUCT_SCHEMA,
-            supports_response=SupportsResponse.OPTIONAL,
-        )
-        _register_service(
-            hass,
-            SERVICE_LOOKUP_BY_BARCODE,
-            service_handler.async_lookup_by_barcode,
-            LOOKUP_BY_BARCODE_SCHEMA,
-            supports_response=SupportsResponse.OPTIONAL,
-        )
-        _register_service(
-            hass,
-            SERVICE_SCAN_BARCODE,
-            service_handler.async_scan_barcode,
-            SCAN_BARCODE_SCHEMA,
-            supports_response=SupportsResponse.OPTIONAL,
-        )
+        _OPT = SupportsResponse.OPTIONAL
+        _NONE = SupportsResponse.NONE
+        for svc_name, handler, schema, response_type in (
+            (SERVICE_ADD_ITEM, service_handler.async_add_item, ADD_ITEM_SCHEMA, _NONE),
+            (SERVICE_REMOVE_ITEM, service_handler.async_remove_item, REMOVE_ITEM_SCHEMA, _NONE),
+            (SERVICE_UPDATE_ITEM, service_handler.async_update_item, UPDATE_ITEM_SCHEMA, _NONE),
+            (
+                SERVICE_INCREMENT_ITEM,
+                service_handler.async_increment_item,
+                QUANTITY_UPDATE_SCHEMA,
+                _NONE,
+            ),
+            (
+                SERVICE_DECREMENT_ITEM,
+                service_handler.async_decrement_item,
+                QUANTITY_UPDATE_SCHEMA,
+                _NONE,
+            ),
+            (SERVICE_GET_ITEMS, service_handler.async_get_items, GET_ITEMS_SCHEMA, _OPT),
+            (
+                SERVICE_GET_ALL_ITEMS,
+                service_handler.async_get_items_from_all_inventories,
+                GET_ALL_ITEMS_SCHEMA,
+                _OPT,
+            ),
+            (
+                SERVICE_GET_INVENTORY_CONSUMPTION_RATES,
+                service_handler.async_get_inventory_consumption_rates,
+                GET_INVENTORY_CONSUMPTION_RATES_SCHEMA,
+                _OPT,
+            ),
+            (
+                SERVICE_GET_ITEM_CONSUMPTION_RATES,
+                service_handler.async_get_item_consumption_rates,
+                GET_ITEM_CONSUMPTION_RATES_SCHEMA,
+                _OPT,
+            ),
+            (
+                SERVICE_LOOKUP_BY_BARCODE,
+                service_handler.async_lookup_by_barcode,
+                LOOKUP_BY_BARCODE_SCHEMA,
+                _OPT,
+            ),
+            (
+                SERVICE_LOOKUP_BARCODE_PRODUCT,
+                service_handler.async_lookup_barcode_product,
+                LOOKUP_BARCODE_PRODUCT_SCHEMA,
+                _OPT,
+            ),
+            (SERVICE_SCAN_BARCODE, service_handler.async_scan_barcode, SCAN_BARCODE_SCHEMA, _OPT),
+        ):
+            _register_service(hass, svc_name, handler, schema, supports_response=response_type)
 
         async_register_websocket_commands(hass)
 
@@ -241,17 +240,8 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         return True
 
     if domain_data.get("services_registered"):
-        _remove_service(hass, SERVICE_ADD_ITEM)
-        _remove_service(hass, SERVICE_DECREMENT_ITEM)
-        _remove_service(hass, SERVICE_INCREMENT_ITEM)
-        _remove_service(hass, SERVICE_REMOVE_ITEM)
-        _remove_service(hass, SERVICE_UPDATE_ITEM)
-        _remove_service(hass, SERVICE_GET_ITEMS)
-        _remove_service(hass, SERVICE_GET_ALL_ITEMS)
-        _remove_service(hass, SERVICE_GET_ITEM_CONSUMPTION_RATES)
-        _remove_service(hass, SERVICE_LOOKUP_BARCODE_PRODUCT)
-        _remove_service(hass, SERVICE_LOOKUP_BY_BARCODE)
-        _remove_service(hass, SERVICE_SCAN_BARCODE)
+        for svc_name in _SERVICE_NAMES:
+            _remove_service(hass, svc_name)
         domain_data["services_registered"] = False
 
     repository: InventoryRepository | None = domain_data.get("repository")

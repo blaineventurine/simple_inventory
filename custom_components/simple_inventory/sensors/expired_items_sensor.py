@@ -1,4 +1,4 @@
-"""Expiry notification sensor for Simple Inventory."""
+"""Expired items sensor for Simple Inventory."""
 
 from __future__ import annotations
 
@@ -14,8 +14,8 @@ from ..coordinator import SimpleInventoryCoordinator
 _LOGGER = logging.getLogger(__name__)
 
 
-class ItemsExpiringSoonSensor(SensorEntity):
-    """Sensor to track items nearing expiry for a specific inventory."""
+class ExpiredItemsSensor(SensorEntity):
+    """Sensor to track expired items for a specific inventory."""
 
     def __init__(
         self,
@@ -29,9 +29,9 @@ class ItemsExpiringSoonSensor(SensorEntity):
         self.coordinator = coordinator
         self.inventory_id = inventory_id
         self.inventory_name = inventory_name
-        self._attr_name = f"{inventory_name} Items Expiring Soon"
-        self._attr_unique_id = f"simple_inventory_expiring_items_{inventory_id}"
-        self._attr_icon = "mdi:calendar-alert"
+        self._attr_name = f"{inventory_name} Expired Items"
+        self._attr_unique_id = f"simple_inventory_expired_items_{inventory_id}"
+        self._attr_icon = "mdi:calendar-remove"
         self._attr_native_unit_of_measurement = "items"
         self._attr_extra_state_attributes: dict[str, Any] = {}
         self._attr_device_info = {
@@ -63,34 +63,23 @@ class ItemsExpiringSoonSensor(SensorEntity):
             all_items = await self.coordinator.async_get_items_expiring_soon(self.inventory_id)
         except Exception as err:
             _LOGGER.error(
-                "Failed to refresh expiry sensor for %s: %s",
+                "Failed to refresh expired items sensor for %s: %s",
                 self.inventory_id,
                 err,
             )
             return
 
-        expiring_items = [item for item in all_items if item["days_until_expiry"] >= 0]
+        expired_items = [item for item in all_items if item["days_until_expiry"] < 0]
 
-        for item in expiring_items:
+        for item in expired_items:
             item["inventory"] = self.inventory_name
 
-        self._attr_native_value = len(expiring_items)
+        self._attr_native_value = len(expired_items)
         self._attr_extra_state_attributes = {
-            "expiring_items": expiring_items,
+            "expired_items": expired_items,
+            "total_expired": len(expired_items),
             "inventory_id": self.inventory_id,
             "inventory_name": self.inventory_name,
-            "total_expiring": len(expiring_items),
         }
-
-        if expiring_items:
-            most_urgent = expiring_items[0]["days_until_expiry"]
-            if most_urgent <= 1:
-                self._attr_icon = "mdi:calendar-alert"
-            elif most_urgent <= 3:
-                self._attr_icon = "mdi:calendar-clock"
-            else:
-                self._attr_icon = "mdi:calendar-week"
-        else:
-            self._attr_icon = "mdi:calendar-check"
 
         self.async_write_ha_state()

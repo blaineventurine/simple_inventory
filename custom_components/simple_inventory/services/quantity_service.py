@@ -4,9 +4,10 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Awaitable, Callable
-from typing import Literal, cast
+from typing import Any, Literal, cast
 
 from homeassistant.core import HomeAssistant, ServiceCall
+from homeassistant.exceptions import ServiceValidationError
 
 from ..coordinator import SimpleInventoryCoordinator
 from ..todo_manager import TodoManager
@@ -28,22 +29,6 @@ class QuantityService(BaseServiceHandler):
         """Initialize quantity service with todo manager."""
         super().__init__(hass)
         self.todo_manager = todo_manager
-
-    # ------------------------------------------------------------------
-    # Coordinator helpers
-    # ------------------------------------------------------------------
-
-    def _get_coordinator_optional(self, inventory_id: str) -> SimpleInventoryCoordinator | None:
-        return get_coordinators(self.hass).get(inventory_id)
-
-    def _require_coordinator(self, inventory_id: str) -> SimpleInventoryCoordinator | None:
-        coordinator = self._get_coordinator_optional(inventory_id)
-        if coordinator is None:
-            _LOGGER.error(
-                "No coordinator loaded for inventory '%s'; cannot process quantity change",
-                inventory_id,
-            )
-        return coordinator
 
     # ------------------------------------------------------------------
     # Core handlers
@@ -72,11 +57,12 @@ class QuantityService(BaseServiceHandler):
             if await coordinator_method(coordinator, inventory_id, name, amount, barcode, price):
                 resolved_name = name
                 if not resolved_name and barcode:
-                    item_by_bc = await coordinator.repository.get_item_by_barcode(
-                        inventory_id, barcode
+                    matches = await coordinator.async_lookup_by_barcode(barcode)
+                    match = next(
+                        (m for m in matches if m.get("inventory_id") == inventory_id), None
                     )
-                    if item_by_bc:
-                        resolved_name = item_by_bc.get("name")
+                    if match:
+                        resolved_name = match.get("name")
 
                 if resolved_name:
                     item_data = await coordinator.async_get_item(inventory_id, resolved_name)
@@ -124,6 +110,52 @@ class QuantityService(BaseServiceHandler):
             ),
             self.todo_manager.check_and_add_item,
         )
+
+    async def async_scan_barcode(
+        self,
+        barcode: str,
+        action: str,
+        amount: float = 1.0,
+        inventory_id: str | None = None,
+        price: float | None = None,
+    ) -> dict[str, Any]:
+        """Scan a barcode, perform the action, and update the todo list.
+
+        This is the single source of truth for all barcode scan operations,
+        regardless of whether the call originates from a service call or WebSocket.
+        """
+        coordinators = get_coordinators(self.hass)
+        if not coordinators:
+            raise ServiceValidationError("No inventories configured")
+
+        if inventory_id:
+            coordinator = coordinators.get(inventory_id)
+            if coordinator is None:
+                raise ServiceValidationError(
+                    f"No coordinator available for inventory '{inventory_id}'"
+                )
+        else:
+            coordinator = next(iter(coordinators.values()))
+
+        result = await coordinator.async_scan_barcode(
+            barcode, action, amount, inventory_id, price=price
+        )
+
+        if result.get("success") and action in ("increment", "decrement"):
+            item_name: str = result["item_name"]
+            resolved_id: str = result["inventory_id"]
+            item_data = await coordinator.async_get_item(resolved_id, item_name)
+            if item_data:
+                if action == "decrement":
+                    await self.todo_manager.check_and_add_item(
+                        item_name, cast(InventoryItem, item_data)
+                    )
+                else:
+                    await self.todo_manager.check_and_remove_item(
+                        item_name, cast(InventoryItem, item_data)
+                    )
+
+        return result
 
     async def async_update_todo_status(self, item_name: str, item_data: InventoryItem) -> None:
         """Update todo list status based on current quantity (manual sync hook)."""

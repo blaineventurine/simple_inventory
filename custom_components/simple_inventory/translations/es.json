@@ -24,8 +24,14 @@
   },
   "entity": {
     "sensor": {
+      "all_expired_items": {
+        "name": "All Expired Items"
+      },
       "all_expiring_items": {
         "name": "Todos los Artículos que Vencen Pronto"
+      },
+      "expired_items": {
+        "name": "{inventory_name} Expired Items"
       },
       "expiring_items": {
         "name": "{inventory_name} Artículos que Vencen Pronto"
@@ -155,6 +161,20 @@
         }
       },
       "name": "Decrementar Artículo"
+    },
+    "get_inventory_consumption_rates": {
+      "description": "Obtener analíticas de consumo para todos los artículos de un inventario basado en su historial de decrementos",
+      "fields": {
+        "inventory_id": {
+          "description": "ID del inventario",
+          "name": "ID del Inventario"
+        },
+        "window_days": {
+          "description": "Número de días a consultar para datos de consumo (omitir para todo el historial)",
+          "name": "Días de Ventana"
+        }
+      },
+      "name": "Obtener Tasas de Consumo del Inventario"
     },
     "get_item_consumption_rates": {
       "description": "Obtener analíticas de consumo para un artículo específico basado en su historial de decrementos",

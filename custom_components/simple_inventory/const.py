@@ -11,6 +11,7 @@ SERVICE_REMOVE_ITEM: Final = "remove_item"
 SERVICE_UPDATE_ITEM: Final = "update_item"
 SERVICE_GET_ITEMS: Final = "get_items"
 SERVICE_GET_ALL_ITEMS: Final = "get_items_from_all_inventories"
+SERVICE_GET_INVENTORY_CONSUMPTION_RATES: Final = "get_inventory_consumption_rates"
 SERVICE_GET_ITEM_CONSUMPTION_RATES: Final = "get_item_consumption_rates"
 SERVICE_LOOKUP_BY_BARCODE: Final = "lookup_by_barcode"
 SERVICE_LOOKUP_BARCODE_PRODUCT: Final = "lookup_barcode_product"
@@ -59,6 +60,18 @@ DEFAULT_LOCATION: Final = ""
 DEFAULT_PRICE: Final = 0
 
 ANALYTICS_MIN_EVENTS: Final = 2
+
+
+def compute_quantity_needed(quantity: float, threshold: float, desired: float) -> float:
+    """Compute how many units are needed to reach the restock target.
+
+    When desired_quantity > 0, the shortfall is desired - current.
+    Otherwise falls back to the legacy formula: threshold - current + 1.
+    """
+    if desired > 0:
+        return desired - quantity
+    return threshold - quantity + 1
+
 
 # HA events
 EVENT_ITEM_ADDED_TO_LIST: Final = f"{DOMAIN}_item_added_to_list"

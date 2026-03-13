@@ -8,11 +8,13 @@ from .base import BarcodeProvider
 from .open_beauty_facts import OpenBeautyFactsProvider
 from .open_pet_food_facts import OpenPetFoodFactsProvider
 from .openfoodfacts import OpenFoodFactsProvider
+from .upcitemdb import UPCItemDBProvider
 
 PROVIDER_REGISTRY: dict[str, type[BarcodeProvider]] = {
     "openfoodfacts": OpenFoodFactsProvider,
     "openbeautyfacts": OpenBeautyFactsProvider,
     "openpetfoodfacts": OpenPetFoodFactsProvider,
+    "upcitemdb": UPCItemDBProvider,
 }
 
 DEFAULT_PROVIDER = "openfoodfacts"

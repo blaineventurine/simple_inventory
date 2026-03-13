@@ -12,9 +12,26 @@ from homeassistant.exceptions import HomeAssistantError
 
 from .const import DOMAIN
 from .providers.lookup import async_lookup_barcode_all_providers
-from .services.domain_data import get_coordinators, get_repository, get_todo_manager
+from .services.domain_data import get_coordinators, get_repository, get_service_handler
 
 _LOGGER = logging.getLogger(__name__)
+
+
+def _get_coordinator(
+    hass: HomeAssistant,
+    connection: websocket_api.ActiveConnection,
+    msg: dict[str, Any],
+    inventory_id: str,
+) -> Any:
+    """Return the coordinator for inventory_id, or send an error and return None."""
+    coordinator = get_coordinators(hass).get(inventory_id)
+    if coordinator is None:
+        connection.send_error(
+            msg["id"],
+            "inventory_not_found",
+            f"Inventory '{inventory_id}' not found",
+        )
+    return coordinator
 
 
 def async_register_websocket_commands(hass: HomeAssistant) -> None:
@@ -27,6 +44,7 @@ def async_register_websocket_commands(hass: HomeAssistant) -> None:
     websocket_api.async_register_command(hass, ws_import)
     websocket_api.async_register_command(hass, ws_get_item_consumption_rates)
     websocket_api.async_register_command(hass, ws_get_inventory_consumption_rates)
+    websocket_api.async_register_command(hass, ws_get_inventory_statistics)
     websocket_api.async_register_command(hass, ws_lookup_by_barcode)
     websocket_api.async_register_command(hass, ws_lookup_barcode_product)
     websocket_api.async_register_command(hass, ws_get_barcode_provider_config)
@@ -41,13 +59,7 @@ async def _handle_list_items(
 ) -> None:
     """Return all items for an inventory."""
     inventory_id = msg["inventory_id"]
-    coordinator = get_coordinators(hass).get(inventory_id)
-    if coordinator is None:
-        connection.send_error(
-            msg["id"],
-            "inventory_not_found",
-            f"Inventory '{inventory_id}' not found",
-        )
+    if (coordinator := _get_coordinator(hass, connection, msg, inventory_id)) is None:
         return
 
     items = await coordinator.async_list_items(inventory_id)
@@ -62,13 +74,7 @@ async def _handle_get_item(
     """Return a single item by name."""
     inventory_id = msg["inventory_id"]
     name = msg["name"]
-    coordinator = get_coordinators(hass).get(inventory_id)
-    if coordinator is None:
-        connection.send_error(
-            msg["id"],
-            "inventory_not_found",
-            f"Inventory '{inventory_id}' not found",
-        )
+    if (coordinator := _get_coordinator(hass, connection, msg, inventory_id)) is None:
         return
 
     item = await coordinator.async_get_item(inventory_id, name)
@@ -90,13 +96,7 @@ async def _handle_get_history(
 ) -> None:
     """Return history events."""
     inventory_id = msg["inventory_id"]
-    coordinator = get_coordinators(hass).get(inventory_id)
-    if coordinator is None:
-        connection.send_error(
-            msg["id"],
-            "inventory_not_found",
-            f"Inventory '{inventory_id}' not found",
-        )
+    if (coordinator := _get_coordinator(hass, connection, msg, inventory_id)) is None:
         return
 
     item_name = msg.get("item_name")
@@ -137,13 +137,7 @@ async def _handle_export(
     """Export inventory data."""
     inventory_id = msg["inventory_id"]
     fmt = msg.get("format", "json")
-    coordinator = get_coordinators(hass).get(inventory_id)
-    if coordinator is None:
-        connection.send_error(
-            msg["id"],
-            "inventory_not_found",
-            f"Inventory '{inventory_id}' not found",
-        )
+    if (coordinator := _get_coordinator(hass, connection, msg, inventory_id)) is None:
         return
 
     try:
@@ -163,14 +157,7 @@ async def _handle_import(
     fmt = msg.get("format", "json")
     data = msg["data"]
     merge_strategy = msg.get("merge_strategy", "skip")
-
-    coordinator = get_coordinators(hass).get(inventory_id)
-    if coordinator is None:
-        connection.send_error(
-            msg["id"],
-            "inventory_not_found",
-            f"Inventory '{inventory_id}' not found",
-        )
+    if (coordinator := _get_coordinator(hass, connection, msg, inventory_id)) is None:
         return
 
     summary = await coordinator.async_import_inventory(inventory_id, data, fmt, merge_strategy)
@@ -306,14 +293,7 @@ async def _handle_get_item_consumption_rates(
     inventory_id = msg["inventory_id"]
     item_name = msg["item_name"]
     window_days = msg.get("window_days")
-
-    coordinator = get_coordinators(hass).get(inventory_id)
-    if coordinator is None:
-        connection.send_error(
-            msg["id"],
-            "inventory_not_found",
-            f"Inventory '{inventory_id}' not found",
-        )
+    if (coordinator := _get_coordinator(hass, connection, msg, inventory_id)) is None:
         return
 
     result = await coordinator.async_get_item_consumption_rates(
@@ -338,20 +318,43 @@ async def _handle_get_inventory_consumption_rates(
     """Return consumption rates for all items in an inventory."""
     inventory_id = msg["inventory_id"]
     window_days = msg.get("window_days")
-
-    coordinator = get_coordinators(hass).get(inventory_id)
-    if coordinator is None:
-        connection.send_error(
-            msg["id"],
-            "inventory_not_found",
-            f"Inventory '{inventory_id}' not found",
-        )
+    if (coordinator := _get_coordinator(hass, connection, msg, inventory_id)) is None:
         return
 
     result = await coordinator.async_get_inventory_consumption_rates(
         inventory_id, window_days=window_days
     )
     connection.send_result(msg["id"], result)
+
+
+async def _handle_get_inventory_statistics(
+    hass: HomeAssistant,
+    connection: websocket_api.ActiveConnection,
+    msg: dict[str, Any],
+) -> None:
+    """Return aggregate statistics for an inventory."""
+    inventory_id = msg["inventory_id"]
+    if (coordinator := _get_coordinator(hass, connection, msg, inventory_id)) is None:
+        return
+
+    result = await coordinator.async_get_inventory_statistics(inventory_id)
+    connection.send_result(msg["id"], result)
+
+
+@websocket_api.websocket_command(
+    {
+        vol.Required("type"): f"{DOMAIN}/get_inventory_statistics",
+        vol.Required("inventory_id"): str,
+    }
+)
+@websocket_api.async_response
+async def ws_get_inventory_statistics(
+    hass: HomeAssistant,
+    connection: websocket_api.ActiveConnection,
+    msg: dict[str, Any],
+) -> None:
+    """WS command: get inventory statistics."""
+    await _handle_get_inventory_statistics(hass, connection, msg)
 
 
 @websocket_api.websocket_command(
@@ -375,7 +378,7 @@ def ws_subscribe(
         vol.Required("type"): f"{DOMAIN}/get_item_consumption_rates",
         vol.Required("inventory_id"): str,
         vol.Required("item_name"): str,
-        vol.Optional("window_days"): vol.Any(vol.In([30, 60, 90]), None),
+        vol.Optional("window_days"): vol.Any(vol.All(vol.Coerce(int), vol.Range(min=1)), None),
     }
 )
 @websocket_api.async_response
@@ -392,7 +395,7 @@ async def ws_get_item_consumption_rates(
     {
         vol.Required("type"): f"{DOMAIN}/get_inventory_consumption_rates",
         vol.Required("inventory_id"): str,
-        vol.Optional("window_days"): vol.Any(vol.In([30, 60, 90]), None),
+        vol.Optional("window_days"): vol.Any(vol.All(vol.Coerce(int), vol.Range(min=1)), None),
     }
 )
 @websocket_api.async_response
@@ -428,50 +431,24 @@ async def _handle_scan_barcode(
     msg: dict[str, Any],
 ) -> None:
     """Scan a barcode and perform an action."""
-    barcode = msg["barcode"]
-    action = msg["action"]
-    amount = msg.get("amount", 1.0)
-    inventory_id = msg.get("inventory_id")
-    price = msg.get("price")
-
-    coordinators = get_coordinators(hass)
-    if not coordinators:
+    service_handler = get_service_handler(hass)
+    if service_handler is None:
         connection.send_error(msg["id"], "no_inventories", "No inventories configured")
         return
 
-    if inventory_id:
-        coordinator = coordinators.get(inventory_id)
-        if coordinator is None:
-            connection.send_error(
-                msg["id"],
-                "inventory_not_found",
-                f"Inventory '{inventory_id}' not found",
-            )
-            return
-    else:
-        coordinator = next(iter(coordinators.values()))
-
     try:
-        result = await coordinator.async_scan_barcode(
-            barcode, action, amount, inventory_id, price=price
+        result = await service_handler.quantity_service.async_scan_barcode(
+            barcode=msg["barcode"],
+            action=msg["action"],
+            amount=msg.get("amount", 1.0),
+            inventory_id=msg.get("inventory_id"),
+            price=msg.get("price"),
         )
     except HomeAssistantError as exc:
         connection.send_error(msg["id"], "scan_failed", str(exc))
         return
 
     connection.send_result(msg["id"], result)
-
-    if result.get("success") and action in ("increment", "decrement"):
-        todo_manager = get_todo_manager(hass)
-        if todo_manager:
-            item_name: str = result["item_name"]
-            resolved_inventory_id: str = result["inventory_id"]
-            item_data = await coordinator.async_get_item(resolved_inventory_id, item_name)
-            if item_data:
-                if action == "decrement":
-                    await todo_manager.check_and_add_item(item_name, item_data)  # type: ignore[arg-type]
-                else:
-                    await todo_manager.check_and_remove_item(item_name, item_data)  # type: ignore[arg-type]
 
 
 @websocket_api.websocket_command(

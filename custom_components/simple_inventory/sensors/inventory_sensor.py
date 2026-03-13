@@ -51,14 +51,16 @@ class InventorySensor(SensorEntity):
 
     @callback
     def _handle_update(self, _event: Event | None = None) -> None:
-        """Schedule an async refresh."""
+        """Invalidate the per-inventory expiry cache and schedule an async refresh."""
+        expiry_cache = getattr(self.coordinator, "_expiry_cache", None)
+        if expiry_cache is not None:
+            expiry_cache.pop(self._entry_id, None)
         self.hass.async_create_task(self._async_update_state())
 
     async def _async_update_state(self) -> None:
         """Fetch stats/items from the repository."""
         try:
             stats = await self.coordinator.async_get_inventory_statistics(self._entry_id)
-            items = await self.coordinator.async_list_items(self._entry_id)
         except Exception as err:
             _LOGGER.error("Failed to refresh inventory sensor %s: %s", self._entry_id, err)
             return
@@ -73,11 +75,8 @@ class InventorySensor(SensorEntity):
         self._attr_extra_state_attributes = {
             "inventory_id": self._entry_id,
             "description": description,
-            "items": items,
             "total_items": stats["total_items"],
             "total_quantity": stats["total_quantity"],
-            "categories": stats["categories"],
-            "locations": stats["locations"],
             "below_threshold": stats["below_threshold"],
             "expiring_soon": len(stats["expiring_items"]),
         }

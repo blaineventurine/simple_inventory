@@ -445,6 +445,24 @@ scan_barcode:
           min: 0
           step: 0.01
 
+get_inventory_consumption_rates:
+  description: Get consumption analytics for all items in an inventory based on their decrement history. Returns daily/weekly rates, days until depletion, and average restock interval per item.
+  fields:
+    inventory_id:
+      description: ID of the inventory
+      example: "01JYFPCDMBRBRK4MB3C26S2FKH"
+      required: true
+      selector:
+        text:
+    window_days:
+      description: Number of days to look back for consumption data. Omit to use all history.
+      example: 30
+      required: false
+      selector:
+        number:
+          min: 1
+          step: 1
+
 get_item_consumption_rates:
   description: Get consumption analytics for a specific item based on its decrement history. Returns daily/weekly rates, days until depletion, and average restock interval.
   fields:

@@ -1,4 +1,4 @@
-"""Global expiry notification sensor for Simple Inventory."""
+"""Global expired items sensor for Simple Inventory."""
 
 from __future__ import annotations
 
@@ -14,21 +14,21 @@ from ..coordinator import SimpleInventoryCoordinator
 _LOGGER = logging.getLogger(__name__)
 
 
-class GlobalItemsExpiringSoonSensor(SensorEntity):
-    """Sensor to track items nearing expiry across all inventories."""
+class GlobalExpiredItemsSensor(SensorEntity):
+    """Sensor to track expired items across all inventories."""
 
     def __init__(self, hass: HomeAssistant, coordinator: SimpleInventoryCoordinator) -> None:
         """Initialize the global sensor."""
         self.hass = hass
         self.coordinator = coordinator
-        self._attr_name = "All Items Expiring Soon"
-        self._attr_unique_id = "simple_inventory_all_expiring_items"
-        self._attr_icon = "mdi:calendar-alert"
+        self._attr_name = "All Expired Items"
+        self._attr_unique_id = "simple_inventory_all_expired_items"
+        self._attr_icon = "mdi:calendar-remove"
         self._attr_native_unit_of_measurement = "items"
         self._attr_extra_state_attributes: dict[str, Any] = {}
         self._attr_device_info = {
-            "identifiers": {(DOMAIN, "global_expiry_tracker")},
-            "name": "All Items Expiring Soon",
+            "identifiers": {(DOMAIN, "global_expired_items")},
+            "name": "All Expired Items",
         }
 
     async def async_added_to_hass(self) -> None:
@@ -49,42 +49,27 @@ class GlobalItemsExpiringSoonSensor(SensorEntity):
         self.hass.async_create_task(self._async_update_state())
 
     async def _async_update_state(self) -> None:
-        """Aggregate expiring items across inventories."""
+        """Aggregate expired items across inventories."""
         try:
             all_items = await self.coordinator.async_get_items_expiring_soon()
         except Exception as err:
-            _LOGGER.error("Failed to refresh global expiry sensor: %s", err)
+            _LOGGER.error("Failed to refresh global expired items sensor: %s", err)
             return
 
-        for item in all_items:
+        expired_items = [item for item in all_items if item["days_until_expiry"] < 0]
+
+        for item in expired_items:
             item["inventory"] = self._get_inventory_name(item["inventory_id"])
 
-        expired_items = [item for item in all_items if item["days_until_expiry"] < 0]
-        expiring_items = [item for item in all_items if item["days_until_expiry"] >= 0]
+        inventories_count = len({item["inventory_id"] for item in expired_items})
 
-        inventories_count = len({item["inventory_id"] for item in all_items})
-
-        self._attr_native_value = len(expiring_items)
+        self._attr_native_value = len(expired_items)
         self._attr_extra_state_attributes = {
-            "expiring_items": expiring_items,
             "expired_items": expired_items,
-            "total_expiring": len(expiring_items),
             "total_expired": len(expired_items),
-            "next_expiring": expiring_items[0] if expiring_items else None,
             "oldest_expired": expired_items[0] if expired_items else None,
             "inventories_count": inventories_count,
         }
-
-        if expiring_items:
-            most_urgent_days = expiring_items[0]["days_until_expiry"] if expiring_items else 7
-            if most_urgent_days <= 1:
-                self._attr_icon = "mdi:calendar-alert"
-            elif most_urgent_days <= 3:
-                self._attr_icon = "mdi:calendar-clock"
-            else:
-                self._attr_icon = "mdi:calendar-week"
-        else:
-            self._attr_icon = "mdi:calendar-check"
 
         self.async_write_ha_state()
 

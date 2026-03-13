@@ -37,6 +37,7 @@ from ..const import (
     INVENTORY_NAME,
     STORAGE_KEY,
     STORAGE_VERSION,
+    compute_quantity_needed,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -1009,10 +1010,7 @@ class InventoryRepository:
             )
             if threshold > 0 and quantity <= threshold:
                 desired = float(item.get(FIELD_DESIRED_QUANTITY, DEFAULT_DESIRED_QUANTITY))
-                if desired > 0:
-                    quantity_needed = desired - quantity
-                else:
-                    quantity_needed = threshold - quantity + 1
+                quantity_needed = compute_quantity_needed(quantity, threshold, desired)
                 below_threshold.append(
                     {
                         FIELD_NAME: item.get(FIELD_NAME),

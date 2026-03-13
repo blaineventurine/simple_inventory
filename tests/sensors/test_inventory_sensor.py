@@ -23,7 +23,6 @@ def mock_sensor_coordinator() -> MagicMock:
             "expiring_items": [],
         }
     )
-    coordinator.async_list_items = AsyncMock(return_value=[])
     coordinator.async_add_listener = MagicMock(return_value=lambda: None)
     return coordinator
 
@@ -70,15 +69,24 @@ def test_handle_update_schedules_task(inventory_sensor: InventorySensor) -> None
         mock_create_task.assert_called_once()
 
 
+def test_handle_update_invalidates_cache(inventory_sensor: InventorySensor) -> None:
+    """_handle_update must evict the per-inventory cache key so the next refresh is fresh."""
+    cache: dict = {"kitchen_123": (0.0, [{"name": "stale"}]), None: (0.0, [])}
+    inventory_sensor.coordinator._expiry_cache = cache
+
+    with patch.object(inventory_sensor.hass, "async_create_task"):
+        inventory_sensor._handle_update(None)
+
+    assert "kitchen_123" not in cache
+    assert None in cache
+
+
 @pytest.mark.asyncio
 async def test_update_state_comprehensive(
     inventory_sensor: InventorySensor,
     mock_sensor_coordinator: MagicMock,
     sample_inventory_data: dict,
 ) -> None:
-    kitchen_items = sample_inventory_data["kitchen"]["items"]
-
-    mock_sensor_coordinator.async_list_items.return_value = kitchen_items
     mock_sensor_coordinator.async_get_inventory_statistics.return_value = {
         "total_quantity": 4,
         "total_items": 3,
@@ -98,15 +106,7 @@ async def test_update_state_comprehensive(
 
     attrs = inventory_sensor._attr_extra_state_attributes
     assert attrs["inventory_id"] == "kitchen_123"
-    assert "items" in attrs
-    assert len(attrs["items"]) == 3
-
-    milk_item = next(item for item in attrs["items"] if item["name"] == "milk")
-    assert milk_item["quantity"] == 2
-    assert milk_item["unit"] == "liters"
-    assert milk_item["category"] == "dairy"
-    assert milk_item["location"] == "fridge"
-
+    assert "items" not in attrs
     assert attrs["total_items"] == 3
     assert attrs["total_quantity"] == 4
     assert attrs["expiring_soon"] == 2
@@ -117,7 +117,6 @@ async def test_update_state_empty_inventory(
     inventory_sensor: InventorySensor,
     mock_sensor_coordinator: MagicMock,
 ) -> None:
-    mock_sensor_coordinator.async_list_items.return_value = []
     mock_sensor_coordinator.async_get_inventory_statistics.return_value = {
         "total_quantity": 0,
         "total_items": 0,
@@ -133,7 +132,7 @@ async def test_update_state_empty_inventory(
     assert inventory_sensor._attr_native_value == 0
     attrs = inventory_sensor._attr_extra_state_attributes
     assert attrs["inventory_id"] == "kitchen_123"
-    assert len(attrs["items"]) == 0
+    assert "items" not in attrs
     assert attrs["total_items"] == 0
     assert attrs["total_quantity"] == 0
     assert attrs["expiring_soon"] == 0
@@ -148,7 +147,6 @@ async def test_coordinator_interaction(
         await inventory_sensor._async_update_state()
 
     mock_sensor_coordinator.async_get_inventory_statistics.assert_awaited_once_with("kitchen_123")
-    mock_sensor_coordinator.async_list_items.assert_awaited_once_with("kitchen_123")
 
 
 @pytest.mark.parametrize(

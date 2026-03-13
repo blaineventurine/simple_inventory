@@ -9,7 +9,7 @@ from homeassistant.util.json import JsonObjectType
 from ..const import DOMAIN
 from ..providers.lookup import async_lookup_barcode_all_providers
 from ..todo_manager import TodoManager
-from .domain_data import get_coordinators, get_repository
+from .domain_data import get_coordinators
 from .inventory_service import InventoryService
 from .quantity_service import QuantityService
 
@@ -89,37 +89,13 @@ class ServiceHandler:
     async def async_scan_barcode(self, call: ServiceCall) -> JsonObjectType:
         """Scan a barcode and perform an action."""
         data = call.data
-        barcode: str = data["barcode"]
-        action: str = data["action"]
-        amount: float = data.get("amount", 1.0)
-        inventory_id: str | None = data.get("inventory_id")
-        price: float | None = data.get("price")
-
-        coordinators = get_coordinators(self.hass)
-        if not coordinators:
-            raise ValueError("No inventories configured")
-
-        if inventory_id:
-            coordinator = coordinators.get(inventory_id)
-            if coordinator is None:
-                raise ValueError(f"No coordinator available for inventory '{inventory_id}'")
-        else:
-            coordinator = next(iter(coordinators.values()))
-
-        result = await coordinator.async_scan_barcode(
-            barcode, action, amount, inventory_id, price=price
+        result = await self.quantity_service.async_scan_barcode(
+            barcode=data["barcode"],
+            action=data["action"],
+            amount=data.get("amount", 1.0),
+            inventory_id=data.get("inventory_id"),
+            price=data.get("price"),
         )
-
-        if result.get("success") and action in ("increment", "decrement"):
-            item_name: str = result["item_name"]
-            resolved_inventory_id: str = result["inventory_id"]
-            item_data = await coordinator.async_get_item(resolved_inventory_id, item_name)
-            if item_data:
-                if action == "decrement":
-                    await self.todo_manager.check_and_add_item(item_name, item_data)  # type: ignore[arg-type]
-                else:
-                    await self.todo_manager.check_and_remove_item(item_name, item_data)  # type: ignore[arg-type]
-
         return cast(JsonObjectType, result)
 
     async def async_lookup_barcode_product(self, call: ServiceCall) -> JsonObjectType:
@@ -145,6 +121,22 @@ class ServiceHandler:
 
         results = await async_lookup_barcode_all_providers(self.hass, barcode)
         return cast(JsonObjectType, {"barcode": barcode, "results": results})
+
+    async def async_get_inventory_consumption_rates(self, call: ServiceCall) -> JsonObjectType:
+        """Return consumption rates for all items in an inventory."""
+        data = call.data
+        inventory_id: str = data["inventory_id"]
+        window_days: int | None = data.get("window_days")
+
+        coordinators = get_coordinators(self.hass)
+        coordinator = coordinators.get(inventory_id)
+        if coordinator is None:
+            raise ValueError(f"No coordinator available for inventory '{inventory_id}'")
+
+        result = await coordinator.async_get_inventory_consumption_rates(
+            inventory_id, window_days=window_days
+        )
+        return cast(JsonObjectType, result)
 
     async def async_get_item_consumption_rates(self, call: ServiceCall) -> JsonObjectType:
         """Return consumption rates for a single item."""
