@@ -157,7 +157,7 @@ bump_versions() {
 prepare_notes_file() {
     local tag="$1"
     local notes_file
-    notes_file="$(mktemp /tmp/release_notes_XXXXXX.md)"
+    notes_file="$(mktemp /tmp/release_notes_XXXXXX)"
     cat > "$notes_file" <<EOF
 # $tag
 
