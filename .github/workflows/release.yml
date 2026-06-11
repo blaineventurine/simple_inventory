@@ -56,7 +56,7 @@ jobs:
         id: notes
         run: |
           VERSION="${{ steps.version.outputs.version }}"
-          body=$(git tag -l --format='%(contents)' "$VERSION")
+          body=$(git tag -l --format='%(contents)' "$VERSION" | sed '/^-----BEGIN/,/^-----END/d')
           echo "body<<EOF" >> $GITHUB_OUTPUT
           echo "$body" >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
