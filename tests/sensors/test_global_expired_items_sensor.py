@@ -117,6 +117,8 @@ def test_icon_is_always_calendar_remove(global_expired_sensor: GlobalExpiredItem
 
 
 def test_handle_update_schedules_task(global_expired_sensor: GlobalExpiredItemsSensor) -> None:
-    with patch.object(global_expired_sensor.hass, "async_create_task") as mock_create_task:
+    with patch.object(
+        global_expired_sensor.hass, "async_create_task", side_effect=lambda coro: coro.close()
+    ) as mock_create_task:
         global_expired_sensor._handle_update(None)
         mock_create_task.assert_called_once()

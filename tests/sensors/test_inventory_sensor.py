@@ -64,7 +64,9 @@ async def test_async_added_to_hass(inventory_sensor: InventorySensor) -> None:
 
 
 def test_handle_update_schedules_task(inventory_sensor: InventorySensor) -> None:
-    with patch.object(inventory_sensor.hass, "async_create_task") as mock_create_task:
+    with patch.object(
+        inventory_sensor.hass, "async_create_task", side_effect=lambda coro: coro.close()
+    ) as mock_create_task:
         inventory_sensor._handle_update(None)
         mock_create_task.assert_called_once()
 
@@ -74,7 +76,9 @@ def test_handle_update_invalidates_cache(inventory_sensor: InventorySensor) -> N
     cache: dict = {"kitchen_123": (0.0, [{"name": "stale"}]), None: (0.0, [])}
     inventory_sensor.coordinator._expiry_cache = cache
 
-    with patch.object(inventory_sensor.hass, "async_create_task"):
+    with patch.object(
+        inventory_sensor.hass, "async_create_task", side_effect=lambda coro: coro.close()
+    ):
         inventory_sensor._handle_update(None)
 
     assert "kitchen_123" not in cache
