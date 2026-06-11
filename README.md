@@ -132,7 +132,7 @@ Track item prices to see inventory value and spending trends. Each item has an o
 
 - **Unit price**: Set when adding or editing an item. Update it whenever the price changes (e.g. at the next purchase).
 - **Price on restock**: `increment_item`, `decrement_item`, and `scan_barcode` accept an optional `price` parameter. When provided, it updates the item's stored unit price and records the price on the history event.
-- **Total value**: The inventory sensor includes a `total_value` attribute — the sum of `price × quantity` across all items with a price set. Items with `price = 0` are excluded.
+- **Total value**: Retrievable via the `get_items` service call. Items with `price = 0` are excluded from the calculation.
 - **Spend analytics**: The consumption tab shows spend data computed from restocking (increment/add) events that have a price recorded:
   - **Daily Spend** — Average daily purchasing cost over the observation window
   - **Weekly Spend** — Average weekly purchasing cost
@@ -178,14 +178,11 @@ Each inventory creates three sensors:
 - **State**: Total quantity across all items
 - **Attributes**:
   - `inventory_id` — The config entry ID
+  - `description` — The inventory description
   - `total_items` — Number of distinct items
   - `total_quantity` — Sum of all quantities
-  - `total_value` — Sum of `price × quantity` across all priced items
-  - `categories` — Category names with item counts
-  - `locations` — Location names with item counts
-  - `below_threshold` — Items that need restocking (with `quantity_needed`)
-  - `expiring_soon` — Count of items expiring soon
-  - `items` — Full list of all items with all fields
+  - `below_threshold` — Items that need restocking, each with `name`, `quantity`, `threshold`, `desired_quantity`, `quantity_needed`, `unit`, `category`
+  - `expiring_soon` — Count of items expiring within their alert threshold
 
 **`sensor.<name>_items_expiring_soon`** — Expiry alert sensor
 - **State**: Count of items within their alert threshold but not yet expired
@@ -318,7 +315,9 @@ data:
 
 Retrieve all items for a specific inventory. Supports `response_variable` for use in automations and scripts.
 
-Specify the inventory by ID or name (case-insensitive), but not both:
+Specify the inventory by ID or name, but not both.
+
+**By ID** (recommended — unambiguous):
 
 ```yaml
 service: simple_inventory.get_items
@@ -327,12 +326,18 @@ data:
 response_variable: result
 ```
 
+Find your inventory ID in **Developer Tools → States**: filter for your inventory sensor and read the `inventory_id` attribute.
+
+**By name** (case-insensitive match against the name you gave during setup):
+
 ```yaml
 service: simple_inventory.get_items
 data:
-  inventory_name: "Kitchen Freezer"
+  inventory_name: "Freezer"
 response_variable: result
 ```
+
+This matches the inventory's creation name — **not** the sensor entity ID or its friendly name. If your sensor is `sensor.freezer_inventory`, the inventory name is `Freezer`, not `freezer_inventory` or `Freezer Inventory` (the sensor appends " Inventory" to the display name automatically).
 
 Example response:
 

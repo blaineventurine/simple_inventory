@@ -448,6 +448,14 @@ class InventoryRepository:
             )
             await conn.commit()
 
+    async def delete_inventory(self, inventory_id: str) -> bool:
+        """Delete an inventory and all its data (cascades via FK constraints)."""
+        conn = self._connection()
+        async with self._lock:
+            cursor = await conn.execute("DELETE FROM inventories WHERE id = ?", (inventory_id,))
+            await conn.commit()
+            return cursor.rowcount > 0
+
     async def list_inventories(self) -> list[dict[str, Any]]:
         """Return all inventories."""
         conn = self._connection()

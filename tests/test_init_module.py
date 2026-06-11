@@ -7,7 +7,11 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from custom_components.simple_inventory import async_setup_entry, async_unload_entry
+from custom_components.simple_inventory import (
+    async_remove_entry,
+    async_setup_entry,
+    async_unload_entry,
+)
 from custom_components.simple_inventory.const import (
     DOMAIN,
     SERVICE_ADD_ITEM,
@@ -260,3 +264,42 @@ async def test_async_unload_entry_last_removes_services_and_closes_repo(
 
     repo.async_close.assert_awaited_once()
     assert DOMAIN not in hass_mock.data
+
+
+@pytest.mark.asyncio
+async def test_async_remove_entry_deletes_inventory_and_closes_repo(
+    entry1: MagicMock,
+) -> None:
+    """async_remove_entry must delete the inventory row and close the repo."""
+    hass = MagicMock()
+    mock_repo = MagicMock()
+    mock_repo.async_initialize = AsyncMock()
+    mock_repo.delete_inventory = AsyncMock(return_value=True)
+    mock_repo.async_close = AsyncMock()
+
+    with patch("custom_components.simple_inventory.InventoryRepository", return_value=mock_repo):
+        await async_remove_entry(hass, entry1)
+
+    mock_repo.async_initialize.assert_awaited_once()
+    mock_repo.delete_inventory.assert_awaited_once_with(entry1.entry_id)
+    mock_repo.async_close.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_async_remove_entry_closes_repo_even_on_error(
+    entry1: MagicMock,
+) -> None:
+    """async_remove_entry must close the repo even if delete_inventory raises."""
+    hass = MagicMock()
+    mock_repo = MagicMock()
+    mock_repo.async_initialize = AsyncMock()
+    mock_repo.delete_inventory = AsyncMock(side_effect=RuntimeError("db error"))
+    mock_repo.async_close = AsyncMock()
+
+    with (
+        patch("custom_components.simple_inventory.InventoryRepository", return_value=mock_repo),
+        pytest.raises(RuntimeError, match="db error"),
+    ):
+        await async_remove_entry(hass, entry1)
+
+    mock_repo.async_close.assert_awaited_once()

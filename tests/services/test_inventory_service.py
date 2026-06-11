@@ -284,6 +284,37 @@ class TestInventoryService:
             await inventory_service.async_get_items(call)
 
     @pytest.mark.asyncio
+    async def test_async_get_items_falls_back_to_repo_when_no_coordinator(
+        self,
+        inventory_service: InventoryService,
+    ) -> None:
+        """When no coordinator is registered for an inventory, fall back to the repository."""
+        from unittest.mock import AsyncMock
+
+        from custom_components.simple_inventory.const import DOMAIN
+
+        mock_repo = MagicMock()
+        mock_repo.list_items_with_details = AsyncMock(
+            return_value=[{"name": "Milk", "quantity": 1}, {"name": "Butter", "quantity": 2}]
+        )
+
+        # No coordinator registered for this inventory_id
+        inventory_service.hass.data[DOMAIN]["coordinators"] = {}
+
+        call = MagicMock(spec=ServiceCall)
+        call.data = {"inventory_id": "kitchen"}
+
+        with patch(
+            "custom_components.simple_inventory.services.inventory_service.get_repository",
+            return_value=mock_repo,
+        ):
+            result = await inventory_service.async_get_items(call)
+
+        items = cast(list[dict[str, Any]], result["items"])
+        assert [item["name"] for item in items] == ["Butter", "Milk"]
+        mock_repo.list_items_with_details.assert_awaited_once_with("kitchen")
+
+    @pytest.mark.asyncio
     async def test_async_add_item_forwards_description_fields(
         self,
         inventory_service: InventoryService,

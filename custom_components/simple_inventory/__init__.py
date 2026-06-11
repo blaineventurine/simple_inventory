@@ -252,6 +252,16 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     return True
 
 
+async def async_remove_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
+    """Delete all data for this entry when the user removes the integration."""
+    repository = InventoryRepository(hass)
+    try:
+        await repository.async_initialize()
+        await repository.delete_inventory(entry.entry_id)
+    finally:
+        await repository.async_close()
+
+
 def _remove_service(hass: HomeAssistant, name: str) -> None:
     if hass.services.has_service(DOMAIN, name):
         hass.services.async_remove(DOMAIN, name)

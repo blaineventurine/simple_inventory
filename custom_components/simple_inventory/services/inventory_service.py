@@ -252,13 +252,17 @@ class InventoryService(BaseServiceHandler):
             raise ValueError("Either 'inventory_id' or 'inventory_name' must be provided")
 
         coordinator = self._require_coordinator(inventory_id)
-        if coordinator is None:
-            raise ValueError(f"No coordinator available for inventory '{inventory_id}'")
+        if coordinator:
+            items_list: list[dict[str, Any]] = await coordinator.async_list_items(inventory_id)
+        else:
+            repo = get_repository(self.hass)
+            if repo is None:
+                raise ValueError(
+                    f"No coordinator or repository available for inventory '{inventory_id}'"
+                )
+            items_list = await repo.list_items_with_details(inventory_id)
 
-        items_map = await coordinator.async_list_items(inventory_id)
-        items_list: list[JsonObjectType] = [cast(JsonObjectType, item) for item in items_map]
         items_list.sort(key=lambda item: cast(str, item.get("name", "")).lower())
-
         return cast(JsonObjectType, {"items": cast(list[JsonValueType], items_list)})
 
     async def async_get_items_from_all_inventories(self, call: ServiceCall) -> JsonObjectType:
