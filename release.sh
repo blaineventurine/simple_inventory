@@ -154,11 +154,10 @@ bump_versions() {
 }
 
 # -------- release notes --------
-edit_notes() {
+prepare_notes_file() {
     local tag="$1"
     local notes_file
     notes_file="$(mktemp /tmp/release_notes_XXXXXX.md)"
-
     cat > "$notes_file" <<EOF
 # $tag
 
@@ -166,17 +165,6 @@ edit_notes() {
      This becomes the git tag annotation and the GitHub release body. -->
 
 EOF
-
-    "${EDITOR:-vi}" "$notes_file"
-
-    # Fail if only the template remains (no real content)
-    local content
-    content="$(sed '/^<!--/d;/^[[:space:]]*$/d' "$notes_file")"
-    if [[ -z "$content" ]]; then
-        rm -f "$notes_file"
-        die "release notes are empty; aborting"
-    fi
-
     echo "$notes_file"
 }
 
@@ -245,7 +233,14 @@ fi
 
 bump_versions "$VERSION_NUM"
 
-NOTES_FILE="$(edit_notes "$PROPOSED_TAG")"
+NOTES_FILE="$(prepare_notes_file "$PROPOSED_TAG")"
+"${EDITOR:-vi}" "$NOTES_FILE"
+# Fail if only the template remains
+content="$(sed '/^<!--/d;/^[[:space:]]*$/d' "$NOTES_FILE")"
+if [[ -z "$content" ]]; then
+    rm -f "$NOTES_FILE"
+    die "release notes are empty; aborting"
+fi
 create_tag "$PROPOSED_TAG" "$NOTES_FILE"
 rm -f "$NOTES_FILE"
 
