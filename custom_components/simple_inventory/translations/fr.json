@@ -25,13 +25,13 @@
   "entity": {
     "sensor": {
       "all_expired_items": {
-        "name": "All Expired Items"
+        "name": "Tous les articles expirés"
       },
       "all_expiring_items": {
         "name": "Tous les articles expirant bientôt"
       },
       "expired_items": {
-        "name": "{inventory_name} Expired Items"
+        "name": "Articles expirés dans {inventory_name}"
       },
       "expiring_items": {
         "name": "Articles dans {inventory_name} expirant bientôt"
