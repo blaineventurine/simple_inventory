@@ -17,6 +17,7 @@ mypy
 pytest
 pytest-cov
 pytest-homeassistant-custom-component
+hassil
 
 safety
 pre-commit

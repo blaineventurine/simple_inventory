@@ -1,7 +1,7 @@
 """Tests for the Simple Inventory config flow."""
 
 from typing import Generator
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from homeassistant import data_entry_flow
@@ -9,6 +9,7 @@ from homeassistant.core import HomeAssistant
 from typing_extensions import Self
 
 from custom_components.simple_inventory.config_flow import (
+    OptionsFlowHandler,
     SimpleInventoryConfigFlow,
     clean_inventory_name,
 )
@@ -112,6 +113,121 @@ async def test_add_inventory_with_existing_global_entry(
     assert not result["data"]["create_global"]
 
 
+@patch.object(SimpleInventoryConfigFlow, "_async_current_entries")
+async def test_add_inventory_first_offers_voice_sentences_checkbox(
+    mock_current_entries: MagicMock,
+    hass: HomeAssistant,
+) -> None:
+    """The checkbox appears on the first inventory (no global entry yet) in English."""
+    flow = SimpleInventoryConfigFlow()
+    flow.hass = hass
+    hass.config.language = "en"
+    mock_current_entries.return_value = []
+
+    result = await flow.async_step_add_inventory()
+
+    assert result["type"] == data_entry_flow.FlowResultType.FORM
+    schema = result["data_schema"]
+    assert schema is not None
+    assert "install_voice_sentences" in schema.schema
+
+
+@patch.object(SimpleInventoryConfigFlow, "_async_current_entries")
+async def test_add_inventory_second_omits_voice_sentences_checkbox(
+    mock_current_entries: MagicMock,
+    hass: HomeAssistant,
+) -> None:
+    """The checkbox does not appear once a global entry already exists."""
+    flow = SimpleInventoryConfigFlow()
+    flow.hass = hass
+    hass.config.language = "en"
+    existing_global = MagicMock()
+    existing_global.data = {"entry_type": "global"}
+    mock_current_entries.return_value = [existing_global]
+
+    result = await flow.async_step_add_inventory()
+
+    schema = result["data_schema"]
+    assert schema is not None
+    assert "install_voice_sentences" not in schema.schema
+
+
+@patch.object(SimpleInventoryConfigFlow, "_async_current_entries")
+async def test_add_inventory_omits_checkbox_for_unbundled_language(
+    mock_current_entries: MagicMock,
+    hass: HomeAssistant,
+) -> None:
+    """The checkbox does not appear when no bundled template matches the language."""
+    flow = SimpleInventoryConfigFlow()
+    flow.hass = hass
+    hass.config.language = "xx"
+    mock_current_entries.return_value = []
+
+    result = await flow.async_step_add_inventory()
+
+    schema = result["data_schema"]
+    assert schema is not None
+    assert "install_voice_sentences" not in schema.schema
+
+
+@patch.object(SimpleInventoryConfigFlow, "_async_current_entries")
+async def test_add_inventory_checked_triggers_install(
+    mock_current_entries: MagicMock,
+    hass: HomeAssistant,
+    mock_setup_entry: MagicMock,
+) -> None:
+    """Checking the box on submit calls async_install_voice_sentences."""
+    flow = SimpleInventoryConfigFlow()
+    flow.hass = hass
+    hass.config.language = "en"
+    mock_current_entries.return_value = []
+
+    with patch(
+        "custom_components.simple_inventory.config_flow.async_install_voice_sentences",
+        new=AsyncMock(return_value=True),
+    ) as mock_install:
+        result = await flow.async_step_add_inventory(
+            {
+                "name": "Garage Fridge",
+                "icon": "mdi:fridge",
+                "description": "",
+                "install_voice_sentences": True,
+            }
+        )
+
+    assert result["type"] == data_entry_flow.FlowResultType.CREATE_ENTRY
+    mock_install.assert_awaited_once_with(hass)
+
+
+@patch.object(SimpleInventoryConfigFlow, "_async_current_entries")
+async def test_add_inventory_unchecked_skips_install(
+    mock_current_entries: MagicMock,
+    hass: HomeAssistant,
+    mock_setup_entry: MagicMock,
+) -> None:
+    """Leaving the box unchecked (the default) does not trigger an install."""
+    flow = SimpleInventoryConfigFlow()
+    flow.hass = hass
+    hass.config.language = "en"
+    mock_current_entries.return_value = []
+
+    with patch(
+        "custom_components.simple_inventory.config_flow.async_install_voice_sentences",
+        new=AsyncMock(return_value=True),
+    ) as mock_install:
+        result = await flow.async_step_add_inventory(
+            {
+                "name": "Garage Fridge",
+                "icon": "mdi:fridge",
+                "description": "",
+                "install_voice_sentences": False,
+            }
+        )
+
+    assert result["type"] == data_entry_flow.FlowResultType.CREATE_ENTRY
+    mock_install.assert_not_awaited()
+
+
 async def test_internal_step(hass: HomeAssistant) -> None:
     """Test the internal step for creating global entry."""
     flow = SimpleInventoryConfigFlow()
@@ -150,6 +266,97 @@ def test_options_flow_update_logic() -> None:
     assert new_data["name"] == "Main Fridge"
     assert new_data["icon"] == "mdi:fridge-outline"
     assert new_data["description"] == "Updated description"
+
+
+async def test_options_flow_offers_checkbox_for_global_entry(hass: HomeAssistant) -> None:
+    hass.config.language = "en"
+    config_entry = MagicMock()
+    config_entry.data = {"entry_type": "global", "name": "All Items Expiring Soon"}
+    config_entry.entry_id = "global_entry"
+
+    handler = OptionsFlowHandler(config_entry)
+    handler.hass = hass
+
+    result = await handler.async_step_init()
+
+    schema = result["data_schema"]
+    assert schema is not None
+    assert "install_voice_sentences" in schema.schema
+
+
+async def test_options_flow_omits_checkbox_for_regular_inventory(hass: HomeAssistant) -> None:
+    hass.config.language = "en"
+    config_entry = MagicMock()
+    config_entry.data = {"entry_type": "inventory", "name": "Kitchen Fridge"}
+    config_entry.entry_id = "kitchen_entry"
+
+    handler = OptionsFlowHandler(config_entry)
+    handler.hass = hass
+
+    result = await handler.async_step_init()
+
+    schema = result["data_schema"]
+    assert schema is not None
+    assert "install_voice_sentences" not in schema.schema
+
+
+async def test_options_flow_checked_triggers_install(hass: HomeAssistant) -> None:
+    """Checking the box on an options-flow submit calls async_install_voice_sentences."""
+    hass.config.language = "en"
+    config_entry = MagicMock()
+    config_entry.data = {"entry_type": "global", "name": "All Items Expiring Soon"}
+    config_entry.entry_id = "global_entry"
+
+    handler = OptionsFlowHandler(config_entry)
+    handler.hass = hass
+    handler.hass.config_entries = MagicMock()
+    handler.hass.config_entries.async_entries = MagicMock(return_value=[])
+
+    with patch(
+        "custom_components.simple_inventory.config_flow.async_install_voice_sentences",
+        new=AsyncMock(return_value=True),
+    ) as mock_install:
+        result = await handler.async_step_init(
+            {
+                "name": "All Items Expiring Soon",
+                "icon": "mdi:package-variant",
+                "description": "",
+                "install_voice_sentences": True,
+            }
+        )
+
+    assert result["type"] == data_entry_flow.FlowResultType.CREATE_ENTRY
+    mock_install.assert_awaited_once_with(hass)
+
+
+async def test_options_flow_preserves_voice_sentences_checkbox_on_error(
+    hass: HomeAssistant,
+) -> None:
+    hass.config.language = "en"
+    config_entry = MagicMock()
+    config_entry.data = {"entry_type": "global", "name": "All Items Expiring Soon"}
+    config_entry.entry_id = "global_entry"
+
+    handler = OptionsFlowHandler(config_entry)
+    handler.hass = hass
+
+    with patch.object(
+        OptionsFlowHandler, "_async_name_exists_excluding_current", return_value=True
+    ):
+        result = await handler.async_step_init(
+            {
+                "name": "Colliding Name",
+                "icon": "mdi:package-variant",
+                "description": "",
+                "install_voice_sentences": True,
+            }
+        )
+
+    assert result["errors"] == {"name": "name_exists"}
+    schema = result["data_schema"]
+    assert schema is not None
+    (marker,) = (key for key in schema.schema if str(key) == "install_voice_sentences")
+    assert marker.default() is True
 
 
 def test_name_exists_excluding_current_logic() -> None:

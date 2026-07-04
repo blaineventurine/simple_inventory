@@ -12,6 +12,7 @@ if TYPE_CHECKING:
 class AddItemServiceData(TypedDict):
     """Type for add item service call data."""
 
+    aliases: NotRequired[str]
     auto_add_enabled: NotRequired[bool]
     auto_add_id_to_description_enabled: NotRequired[bool]
     auto_add_to_list_quantity: NotRequired[float]
@@ -21,7 +22,8 @@ class AddItemServiceData(TypedDict):
     desired_quantity: NotRequired[float]
     expiry_alert_days: NotRequired[int]
     expiry_date: NotRequired[str]
-    inventory_id: str
+    inventory_id: NotRequired[str]
+    inventory_name: NotRequired[str]
     location: NotRequired[str]
     name: str
     price: NotRequired[float]
@@ -34,6 +36,7 @@ class AddItemServiceData(TypedDict):
 class UpdateItemServiceData(TypedDict):
     """Type for update item service call data."""
 
+    aliases: NotRequired[str]
     auto_add_enabled: NotRequired[bool]
     auto_add_id_to_description_enabled: NotRequired[bool]
     auto_add_to_list_quantity: NotRequired[float]
@@ -43,7 +46,8 @@ class UpdateItemServiceData(TypedDict):
     desired_quantity: NotRequired[float]
     expiry_alert_days: NotRequired[int]
     expiry_date: NotRequired[str]
-    inventory_id: str
+    inventory_id: NotRequired[str]
+    inventory_name: NotRequired[str]
     location: NotRequired[str]
     name: str
     old_name: str
@@ -57,7 +61,8 @@ class UpdateItemServiceData(TypedDict):
 class RemoveItemServiceData(TypedDict):
     """Type for remove item service call data."""
 
-    inventory_id: str
+    inventory_id: NotRequired[str]
+    inventory_name: NotRequired[str]
     name: str
 
 

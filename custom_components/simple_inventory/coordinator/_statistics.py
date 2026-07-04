@@ -33,6 +33,12 @@ from ._protocol import _CoordinatorProtocol
 _LOGGER = logging.getLogger(__name__)
 
 
+def _is_low_stock(item: dict[str, Any]) -> bool:
+    """True if `item`'s quantity has dropped to or below its auto-add threshold."""
+    threshold = float(item.get(FIELD_AUTO_ADD_TO_LIST_QUANTITY, 0))
+    return threshold > 0 and float(item.get(FIELD_QUANTITY, 0)) <= threshold
+
+
 class _StatisticsMixin(_CoordinatorProtocol):
     """Mixin providing inventory statistics and expiry methods."""
 
@@ -48,22 +54,23 @@ class _StatisticsMixin(_CoordinatorProtocol):
 
         below_threshold = []
         for item in items:
+            if not _is_low_stock(item):
+                continue
             quantity = float(item.get(FIELD_QUANTITY, 0))
             threshold = float(item.get(FIELD_AUTO_ADD_TO_LIST_QUANTITY, 0))
-            if threshold > 0 and quantity <= threshold:
-                desired = float(item.get(FIELD_DESIRED_QUANTITY, DEFAULT_DESIRED_QUANTITY))
-                quantity_needed = compute_quantity_needed(quantity, threshold, desired)
-                below_threshold.append(
-                    {
-                        FIELD_NAME: item.get(FIELD_NAME),
-                        FIELD_QUANTITY: quantity,
-                        "threshold": threshold,
-                        FIELD_DESIRED_QUANTITY: desired,
-                        "quantity_needed": quantity_needed,
-                        FIELD_UNIT: item.get(FIELD_UNIT, DEFAULT_UNIT),
-                        FIELD_CATEGORY: item.get(FIELD_CATEGORY, DEFAULT_CATEGORY),
-                    }
-                )
+            desired = float(item.get(FIELD_DESIRED_QUANTITY, DEFAULT_DESIRED_QUANTITY))
+            quantity_needed = compute_quantity_needed(quantity, threshold, desired)
+            below_threshold.append(
+                {
+                    FIELD_NAME: item.get(FIELD_NAME),
+                    FIELD_QUANTITY: quantity,
+                    "threshold": threshold,
+                    FIELD_DESIRED_QUANTITY: desired,
+                    "quantity_needed": quantity_needed,
+                    FIELD_UNIT: item.get(FIELD_UNIT, DEFAULT_UNIT),
+                    FIELD_CATEGORY: item.get(FIELD_CATEGORY, DEFAULT_CATEGORY),
+                }
+            )
 
         total_value = sum(
             float(item.get(FIELD_QUANTITY, 0)) * float(item.get(FIELD_PRICE, 0))
@@ -82,6 +89,25 @@ class _StatisticsMixin(_CoordinatorProtocol):
             "below_threshold": below_threshold,
             "expiring_items": expiring_items,
         }
+
+    async def async_get_low_stock_items(
+        self, inventory_id: str | None = None
+    ) -> list[dict[str, Any]]:
+        """Return items across one or all inventories at/below their auto-add threshold."""
+        if inventory_id:
+            inventories = {inventory_id: await self.async_list_items(inventory_id)}
+        else:
+            inventories = {}
+            for inventory in await self.repository.list_inventories():
+                inv_id = inventory["id"]
+                inventories[inv_id] = await self.async_list_items(inv_id)
+
+        low_stock: list[dict[str, Any]] = []
+        for inv_id, items in inventories.items():
+            for item in items:
+                if _is_low_stock(item):
+                    low_stock.append({**item, "inventory_id": inv_id})
+        return low_stock
 
     _EXPIRY_CACHE_TTL = 2.0  # seconds — shared between paired sensors in one update cycle
 

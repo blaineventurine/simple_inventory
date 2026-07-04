@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from homeassistant.core import HomeAssistant, ServiceCall
@@ -31,6 +31,7 @@ def mock_coordinator() -> MagicMock:
     coordinator.async_get_item = AsyncMock(
         return_value={"quantity": 5, "auto_add_to_list_quantity": 2}
     )
+    coordinator.async_list_items = AsyncMock(return_value=[{"name": "milk", "quantity": 5}])
     coordinator.async_save_data = AsyncMock()
     coordinator.async_lookup_by_barcode = AsyncMock(return_value=[])
     return coordinator
@@ -113,23 +114,20 @@ async def test_async_increment_item_default_amount(
 
 
 @pytest.mark.asyncio
-async def test_async_increment_item_not_found_logs_warning(
+async def test_async_increment_item_not_found_raises(
     quantity_service: QuantityService,
     quantity_service_call: ServiceCall,
     mock_coordinator: MagicMock,
-    caplog: pytest.LogCaptureFixture,
 ) -> None:
     mock_coordinator.async_increment_item.return_value = False
 
-    with caplog.at_level(logging.WARNING):
+    with pytest.raises(ServiceValidationError, match="milk"):
         await quantity_service.async_increment_item(quantity_service_call)
 
     mock_coordinator.async_increment_item.assert_awaited_once_with(
         "kitchen", "milk", 2.0, barcode=None, price=None
     )
     mock_coordinator.async_save_data.assert_not_awaited()
-
-    assert "Item not found" in caplog.text
 
 
 @pytest.mark.asyncio
@@ -199,27 +197,55 @@ async def test_async_decrement_item_no_item_data(
 
 
 @pytest.mark.asyncio
-async def test_async_decrement_item_not_found_logs_warning(
+async def test_async_decrement_item_not_found_raises(
     quantity_service: QuantityService,
     quantity_service_call: ServiceCall,
     mock_coordinator: MagicMock,
     mock_todo_manager: MagicMock,
-    caplog: pytest.LogCaptureFixture,
 ) -> None:
     mock_coordinator.async_decrement_item.return_value = False
 
-    with caplog.at_level(logging.WARNING):
+    with pytest.raises(ServiceValidationError, match="milk"):
         await quantity_service.async_decrement_item(quantity_service_call)
 
     mock_coordinator.async_decrement_item.assert_awaited_once_with(
         "kitchen", "milk", 2.0, barcode=None, price=None
     )
-
     mock_coordinator.async_get_item.assert_not_awaited()
     mock_todo_manager.check_and_add_item.assert_not_awaited()
     mock_coordinator.async_save_data.assert_not_awaited()
 
-    assert "Item not found" in caplog.text
+
+@pytest.mark.asyncio
+async def test_async_decrement_item_no_coordinator_raises(
+    quantity_service: QuantityService,
+    quantity_service_call: ServiceCall,
+) -> None:
+    quantity_service.hass.data[DOMAIN]["coordinators"] = {}
+
+    with pytest.raises(ServiceValidationError, match="not currently loaded"):
+        await quantity_service.async_decrement_item(quantity_service_call)
+
+
+@pytest.mark.asyncio
+async def test_async_decrement_item_by_inventory_name(
+    quantity_service: QuantityService,
+    mock_coordinator: MagicMock,
+) -> None:
+    entry = MagicMock()
+    entry.entry_id = "kitchen"
+    entry.data = {"name": "My Kitchen", "entry_type": "inventory"}
+
+    call = MagicMock(spec=ServiceCall)
+    call.data = {"inventory_name": "My Kitchen", "name": "milk", "amount": 1}
+
+    with patch.object(quantity_service.hass.config_entries, "async_entries", return_value=[entry]):
+        await quantity_service.async_decrement_item(call)
+
+    mock_coordinator.async_decrement_item.assert_awaited_once_with(
+        "kitchen", "milk", 1.0, barcode=None, price=None
+    )
+    mock_coordinator.async_save_data.assert_awaited_once_with("kitchen")
 
 
 @pytest.mark.asyncio
@@ -290,6 +316,7 @@ async def test_concurrent_decrement_operations(
         c = MagicMock()
         c.async_decrement_item = AsyncMock(return_value=True)
         c.async_get_item = AsyncMock(return_value={"quantity": 1, "auto_add_to_list_quantity": 2})
+        c.async_list_items = AsyncMock(return_value=[{"name": f"item_{i}", "quantity": 1}])
         c.async_save_data = AsyncMock()
         c.async_lookup_by_barcode = AsyncMock(return_value=[])
         coordinators[inv_id] = c

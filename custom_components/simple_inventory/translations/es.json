@@ -11,11 +11,13 @@
         "data": {
           "description": "Descripción",
           "icon": "Icono",
+          "install_voice_sentences": "Instalar comandos de voz de ejemplo",
           "name": "Nombre del Inventario"
         },
         "data_description": {
           "description": "Descripción opcional para este inventario",
-          "icon": "Haz clic en el campo de icono para abrir el selector con todos los iconos de Material Design"
+          "icon": "Haz clic en el campo de icono para abrir el selector con todos los iconos de Material Design",
+          "install_voice_sentences": "Copia un archivo de ejemplo de frases para Assist local (Home Assistant Voice) en tu directorio de configuración y recarga las frases personalizadas. Nunca sobrescribe un archivo existente. Solo se muestra cuando el idioma de Home Assistant es inglés."
         },
         "description": "Crear un nuevo inventario para rastrear tus artículos.",
         "title": "Agregar Inventario"
@@ -50,11 +52,13 @@
         "data": {
           "description": "Descripción",
           "icon": "Icono",
+          "install_voice_sentences": "Instalar comandos de voz de ejemplo",
           "name": "Nombre del Inventario"
         },
         "data_description": {
           "description": "Descripción opcional para este inventario",
-          "icon": "Haz clic en el campo de icono para explorar todos los iconos disponibles"
+          "icon": "Haz clic en el campo de icono para explorar todos los iconos disponibles",
+          "install_voice_sentences": "Copia un archivo de ejemplo de frases para Assist local (Home Assistant Voice) en tu directorio de configuración y recarga las frases personalizadas. Nunca sobrescribe un archivo existente. Solo se muestra para el dispositivo global de Simple Inventory, y solo cuando el idioma de Home Assistant es inglés."
         },
         "description": "Actualizar la configuración de {current_name}",
         "title": "Configurar Inventario"
@@ -105,6 +109,10 @@
           "description": "ID del inventario al que agregar",
           "name": "ID del Inventario"
         },
+        "inventory_name": {
+          "description": "Nombre del inventario (insensible a mayúsculas)",
+          "name": "Nombre del Inventario"
+        },
         "location": {
           "description": "Ubicación del artículo dentro del inventario",
           "name": "Ubicación"
@@ -150,6 +158,10 @@
         "inventory_id": {
           "description": "ID del inventario",
           "name": "ID del Inventario"
+        },
+        "inventory_name": {
+          "description": "Nombre del inventario (insensible a mayúsculas)",
+          "name": "Nombre del Inventario"
         },
         "name": {
           "description": "Nombre del artículo",
@@ -228,6 +240,10 @@
           "description": "ID del inventario",
           "name": "ID del Inventario"
         },
+        "inventory_name": {
+          "description": "Nombre del inventario (insensible a mayúsculas)",
+          "name": "Nombre del Inventario"
+        },
         "name": {
           "description": "Nombre del artículo",
           "name": "Nombre del Artículo"
@@ -269,6 +285,10 @@
         "inventory_id": {
           "description": "ID del inventario del que quitar",
           "name": "ID del Inventario"
+        },
+        "inventory_name": {
+          "description": "Nombre del inventario (insensible a mayúsculas)",
+          "name": "Nombre del Inventario"
         },
         "name": {
           "description": "Nombre del artículo a quitar",
@@ -345,6 +365,10 @@
         "inventory_id": {
           "description": "ID del inventario",
           "name": "ID del Inventario"
+        },
+        "inventory_name": {
+          "description": "Nombre del inventario (insensible a mayúsculas)",
+          "name": "Nombre del Inventario"
         },
         "location": {
           "description": "Ubicación del artículo dentro del inventario",

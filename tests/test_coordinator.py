@@ -99,6 +99,7 @@ def mock_repository(sample_inventory_data: dict) -> MagicMock:
     repo.get_item_by_barcode_global = AsyncMock(return_value=[])
     repo.get_barcodes_for_item = AsyncMock(return_value=[])
     repo.set_item_barcodes = AsyncMock()
+    repo.set_item_aliases = AsyncMock()
 
     repo.record_history_event = AsyncMock(return_value="event-id")
     repo.get_item_history = AsyncMock(return_value=[])
@@ -900,6 +901,59 @@ async def test_below_threshold_includes_quantity_needed_desired(
     assert entry["desired_quantity"] == 10
     # Desired: 10 - 2 = 8
     assert entry["quantity_needed"] == 8
+
+
+@pytest.mark.asyncio
+async def test_async_get_low_stock_items_single_inventory(
+    coordinator: SimpleInventoryCoordinator, mock_repository: MagicMock
+) -> None:
+    mock_repository.list_items_with_details = AsyncMock(
+        return_value=[
+            {"name": "Bacon", "quantity": 2, "auto_add_to_list_quantity": 5},
+            {"name": "Rice", "quantity": 10, "auto_add_to_list_quantity": 2},
+            {"name": "Untracked", "quantity": 0, "auto_add_to_list_quantity": 0},
+        ]
+    )
+
+    items = await coordinator.async_get_low_stock_items("kitchen_123")
+
+    names = [it["name"] for it in items]
+    assert names == ["Bacon"]
+    assert items[0]["inventory_id"] == "kitchen_123"
+
+
+@pytest.mark.asyncio
+async def test_async_get_low_stock_items_zero_threshold_never_matches(
+    coordinator: SimpleInventoryCoordinator, mock_repository: MagicMock
+) -> None:
+    """threshold=0 means auto-add is disabled for that item -- must never be 'low stock',
+    even at zero quantity (mirrors the existing async_get_inventory_statistics behavior)."""
+    mock_repository.list_items_with_details = AsyncMock(
+        return_value=[{"name": "Untracked", "quantity": 0, "auto_add_to_list_quantity": 0}]
+    )
+
+    items = await coordinator.async_get_low_stock_items("kitchen_123")
+
+    assert items == []
+
+
+@pytest.mark.asyncio
+async def test_async_get_low_stock_items_global_uses_list_inventories(
+    coordinator: SimpleInventoryCoordinator, mock_repository: MagicMock
+) -> None:
+    mock_repository.list_inventories = AsyncMock(
+        return_value=[{"id": "kitchen_123"}, {"id": "pantry_123"}]
+    )
+    mock_repository.list_items_with_details = AsyncMock(
+        side_effect=lambda inv_id: [
+            {"name": f"{inv_id}_item", "quantity": 1, "auto_add_to_list_quantity": 5}
+        ]
+    )
+
+    items = await coordinator.async_get_low_stock_items()
+
+    assert len(items) == 2
+    assert {i["inventory_id"] for i in items} == {"kitchen_123", "pantry_123"}
 
 
 @pytest.mark.asyncio
@@ -1900,3 +1954,86 @@ async def test_apply_barcode_updates_duplicate_raises_ha_error(
 
     with pytest.raises(HomeAssistantError, match="barcodes are already assigned"):
         await coordinator._apply_barcode_updates("kitchen_123", "item-1", "DUPE-BC")
+
+
+@pytest.mark.asyncio
+async def test_apply_alias_updates_comma_separated(
+    coordinator: SimpleInventoryCoordinator, mock_repository: MagicMock
+) -> None:
+    await coordinator._apply_alias_updates("kitchen_123", "item-1", "oats, hot cereal")
+
+    mock_repository.set_item_aliases.assert_awaited_once_with(
+        "item-1", "kitchen_123", ["oats", "hot cereal"]
+    )
+
+
+@pytest.mark.asyncio
+async def test_apply_alias_updates_empty_clears(
+    coordinator: SimpleInventoryCoordinator, mock_repository: MagicMock
+) -> None:
+    await coordinator._apply_alias_updates("kitchen_123", "item-1", "")
+
+    mock_repository.set_item_aliases.assert_awaited_once_with("item-1", "kitchen_123", [])
+
+
+@pytest.mark.asyncio
+async def test_apply_alias_updates_duplicate_raises_ha_error(
+    coordinator: SimpleInventoryCoordinator, mock_repository: MagicMock
+) -> None:
+    """IntegrityError from a duplicate alias should surface as HomeAssistantError."""
+    import aiosqlite
+    from homeassistant.exceptions import HomeAssistantError
+
+    mock_repository.set_item_aliases.side_effect = aiosqlite.IntegrityError(
+        "UNIQUE constraint failed"
+    )
+
+    with pytest.raises(HomeAssistantError, match="aliases are already assigned"):
+        await coordinator._apply_alias_updates("kitchen_123", "item-1", "dupe alias")
+
+
+@pytest.mark.asyncio
+async def test_async_add_item_with_aliases(
+    coordinator: SimpleInventoryCoordinator, mock_repository: MagicMock
+) -> None:
+    mock_repository.create_item.reset_mock()
+    mock_repository.create_item = AsyncMock(return_value="item-1")
+
+    await coordinator.async_add_item(
+        "kitchen_123", name="Oatmeal", quantity=1, aliases="oats, hot cereal"
+    )
+
+    mock_repository.set_item_aliases.assert_awaited_once_with(
+        "item-1", "kitchen_123", ["oats", "hot cereal"]
+    )
+
+
+@pytest.mark.asyncio
+async def test_async_update_item_aliases_not_provided_skips_alias_update(
+    coordinator: SimpleInventoryCoordinator, mock_repository: MagicMock
+) -> None:
+    """aliases=None (not provided in the call) must not touch existing aliases,
+    matching the barcode=None guard exactly."""
+    mock_repository.get_item_by_name = AsyncMock(return_value={"id": "item-1", "name": "Oatmeal"})
+    mock_repository.update_item = AsyncMock(return_value=True)
+    mock_repository.set_item_aliases.reset_mock()
+
+    await coordinator.async_update_item("kitchen_123", "Oatmeal", "Oatmeal", quantity=5)
+
+    mock_repository.set_item_aliases.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_async_update_item_with_aliases(
+    coordinator: SimpleInventoryCoordinator, mock_repository: MagicMock
+) -> None:
+    mock_repository.get_item_by_name = AsyncMock(return_value={"id": "item-1", "name": "Oatmeal"})
+    mock_repository.update_item = AsyncMock(return_value=True)
+
+    await coordinator.async_update_item(
+        "kitchen_123", "Oatmeal", "Oatmeal", aliases="oats, steel-cut oats"
+    )
+
+    mock_repository.set_item_aliases.assert_awaited_once_with(
+        "item-1", "kitchen_123", ["oats", "steel-cut oats"]
+    )

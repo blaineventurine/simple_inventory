@@ -11,11 +11,13 @@
         "data": {
           "description": "Opis",
           "icon": "Ikona",
+          "install_voice_sentences": "Namesti primere glasovnih ukazov",
           "name": "Ime zaloge"
         },
         "data_description": {
           "description": "Neobvezen opis zaloge",
-          "icon": "Kliknite polje za ikono, da odprete okno za izbiranje ikon (Material Design Icons)"
+          "icon": "Kliknite polje za ikono, da odprete okno za izbiranje ikon (Material Design Icons)",
+          "install_voice_sentences": "Kopira primer datoteke stavkov za lokalni Assist (Home Assistant Voice) v vašo mapo z nastavitvami in znova naloži stavke po meri. Nikoli ne prepiše obstoječe datoteke. Prikazano samo, če je jezik Home Assistant angleščina."
         },
         "description": "Ustvarite novo zalogo za spremljanje predmetov.",
         "title": "Dodaj zalogo"
@@ -50,11 +52,13 @@
         "data": {
           "description": "Opis",
           "icon": "Ikona",
+          "install_voice_sentences": "Namesti primere glasovnih ukazov",
           "name": "Ime zaloge"
         },
         "data_description": {
           "description": "Neobvezen opis zaloge",
-          "icon": "Kliknite polje za ikono, da odprete okno za izbiranje ikon (Material Design Icons)"
+          "icon": "Kliknite polje za ikono, da odprete okno za izbiranje ikon (Material Design Icons)",
+          "install_voice_sentences": "Kopira primer datoteke stavkov za lokalni Assist (Home Assistant Voice) v vašo mapo z nastavitvami in znova naloži stavke po meri. Nikoli ne prepiše obstoječe datoteke. Prikazano samo za globalno napravo Simple Inventory in samo, če je jezik Home Assistant angleščina."
         },
         "description": "Posodobite nastavitve za {current_name}",
         "title": "Nastavitve zaloge"
@@ -105,6 +109,10 @@
           "description": "ID zaloge",
           "name": "ID zaloge"
         },
+        "inventory_name": {
+          "description": "Ime zaloge (neobčutljivo na velike/male črke)",
+          "name": "Ime zaloge"
+        },
         "location": {
           "description": "Lokacija v zalogi",
           "name": "Lokacija"
@@ -150,6 +158,10 @@
         "inventory_id": {
           "description": "ID zaloge",
           "name": "ID zaloge"
+        },
+        "inventory_name": {
+          "description": "Ime zaloge (neobčutljivo na velike/male črke)",
+          "name": "Ime zaloge"
         },
         "name": {
           "description": "Ime predmeta",
@@ -228,6 +240,10 @@
           "description": "ID zaloge",
           "name": "ID zaloge"
         },
+        "inventory_name": {
+          "description": "Ime zaloge (neobčutljivo na velike/male črke)",
+          "name": "Ime zaloge"
+        },
         "name": {
           "description": "Ime predmeta",
           "name": "Ime predmeta"
@@ -269,6 +285,10 @@
         "inventory_id": {
           "description": "ID zaloge",
           "name": "ID zaloge"
+        },
+        "inventory_name": {
+          "description": "Ime zaloge (neobčutljivo na velike/male črke)",
+          "name": "Ime zaloge"
         },
         "name": {
           "description": "Ime predmeta",
@@ -345,6 +365,10 @@
         "inventory_id": {
           "description": "ID zaloge",
           "name": "ID zaloge"
+        },
+        "inventory_name": {
+          "description": "Ime zaloge (neobčutljivo na velike/male črke)",
+          "name": "Ime zaloge"
         },
         "location": {
           "description": "Lokacija v zalogi",

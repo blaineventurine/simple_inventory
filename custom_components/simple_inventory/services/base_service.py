@@ -89,11 +89,14 @@ class BaseServiceHandler:
         data: RemoveItemServiceData = cast(RemoveItemServiceData, call.data)
         return data["inventory_id"], data["name"]
 
-    def _get_inventory_name_barcode(self, call: ServiceCall) -> tuple[str, str | None, str | None]:
-        """Extract inventory_id, optional name, and optional barcode."""
+    def _get_inventory_name_barcode(
+        self, call: ServiceCall
+    ) -> tuple[str | None, str | None, str | None, str | None]:
+        """Extract inventory_id, inventory_name, optional name, and optional barcode."""
         data = call.data
         return (
-            data["inventory_id"],
+            data.get("inventory_id"),
+            data.get("inventory_name"),
             data.get("name"),
             data.get("barcode"),
         )

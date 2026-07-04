@@ -6,7 +6,7 @@ import logging
 from typing import Any, cast
 
 from homeassistant.core import HomeAssistant, ServiceCall
-from homeassistant.exceptions import HomeAssistantError
+from homeassistant.exceptions import HomeAssistantError, ServiceValidationError
 from homeassistant.util.json import JsonObjectType, JsonValueType
 
 from ..const import (
@@ -37,6 +37,7 @@ from ..types import (
 )
 from .base_service import BaseServiceHandler
 from .domain_data import get_coordinators, get_repository
+from .resolvers import inventory_display_name, resolve_inventory_id, resolve_item_name
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -100,21 +101,34 @@ class InventoryService(BaseServiceHandler):
 
     async def async_add_item(self, call: ServiceCall) -> None:
         item_data = cast(AddItemServiceData, call.data)
-        inventory_id = item_data["inventory_id"]
+        inventory_id = await resolve_inventory_id(
+            self.hass, item_data.get("inventory_id"), item_data.get("inventory_name")
+        )
         name = item_data["name"]
 
         coordinator = self._require_coordinator(inventory_id)
         if coordinator is None:
-            return
+            raise ServiceValidationError(
+                f"Inventory '{inventory_display_name(self.hass, inventory_id)}' is not currently loaded"
+            )
 
-        item_kwargs = self._extract_item_kwargs(item_data, ["inventory_id", "barcode"])
+        item_kwargs = self._extract_item_kwargs(
+            item_data, ["inventory_id", "inventory_name", "barcode", "aliases"]
+        )
         barcode = item_data.get("barcode")
+        aliases = item_data.get("aliases")
 
         try:
-            item_id = await coordinator.async_add_item(inventory_id, barcode=barcode, **item_kwargs)
+            item_id = await coordinator.async_add_item(
+                inventory_id, barcode=barcode, aliases=aliases, **item_kwargs
+            )
             if not item_id:
                 self._log_operation_failed("Add item", name, inventory_id)
-                return
+                raise ServiceValidationError(
+                    f"Could not add item '{name}' to inventory "
+                    f"'{inventory_display_name(self.hass, inventory_id)}' "
+                    "(duplicate name/barcode or invalid auto-add configuration)"
+                )
 
             item = await coordinator.async_get_item(inventory_id, name)
             if item:
@@ -133,12 +147,19 @@ class InventoryService(BaseServiceHandler):
             )
 
     async def async_remove_item(self, call: ServiceCall) -> None:
-        inventory_id, name, barcode = self._get_inventory_name_barcode(call)
+        inventory_id_raw, inventory_name, name, barcode = self._get_inventory_name_barcode(call)
+        inventory_id = await resolve_inventory_id(self.hass, inventory_id_raw, inventory_name)
         display_name = name or barcode or "unknown"
 
         coordinator = self._require_coordinator(inventory_id)
         if coordinator is None:
-            return
+            raise ServiceValidationError(
+                f"Inventory '{inventory_display_name(self.hass, inventory_id)}' is not currently loaded"
+            )
+
+        if name:
+            name = await resolve_item_name(coordinator, inventory_id, name)
+            display_name = name
 
         try:
             # Resolve name for todo cleanup before removal
@@ -165,7 +186,13 @@ class InventoryService(BaseServiceHandler):
                 )
             else:
                 self._log_item_not_found("Remove item", display_name, inventory_id)
+                raise ServiceValidationError(
+                    f"No item named '{display_name}' found in inventory "
+                    f"'{inventory_display_name(self.hass, inventory_id)}'"
+                )
 
+        except HomeAssistantError:
+            raise
         except Exception as exc:
             _LOGGER.error(
                 "Failed to remove item %s from inventory %s: %s",
@@ -176,19 +203,29 @@ class InventoryService(BaseServiceHandler):
 
     async def async_update_item(self, call: ServiceCall) -> None:
         data = cast(UpdateItemServiceData, call.data)
-        inventory_id = data["inventory_id"]
+        inventory_id = await resolve_inventory_id(
+            self.hass, data.get("inventory_id"), data.get("inventory_name")
+        )
         old_name = data["old_name"]
         new_name = data["name"]
         barcode = data.get("barcode")
+        aliases = data.get("aliases")
 
         coordinator = self._require_coordinator(inventory_id)
         if coordinator is None:
-            return
+            raise ServiceValidationError(
+                f"Inventory '{inventory_display_name(self.hass, inventory_id)}' is not currently loaded"
+            )
+
+        old_name = await resolve_item_name(coordinator, inventory_id, old_name)
 
         existing_item = await coordinator.async_get_item(inventory_id, old_name)
         if not existing_item:
             self._log_item_not_found("Update item", old_name, inventory_id)
-            return
+            raise ServiceValidationError(
+                f"No item named '{old_name}' found in inventory "
+                f"'{inventory_display_name(self.hass, inventory_id)}'"
+            )
 
         update_data = self._extract_update_fields(data)
 
@@ -198,11 +235,15 @@ class InventoryService(BaseServiceHandler):
                 old_name,
                 new_name,
                 barcode=barcode,
+                aliases=aliases,
                 **update_data,
             )
             if not updated:
                 self._log_operation_failed("Update item", old_name, inventory_id)
-                return
+                raise ServiceValidationError(
+                    f"Could not update item '{old_name}' in inventory "
+                    f"'{inventory_display_name(self.hass, inventory_id)}'"
+                )
 
             updated_item = await coordinator.async_get_item(inventory_id, new_name)
             if updated_item:

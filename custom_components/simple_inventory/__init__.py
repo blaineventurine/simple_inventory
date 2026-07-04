@@ -27,6 +27,7 @@ from .const import (
     SERVICE_UPDATE_ITEM,
 )
 from .coordinator import SimpleInventoryCoordinator
+from .intents import async_register_intents, async_unregister_intents
 from .schemas.service_schemas import (
     ADD_ITEM_SCHEMA,
     GET_ALL_ITEMS_SCHEMA,
@@ -160,6 +161,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             _register_service(hass, svc_name, handler, schema, supports_response=response_type)
 
         async_register_websocket_commands(hass)
+        async_register_intents(hass)
 
         domain_data["services_registered"] = True
         domain_data["todo_manager"] = todo_manager
@@ -242,6 +244,7 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     if domain_data.get("services_registered"):
         for svc_name in _SERVICE_NAMES:
             _remove_service(hass, svc_name)
+        async_unregister_intents(hass)
         domain_data["services_registered"] = False
 
     repository: InventoryRepository | None = domain_data.get("repository")

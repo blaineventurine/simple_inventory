@@ -12,6 +12,7 @@ A Home Assistant custom integration for managing household inventories. Track it
 - [Sensors](#sensors)
 - [Service Calls](#service-calls)
 - [WebSocket API](#websocket-api)
+- [Voice & AI Assistants](#voice--ai-assistants)
 - [Automation Examples](#automation-examples)
 
 ## Installation
@@ -716,6 +717,57 @@ Merge strategies:
 - `merge_quantities` — Add imported quantities to existing quantities
 
 Returns: `{ "added": 1, "updated": 0, "skipped": 0, "errors": [] }`
+
+## Voice & AI Assistants
+
+Simple Inventory registers three native Home Assistant intents so you can
+control your inventories by voice or through an LLM-backed conversation
+agent, without writing any automations:
+
+- **Remove/consume an item** — "remove one aluminum foil from the
+  disposable goods inventory"
+- **Add/restock an item** — "add two cans of soup to the pantry"
+- **Query a quantity** — "how many aluminum foil do we have in disposable
+  goods"
+
+Items and inventories are matched by name with typo tolerance (exact match,
+then substring, then closest-match), so you don't need to remember exact
+casing or the internal inventory ID.
+
+### LLM-backed Assist (OpenAI, Google Generative AI, a local model via Ollama, etc.)
+
+No setup needed beyond configuring the LLM conversation agent itself in
+"Assist" control mode. Simple Inventory ships an `llm.py` platform module
+that contributes its remove/add/query intents as callable tools to Home
+Assistant's Assist API, so any LLM conversation agent using it gets them
+automatically -- no entity exposure required, since these tools resolve
+inventories and items by name rather than acting on Home Assistant
+entities.
+
+### Local/offline Assist (Home Assistant Voice's default pipeline)
+
+If your Home Assistant language is English, check
+**"Install example voice commands"** when adding your first inventory
+(Settings → Devices & Services → Add Integration → Simple Inventory), or
+later via the global Simple Inventory device's **Configure** button. This
+copies a bundled example sentence file into your config directory and
+reloads custom sentences automatically — no restart needed. It never
+overwrites a file that's already there, so it's safe to check even if
+you've already installed it or created your own.
+
+If you'd rather do it by hand — for other languages (only English ships
+today; contributions welcome), to review the content first, or because you
+skipped the checkbox — copy the same file manually:
+
+```bash
+cp custom_components/simple_inventory/data/custom_sentences/en/simple_inventory.yaml \
+   <config>/custom_sentences/en/simple_inventory.yaml
+```
+
+Then reload custom sentences: **Developer Tools → Actions**, call the
+`conversation.reload` action (the same one the checkbox above triggers
+automatically), or just restart Home Assistant. Edit the sentence
+templates in that file to add your own phrasing.
 
 ## Automation Examples
 

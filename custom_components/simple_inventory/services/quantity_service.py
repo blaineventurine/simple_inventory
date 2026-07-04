@@ -7,13 +7,14 @@ from collections.abc import Awaitable, Callable
 from typing import Any, Literal, cast
 
 from homeassistant.core import HomeAssistant, ServiceCall
-from homeassistant.exceptions import ServiceValidationError
+from homeassistant.exceptions import HomeAssistantError, ServiceValidationError
 
 from ..coordinator import SimpleInventoryCoordinator
 from ..todo_manager import TodoManager
 from ..types import InventoryItem
 from .base_service import BaseServiceHandler
 from .domain_data import get_coordinators
+from .resolvers import inventory_display_name, resolve_inventory_id, resolve_item_name
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -44,14 +45,21 @@ class QuantityService(BaseServiceHandler):
         ],
         todo_method: Callable[[str, InventoryItem], Awaitable[bool]],
     ) -> None:
-        inventory_id, name, barcode = self._get_inventory_name_barcode(call)
+        inventory_id_raw, inventory_name, name, barcode = self._get_inventory_name_barcode(call)
+        inventory_id = await resolve_inventory_id(self.hass, inventory_id_raw, inventory_name)
         amount = float(call.data.get("amount", 1))
         price: float | None = call.data.get("price")
         display_name = name or barcode or "unknown"
 
         coordinator = self._require_coordinator(inventory_id)
         if coordinator is None:
-            return
+            raise ServiceValidationError(
+                f"Inventory '{inventory_display_name(self.hass, inventory_id)}' is not currently loaded"
+            )
+
+        if name:
+            name = await resolve_item_name(coordinator, inventory_id, name)
+            display_name = name
 
         try:
             if await coordinator_method(coordinator, inventory_id, name, amount, barcode, price):
@@ -81,7 +89,13 @@ class QuantityService(BaseServiceHandler):
                     display_name,
                     inventory_id,
                 )
+                raise ServiceValidationError(
+                    f"No item named '{display_name}' found in inventory "
+                    f"'{inventory_display_name(self.hass, inventory_id)}'"
+                )
 
+        except HomeAssistantError:
+            raise
         except Exception as exc:
             _LOGGER.error(
                 "Failed to %s item %s in inventory %s: %s",

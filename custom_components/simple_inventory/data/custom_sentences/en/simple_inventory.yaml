@@ -1,0 +1,74 @@
+# Example custom sentences for Simple Inventory voice control.
+#
+# This file ships bundled with the integration. If you didn't use the
+# "Install example voice commands" checkbox when setting up Simple
+# Inventory (Settings -> Devices & Services -> Simple Inventory), copy it
+# manually into your Home Assistant config directory:
+#
+#   cp custom_components/simple_inventory/data/custom_sentences/en/simple_inventory.yaml \
+#      <config>/custom_sentences/en/simple_inventory.yaml
+#
+# Then reload custom sentences: Developer Tools -> Actions, call the
+# `conversation.reload` action (or restart Home Assistant). This only
+# wires up the local, offline Assist pipeline (Home Assistant Voice's
+# default setup). If you use an LLM-backed conversation agent (OpenAI,
+# Google Generative AI, a local model via Ollama, etc.) in Assist control
+# mode instead, no sentence file is needed at all -- the same intents
+# below are automatically exposed to it as callable tools.
+language: "en"
+intents:
+  SimpleInventoryRemoveItem:
+    data:
+      - sentences:
+          - "remove {quantity} {item} from [the] {inventory} [inventory]"
+          - "remove {item} from [the] {inventory} [inventory]"
+          - "take {quantity} {item} out of [the] {inventory} [inventory]"
+          - "we used [up] {quantity} {item} from [the] {inventory} [inventory]"
+  SimpleInventoryAddItem:
+    data:
+      - sentences:
+          - "add {quantity} {item} to [the] {inventory} [inventory]"
+          - "add {item} to [the] {inventory} [inventory]"
+          - "restock {quantity} {item} in [the] {inventory} [inventory]"
+  SimpleInventoryQueryItem:
+    data:
+      - sentences:
+          - "how many {item} [do we have] [are there] in [the] {inventory} [inventory]"
+          - "are we out of {item} in [the] {inventory} [inventory]"
+  SimpleInventoryExpiryCountQuery:
+    data:
+      - sentences:
+          - "how many items are {status} [in [the] {inventory} [inventory]]"
+          - "how many {status} items [are there] [in [the] {inventory} [inventory]]"
+  SimpleInventoryLowStockCountQuery:
+    data:
+      - sentences:
+          - "how many items are low on stock [in [the] {inventory} [inventory]]"
+          - "how many items are running low [in [the] {inventory} [inventory]]"
+  SimpleInventoryExpiryListQuery:
+    data:
+      - sentences:
+          - "which items are {status} [in [the] {inventory} [inventory]]"
+          - "what items are {status} [in [the] {inventory} [inventory]]"
+          - "list [the] {status} items [in [the] {inventory} [inventory]]"
+  SimpleInventorySetItemQuantity:
+    data:
+      - sentences:
+          - "set {item} to {quantity} in [the] {inventory} [inventory]"
+lists:
+  item:
+    wildcard: true
+  inventory:
+    wildcard: true
+  quantity:
+    range:
+      from: 1
+      to: 100
+  status:
+    values:
+      - in: "expired"
+        out: "expired"
+      - in: "expiring soon"
+        out: "expiring_soon"
+      - in: "about to expire"
+        out: "expiring_soon"

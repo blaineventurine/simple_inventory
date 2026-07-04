@@ -8,6 +8,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from homeassistant.core import ServiceCall
+from homeassistant.exceptions import ServiceValidationError
 
 from custom_components.simple_inventory.services.base_service import BaseServiceHandler
 from custom_components.simple_inventory.services.inventory_service import InventoryService
@@ -76,6 +77,119 @@ class TestInventoryService:
         mock_coordinator.async_save_data.assert_not_awaited()
 
     @pytest.mark.asyncio
+    async def test_async_add_item_by_inventory_name(
+        self,
+        inventory_service: InventoryService,
+        mock_coordinator: MagicMock,
+    ) -> None:
+        entry = MagicMock()
+        entry.entry_id = "kitchen"
+        entry.data = {"name": "My Kitchen", "entry_type": "inventory"}
+
+        call = MagicMock(spec=ServiceCall)
+        call.data = {"inventory_name": "My Kitchen", "name": "milk", "quantity": 2}
+
+        with patch.object(
+            inventory_service.hass.config_entries, "async_entries", return_value=[entry]
+        ):
+            await inventory_service.async_add_item(call)
+
+        mock_coordinator.async_add_item.assert_awaited_once()
+        args, kwargs = mock_coordinator.async_add_item.call_args
+        assert args[0] == "kitchen"
+        assert "inventory_name" not in kwargs
+        assert kwargs["name"] == "milk"
+
+    @pytest.mark.asyncio
+    async def test_async_add_item_with_aliases(
+        self,
+        inventory_service: InventoryService,
+        mock_coordinator: MagicMock,
+    ) -> None:
+        call = MagicMock(spec=ServiceCall)
+        call.data = {
+            "inventory_id": "kitchen",
+            "name": "oatmeal",
+            "quantity": 1,
+            "aliases": "oats, hot cereal",
+        }
+
+        await inventory_service.async_add_item(call)
+
+        mock_coordinator.async_add_item.assert_awaited_once()
+        args, kwargs = mock_coordinator.async_add_item.call_args
+        assert args[0] == "kitchen"
+        assert kwargs["aliases"] == "oats, hot cereal"
+        assert kwargs["name"] == "oatmeal"
+
+    @pytest.mark.asyncio
+    async def test_async_add_item_without_aliases_passes_none(
+        self,
+        inventory_service: InventoryService,
+        add_item_service_call: ServiceCall,
+        mock_coordinator: MagicMock,
+    ) -> None:
+        """No 'aliases' key in the call data (the existing fixture has none) ->
+        aliases=None passed through, matching barcode's existing None-default
+        behavior (backward compatible with every pre-existing add_item call)."""
+        await inventory_service.async_add_item(add_item_service_call)
+
+        mock_coordinator.async_add_item.assert_awaited_once()
+        _, kwargs = mock_coordinator.async_add_item.call_args
+        assert kwargs["aliases"] is None
+
+    @pytest.mark.asyncio
+    async def test_async_update_item_with_aliases(
+        self,
+        inventory_service: InventoryService,
+        mock_coordinator: MagicMock,
+    ) -> None:
+        mock_coordinator.async_get_item.side_effect = [
+            {"name": "milk", "quantity": 2},
+            {"name": "whole_milk", "quantity": 3},
+        ]
+        mock_coordinator.async_update_item.return_value = True
+
+        call = MagicMock(spec=ServiceCall)
+        call.data = {
+            "inventory_id": "kitchen",
+            "old_name": "milk",
+            "name": "whole_milk",
+            "aliases": "2% milk, skim",
+        }
+
+        await inventory_service.async_update_item(call)
+
+        mock_coordinator.async_update_item.assert_awaited_once()
+        args, kwargs = mock_coordinator.async_update_item.call_args
+        assert args[0] == "kitchen"
+        assert args[1] == "milk"
+        assert args[2] == "whole_milk"
+        assert kwargs["aliases"] == "2% milk, skim"
+
+    @pytest.mark.asyncio
+    async def test_async_update_item_without_aliases_passes_none(
+        self,
+        inventory_service: InventoryService,
+        update_item_service_call: ServiceCall,
+        mock_coordinator: MagicMock,
+    ) -> None:
+        """No 'aliases' key in the call data (the existing fixture has none) ->
+        aliases=None passed through, matching barcode's existing None-default
+        behavior (backward compatible with every pre-existing update_item call)."""
+        mock_coordinator.async_get_item.side_effect = [
+            {"name": "milk", "quantity": 2},
+            {"name": "whole_milk", "quantity": 3},
+        ]
+        mock_coordinator.async_update_item.return_value = True
+
+        await inventory_service.async_update_item(update_item_service_call)
+
+        mock_coordinator.async_update_item.assert_awaited_once()
+        _, kwargs = mock_coordinator.async_update_item.call_args
+        assert kwargs["aliases"] is None
+
+    @pytest.mark.asyncio
     async def test_async_remove_item_success(
         self,
         inventory_service: InventoryService,
@@ -92,21 +206,19 @@ class TestInventoryService:
         mock_coordinator.async_save_data.assert_awaited_once_with("kitchen")
 
     @pytest.mark.asyncio
-    async def test_async_remove_item_not_found_logs_warning(
+    async def test_async_remove_item_not_found_raises(
         self,
         inventory_service: InventoryService,
         basic_service_call: ServiceCall,
         mock_coordinator: MagicMock,
-        caplog: pytest.LogCaptureFixture,
     ) -> None:
         mock_coordinator.async_remove_item.return_value = False
 
-        with caplog.at_level(logging.WARNING):
+        with pytest.raises(ServiceValidationError, match="milk"):
             await inventory_service.async_remove_item(basic_service_call)
 
         mock_coordinator.async_remove_item.assert_awaited_once_with("kitchen", "milk", barcode=None)
         mock_coordinator.async_save_data.assert_not_awaited()
-        assert "Item not found" in caplog.text
 
     @pytest.mark.asyncio
     async def test_async_remove_item_coordinator_exception_logged(
@@ -153,40 +265,36 @@ class TestInventoryService:
         mock_coordinator.async_save_data.assert_awaited_once_with("kitchen")
 
     @pytest.mark.asyncio
-    async def test_async_update_item_not_found_logs_warning(
+    async def test_async_update_item_not_found_raises(
         self,
         inventory_service: InventoryService,
         update_item_service_call: ServiceCall,
         mock_coordinator: MagicMock,
-        caplog: pytest.LogCaptureFixture,
     ) -> None:
         mock_coordinator.async_get_item.return_value = None
 
-        with caplog.at_level(logging.WARNING):
+        with pytest.raises(ServiceValidationError, match="milk"):
             await inventory_service.async_update_item(update_item_service_call)
 
         mock_coordinator.async_get_item.assert_awaited_once_with("kitchen", "milk")
         mock_coordinator.async_update_item.assert_not_awaited()
         mock_coordinator.async_save_data.assert_not_awaited()
-        assert "Item not found" in caplog.text
 
     @pytest.mark.asyncio
-    async def test_async_update_item_update_returns_false_logs_error(
+    async def test_async_update_item_update_returns_false_raises(
         self,
         inventory_service: InventoryService,
         update_item_service_call: ServiceCall,
         mock_coordinator: MagicMock,
-        caplog: pytest.LogCaptureFixture,
     ) -> None:
         mock_coordinator.async_get_item.return_value = {"name": "milk", "quantity": 2}
         mock_coordinator.async_update_item.return_value = False
 
-        with caplog.at_level(logging.ERROR):
+        with pytest.raises(ServiceValidationError, match="milk"):
             await inventory_service.async_update_item(update_item_service_call)
 
         mock_coordinator.async_update_item.assert_awaited_once()
         mock_coordinator.async_save_data.assert_not_awaited()
-        assert "failed" in caplog.text.lower()
 
     @pytest.mark.asyncio
     async def test_async_update_item_exception_logged(
@@ -329,3 +437,79 @@ class TestInventoryService:
         _, kwargs = mock_coordinator.async_add_item.call_args
         assert kwargs["description"] == "Pantry staple"
         assert kwargs["auto_add_id_to_description_enabled"] is True
+
+    @pytest.mark.asyncio
+    async def test_async_add_item_operation_failed_raises(
+        self,
+        inventory_service: InventoryService,
+        add_item_service_call: ServiceCall,
+        mock_coordinator: MagicMock,
+    ) -> None:
+        mock_coordinator.async_add_item.return_value = None
+
+        with pytest.raises(ServiceValidationError, match="milk"):
+            await inventory_service.async_add_item(add_item_service_call)
+
+        mock_coordinator.async_save_data.assert_not_awaited()
+
+    @pytest.mark.asyncio
+    async def test_async_remove_item_by_inventory_name(
+        self,
+        inventory_service: InventoryService,
+        mock_coordinator: MagicMock,
+    ) -> None:
+        entry = MagicMock()
+        entry.entry_id = "kitchen"
+        entry.data = {"name": "My Kitchen", "entry_type": "inventory"}
+        mock_coordinator.async_remove_item.return_value = True
+        mock_coordinator.async_get_item.return_value = {"name": "milk", "quantity": 2}
+
+        call = MagicMock(spec=ServiceCall)
+        call.data = {"inventory_name": "My Kitchen", "name": "milk"}
+
+        with patch.object(
+            inventory_service.hass.config_entries, "async_entries", return_value=[entry]
+        ):
+            await inventory_service.async_remove_item(call)
+
+        mock_coordinator.async_remove_item.assert_awaited_once_with("kitchen", "milk", barcode=None)
+        mock_coordinator.async_save_data.assert_awaited_once_with("kitchen")
+
+    @pytest.mark.asyncio
+    async def test_async_add_item_no_coordinator_raises(
+        self,
+        inventory_service: InventoryService,
+        add_item_service_call: ServiceCall,
+    ) -> None:
+        from custom_components.simple_inventory.const import DOMAIN
+
+        inventory_service.hass.data[DOMAIN]["coordinators"] = {}
+
+        with pytest.raises(ServiceValidationError, match="not currently loaded"):
+            await inventory_service.async_add_item(add_item_service_call)
+
+    @pytest.mark.asyncio
+    async def test_async_remove_item_no_coordinator_raises(
+        self,
+        inventory_service: InventoryService,
+        basic_service_call: ServiceCall,
+    ) -> None:
+        from custom_components.simple_inventory.const import DOMAIN
+
+        inventory_service.hass.data[DOMAIN]["coordinators"] = {}
+
+        with pytest.raises(ServiceValidationError, match="not currently loaded"):
+            await inventory_service.async_remove_item(basic_service_call)
+
+    @pytest.mark.asyncio
+    async def test_async_update_item_no_coordinator_raises(
+        self,
+        inventory_service: InventoryService,
+        update_item_service_call: ServiceCall,
+    ) -> None:
+        from custom_components.simple_inventory.const import DOMAIN
+
+        inventory_service.hass.data[DOMAIN]["coordinators"] = {}
+
+        with pytest.raises(ServiceValidationError, match="not currently loaded"):
+            await inventory_service.async_update_item(update_item_service_call)

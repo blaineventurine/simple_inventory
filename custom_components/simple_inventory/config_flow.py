@@ -14,6 +14,7 @@ from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers import selector, translation
 
 from .const import DOMAIN
+from .voice_sentences import async_install_voice_sentences, can_offer_voice_sentences
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -54,6 +55,8 @@ class SimpleInventoryConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     ) -> ConfigFlowResult:
         """Handle adding a new inventory."""
         errors = {}
+        is_first_inventory = not self._global_entry_exists()
+        offer_voice_sentences = is_first_inventory and can_offer_voice_sentences(self.hass)
 
         if user_input is not None:
             cleaned_name = await clean_inventory_name(self.hass, user_input["name"])
@@ -63,6 +66,9 @@ class SimpleInventoryConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             else:
                 icon = user_input.get("icon") or DEFAULT_ICON
 
+                if offer_voice_sentences and user_input.get("install_voice_sentences"):
+                    await async_install_voice_sentences(self.hass)
+
                 return self.async_create_entry(
                     title=cleaned_name,
                     data={
@@ -70,23 +76,30 @@ class SimpleInventoryConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                         "icon": icon,
                         "description": user_input.get("description", ""),
                         "entry_type": "inventory",
-                        "create_global": not self._global_entry_exists(),
+                        "create_global": is_first_inventory,
                     },
                 )
 
         defaults = user_input or {}
 
+        schema_dict: dict[Any, Any] = {
+            vol.Required("name", default=defaults.get("name", "")): cv.string,
+            vol.Optional(
+                "icon", default=defaults.get("icon", DEFAULT_ICON)
+            ): selector.IconSelector(),
+            vol.Optional("description", default=defaults.get("description", "")): cv.string,
+        }
+        if offer_voice_sentences:
+            schema_dict[
+                vol.Optional(
+                    "install_voice_sentences",
+                    default=defaults.get("install_voice_sentences", False),
+                )
+            ] = cv.boolean
+
         return self.async_show_form(
             step_id="add_inventory",
-            data_schema=vol.Schema(
-                {
-                    vol.Required("name", default=defaults.get("name", "")): cv.string,
-                    vol.Optional(
-                        "icon", default=defaults.get("icon", DEFAULT_ICON)
-                    ): selector.IconSelector(),
-                    vol.Optional("description", default=defaults.get("description", "")): cv.string,
-                }
-            ),
+            data_schema=vol.Schema(schema_dict),
             errors=errors,
         )
 
@@ -129,6 +142,8 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
     async def async_step_init(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
         """Manage the options."""
         errors = {}
+        is_global_entry = self._config_entry.data.get("entry_type") == "global"
+        offer_voice_sentences = is_global_entry and can_offer_voice_sentences(self.hass)
 
         if user_input is not None:
             cleaned_name = await clean_inventory_name(self.hass, user_input["name"])
@@ -156,25 +171,33 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                     {"action": "renamed", "new_name": cleaned_name},
                 )
 
+                if offer_voice_sentences and user_input.get("install_voice_sentences"):
+                    await async_install_voice_sentences(self.hass)
+
                 return self.async_create_entry(title="", data={})
+
+        schema_dict: dict[Any, Any] = {
+            vol.Required("name", default=self._config_entry.data.get("name", "")): cv.string,
+            vol.Optional(
+                "icon",
+                default=self._config_entry.data.get("icon", DEFAULT_ICON),
+            ): selector.IconSelector(),
+            vol.Optional(
+                "description",
+                default=self._config_entry.data.get("description", ""),
+            ): cv.string,
+        }
+        if offer_voice_sentences:
+            schema_dict[
+                vol.Optional(
+                    "install_voice_sentences",
+                    default=(user_input or {}).get("install_voice_sentences", False),
+                )
+            ] = cv.boolean
 
         return self.async_show_form(
             step_id="init",
-            data_schema=vol.Schema(
-                {
-                    vol.Required(
-                        "name", default=self._config_entry.data.get("name", "")
-                    ): cv.string,
-                    vol.Optional(
-                        "icon",
-                        default=self._config_entry.data.get("icon", DEFAULT_ICON),
-                    ): selector.IconSelector(),
-                    vol.Optional(
-                        "description",
-                        default=self._config_entry.data.get("description", ""),
-                    ): cv.string,
-                }
-            ),
+            data_schema=vol.Schema(schema_dict),
             errors=errors,
             description_placeholders={
                 "current_name": self._config_entry.data.get("name", ""),

@@ -30,6 +30,7 @@ from ..const import (
     EVENT_ITEM_QUANTITY_CHANGED,
     EVENT_ITEM_REMOVED,
     EVENT_ITEM_RESTOCKED,
+    FIELD_ALIASES,
     FIELD_AUTO_ADD_ENABLED,
     FIELD_AUTO_ADD_ID_TO_DESCRIPTION_ENABLED,
     FIELD_AUTO_ADD_TO_LIST_QUANTITY,
@@ -181,6 +182,7 @@ class SimpleInventoryCoordinator(_StatisticsMixin, _ImportExportMixin, _Analytic
         item_id = await self.repository.create_item(inventory_id, item_payload)
 
         await self._apply_barcode_updates(inventory_id, item_id, kwargs.get(FIELD_BARCODE, ""))
+        await self._apply_alias_updates(inventory_id, item_id, kwargs.get(FIELD_ALIASES, ""))
 
         await self._apply_location_updates(
             inventory_id,
@@ -218,6 +220,7 @@ class SimpleInventoryCoordinator(_StatisticsMixin, _ImportExportMixin, _Analytic
         new_name: str,
         *,
         barcode: str | None = None,
+        aliases: str | None = None,
         **kwargs: Any,
     ) -> bool:
         """Update an existing item."""
@@ -271,6 +274,9 @@ class SimpleInventoryCoordinator(_StatisticsMixin, _ImportExportMixin, _Analytic
 
         if barcode is not None:
             await self._apply_barcode_updates(inventory_id, item["id"], barcode)
+
+        if aliases is not None:
+            await self._apply_alias_updates(inventory_id, item["id"], aliases)
 
         await self._after_change(inventory_id)
         return True
@@ -624,6 +630,23 @@ class SimpleInventoryCoordinator(_StatisticsMixin, _ImportExportMixin, _Analytic
         except aiosqlite.IntegrityError as exc:
             raise HomeAssistantError(
                 "One or more barcodes are already assigned to another item" " in this inventory"
+            ) from exc
+
+    async def _apply_alias_updates(self, inventory_id: str, item_id: str, aliases_str: str) -> None:
+        if not aliases_str:
+            await self.repository.set_item_aliases(item_id, inventory_id, [])
+            return
+
+        aliases = [a.strip() for a in aliases_str.split(",") if a.strip()]
+        if not aliases:
+            await self.repository.set_item_aliases(item_id, inventory_id, [])
+            return
+
+        try:
+            await self.repository.set_item_aliases(item_id, inventory_id, aliases)
+        except aiosqlite.IntegrityError as exc:
+            raise HomeAssistantError(
+                "One or more aliases are already assigned to another item in this inventory"
             ) from exc
 
     async def _apply_location_updates(

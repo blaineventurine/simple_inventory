@@ -2,9 +2,15 @@ add_item:
   description: Add an item to an inventory
   fields:
     inventory_id:
-      description: ID of the inventory to add to
+      description: ID of the inventory to add to. Provide this or inventory_name (not both).
       example: "01JYFPCDMBRBRK4MB3C26S2FKH"
-      required: true
+      required: false
+      selector:
+        text:
+    inventory_name:
+      description: Name of the inventory (case-insensitive). Provide this or inventory_id (not both).
+      example: "Disposable Goods"
+      required: false
       selector:
         text:
     name:
@@ -16,6 +22,13 @@ add_item:
     barcode:
       description: Barcode to associate with the item (UPC, EAN, etc.). Must be quoted in YAML if it has leading zeros.
       example: "012345678901"
+      required: false
+      default: ""
+      selector:
+        text:
+    aliases:
+      description: Alternate names for the item, usable anywhere the item name is accepted (voice, LLM tools, services). Supports multiple aliases as a comma-separated list.
+      example: "oats, steel-cut oats, hot cereal"
       required: false
       default: ""
       selector:
@@ -136,9 +149,15 @@ remove_item:
   description: Remove an item from an inventory
   fields:
     inventory_id:
-      description: ID of the inventory to remove from
+      description: ID of the inventory to remove from. Provide this or inventory_name (not both).
       example: "01JYFPCDMBRBRK4MB3C26S2FKH"
-      required: true
+      required: false
+      selector:
+        text:
+    inventory_name:
+      description: Name of the inventory (case-insensitive). Provide this or inventory_id (not both).
+      example: "Disposable Goods"
+      required: false
       selector:
         text:
     name:
@@ -158,9 +177,15 @@ increment_item:
   description: Increment the quantity of an item
   fields:
     inventory_id:
-      description: ID of the inventory
+      description: ID of the inventory. Provide this or inventory_name (not both).
       example: "01JYFPCDMBRBRK4MB3C26S2FKH"
-      required: true
+      required: false
+      selector:
+        text:
+    inventory_name:
+      description: Name of the inventory (case-insensitive). Provide this or inventory_id (not both).
+      example: "Disposable Goods"
+      required: false
       selector:
         text:
     name:
@@ -197,9 +222,15 @@ decrement_item:
   description: Decrement the quantity of an item
   fields:
     inventory_id:
-      description: ID of the inventory
+      description: ID of the inventory. Provide this or inventory_name (not both).
       example: "01JYFPCDMBRBRK4MB3C26S2FKH"
-      required: true
+      required: false
+      selector:
+        text:
+    inventory_name:
+      description: Name of the inventory (case-insensitive). Provide this or inventory_id (not both).
+      example: "Disposable Goods"
+      required: false
       selector:
         text:
     name:
@@ -236,9 +267,15 @@ update_item:
   description: Update an existing inventory item
   fields:
     inventory_id:
-      description: ID of the inventory
+      description: ID of the inventory. Provide this or inventory_name (not both).
       example: "01JYFPCDMBRBRK4MB3C26S2FKH"
-      required: true
+      required: false
+      selector:
+        text:
+    inventory_name:
+      description: Name of the inventory (case-insensitive). Provide this or inventory_id (not both).
+      example: "Disposable Goods"
+      required: false
       selector:
         text:
     old_name:
@@ -256,6 +293,12 @@ update_item:
     barcode:
       description: Barcode to associate with the item (UPC, EAN, etc.). Must be quoted in YAML if it has leading zeros.
       example: "012345678901"
+      required: false
+      selector:
+        text:
+    aliases:
+      description: Alternate names for the item, usable anywhere the item name is accepted (voice, LLM tools, services). Supports multiple aliases as a comma-separated list.
+      example: "oats, steel-cut oats, hot cereal"
       required: false
       selector:
         text:

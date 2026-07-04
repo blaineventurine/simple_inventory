@@ -81,6 +81,7 @@ async def test_async_setup_entry_first_creates_repo_and_registers_services(
         patch("custom_components.simple_inventory.SimpleInventoryCoordinator") as coord_cls,
         patch("custom_components.simple_inventory.TodoManager") as todo_cls,
         patch("custom_components.simple_inventory.ServiceHandler") as handler_cls,
+        patch("custom_components.simple_inventory.async_register_intents") as register_intents_mock,
     ):
         repo = repo_cls.return_value
         repo.async_initialize = AsyncMock()
@@ -134,6 +135,9 @@ async def test_async_setup_entry_first_creates_repo_and_registers_services(
             SERVICE_LOOKUP_BY_BARCODE,
             SERVICE_SCAN_BARCODE,
         }
+
+        # Intents registered
+        register_intents_mock.assert_called_once_with(hass_mock)
 
         # Domain data contains coordinator
         assert DOMAIN in hass_mock.data
@@ -220,12 +224,16 @@ async def test_async_unload_entry_non_last_keeps_services_and_repo(
         "repository": repo,
     }
 
-    ok = await async_unload_entry(hass_mock, entry1)
-    assert ok is True
+    with patch(
+        "custom_components.simple_inventory.async_unregister_intents"
+    ) as unregister_intents_mock:
+        ok = await async_unload_entry(hass_mock, entry1)
+        assert ok is True
 
-    hass_mock.services.async_remove.assert_not_called()
-    repo.async_close.assert_not_awaited()
-    assert entry2.entry_id in hass_mock.data[DOMAIN]["coordinators"]
+        hass_mock.services.async_remove.assert_not_called()
+        repo.async_close.assert_not_awaited()
+        assert entry2.entry_id in hass_mock.data[DOMAIN]["coordinators"]
+        unregister_intents_mock.assert_not_called()
 
 
 @pytest.mark.asyncio
@@ -243,27 +251,31 @@ async def test_async_unload_entry_last_removes_services_and_closes_repo(
         "repository": repo,
     }
 
-    ok = await async_unload_entry(hass_mock, entry1)
-    assert ok is True
+    with patch(
+        "custom_components.simple_inventory.async_unregister_intents"
+    ) as unregister_intents_mock:
+        ok = await async_unload_entry(hass_mock, entry1)
+        assert ok is True
 
-    removed_names = {c.args[1] for c in hass_mock.services.async_remove.call_args_list}
-    assert removed_names == {
-        SERVICE_ADD_ITEM,
-        SERVICE_DECREMENT_ITEM,
-        SERVICE_INCREMENT_ITEM,
-        SERVICE_REMOVE_ITEM,
-        SERVICE_UPDATE_ITEM,
-        SERVICE_GET_ITEMS,
-        SERVICE_GET_ALL_ITEMS,
-        SERVICE_GET_INVENTORY_CONSUMPTION_RATES,
-        SERVICE_GET_ITEM_CONSUMPTION_RATES,
-        SERVICE_LOOKUP_BARCODE_PRODUCT,
-        SERVICE_LOOKUP_BY_BARCODE,
-        SERVICE_SCAN_BARCODE,
-    }
+        removed_names = {c.args[1] for c in hass_mock.services.async_remove.call_args_list}
+        assert removed_names == {
+            SERVICE_ADD_ITEM,
+            SERVICE_DECREMENT_ITEM,
+            SERVICE_INCREMENT_ITEM,
+            SERVICE_REMOVE_ITEM,
+            SERVICE_UPDATE_ITEM,
+            SERVICE_GET_ITEMS,
+            SERVICE_GET_ALL_ITEMS,
+            SERVICE_GET_INVENTORY_CONSUMPTION_RATES,
+            SERVICE_GET_ITEM_CONSUMPTION_RATES,
+            SERVICE_LOOKUP_BARCODE_PRODUCT,
+            SERVICE_LOOKUP_BY_BARCODE,
+            SERVICE_SCAN_BARCODE,
+        }
 
-    repo.async_close.assert_awaited_once()
-    assert DOMAIN not in hass_mock.data
+        repo.async_close.assert_awaited_once()
+        assert DOMAIN not in hass_mock.data
+        unregister_intents_mock.assert_called_once_with(hass_mock)
 
 
 @pytest.mark.asyncio

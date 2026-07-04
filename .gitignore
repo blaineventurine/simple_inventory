@@ -175,3 +175,4 @@ mutants/
 
 # Uv lock file
 uv.lock
+pytest-of-*/

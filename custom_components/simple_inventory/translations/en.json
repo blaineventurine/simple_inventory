@@ -11,11 +11,13 @@
         "data": {
           "description": "Description",
           "icon": "Icon",
+          "install_voice_sentences": "Install example voice commands",
           "name": "Inventory Name"
         },
         "data_description": {
           "description": "Optional description for this inventory",
-          "icon": "Click the icon field to open the icon picker with all Material Design Icons"
+          "icon": "Click the icon field to open the icon picker with all Material Design Icons",
+          "install_voice_sentences": "Copies an example sentence file for local Assist (Home Assistant Voice) into your config directory and reloads custom sentences. Never overwrites an existing file. Only shown when Home Assistant's language is English."
         },
         "description": "Create a new inventory to track your items.",
         "title": "Add Inventory"
@@ -50,11 +52,13 @@
         "data": {
           "description": "Description",
           "icon": "Icon",
+          "install_voice_sentences": "Install example voice commands",
           "name": "Inventory Name"
         },
         "data_description": {
           "description": "Optional description for this inventory",
-          "icon": "Click the icon field to browse all available icons"
+          "icon": "Click the icon field to browse all available icons",
+          "install_voice_sentences": "Copies an example sentence file for local Assist (Home Assistant Voice) into your config directory and reloads custom sentences. Never overwrites an existing file. Only shown for the global Simple Inventory device, and only when Home Assistant's language is English."
         },
         "description": "Update the settings for {current_name}",
         "title": "Configure Inventory"
@@ -105,6 +109,10 @@
           "description": "ID of the inventory to add to",
           "name": "Inventory ID"
         },
+        "inventory_name": {
+          "description": "Name of the inventory (case-insensitive)",
+          "name": "Inventory Name"
+        },
         "location": {
           "description": "Location of the item within the inventory",
           "name": "Location"
@@ -150,6 +158,10 @@
         "inventory_id": {
           "description": "ID of the inventory",
           "name": "Inventory ID"
+        },
+        "inventory_name": {
+          "description": "Name of the inventory (case-insensitive)",
+          "name": "Inventory Name"
         },
         "name": {
           "description": "Name of the item",
@@ -228,6 +240,10 @@
           "description": "ID of the inventory",
           "name": "Inventory ID"
         },
+        "inventory_name": {
+          "description": "Name of the inventory (case-insensitive)",
+          "name": "Inventory Name"
+        },
         "name": {
           "description": "Name of the item",
           "name": "Item Name"
@@ -269,6 +285,10 @@
         "inventory_id": {
           "description": "ID of the inventory to remove from",
           "name": "Inventory ID"
+        },
+        "inventory_name": {
+          "description": "Name of the inventory (case-insensitive)",
+          "name": "Inventory Name"
         },
         "name": {
           "description": "Name of the item to remove",
@@ -345,6 +365,10 @@
         "inventory_id": {
           "description": "ID of the inventory",
           "name": "Inventory ID"
+        },
+        "inventory_name": {
+          "description": "Name of the inventory (case-insensitive)",
+          "name": "Inventory Name"
         },
         "location": {
           "description": "Location within the inventory",

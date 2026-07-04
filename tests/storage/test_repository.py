@@ -1034,6 +1034,73 @@ async def test_set_item_barcodes_empty_clears(repo: InventoryRepository) -> None
 
 
 @pytest.mark.asyncio
+async def test_set_item_aliases_replaces_all(repo: InventoryRepository) -> None:
+    await repo.upsert_inventory("inv1", "Kitchen", "", "", "", None)
+    item_id = await repo.create_item("inv1", {FIELD_NAME: "Oatmeal", FIELD_QUANTITY: 1})
+
+    await repo.set_item_aliases(item_id, "inv1", ["oats", "hot cereal"])
+    aliases = await repo.get_aliases_for_item(item_id)
+    assert sorted(aliases) == ["hot cereal", "oats"]
+
+    await repo.set_item_aliases(item_id, "inv1", ["steel-cut oats"])
+    aliases = await repo.get_aliases_for_item(item_id)
+    assert aliases == ["steel-cut oats"]
+
+
+@pytest.mark.asyncio
+async def test_set_item_aliases_empty_clears(repo: InventoryRepository) -> None:
+    await repo.upsert_inventory("inv1", "Kitchen", "", "", "", None)
+    item_id = await repo.create_item("inv1", {FIELD_NAME: "Oatmeal", FIELD_QUANTITY: 1})
+
+    await repo.set_item_aliases(item_id, "inv1", ["oats"])
+    assert len(await repo.get_aliases_for_item(item_id)) == 1
+
+    await repo.set_item_aliases(item_id, "inv1", [])
+    assert await repo.get_aliases_for_item(item_id) == []
+
+
+@pytest.mark.asyncio
+async def test_set_item_aliases_duplicate_across_items_raises(repo: InventoryRepository) -> None:
+    """Two different items in the same inventory cannot share an alias."""
+    import aiosqlite
+
+    await repo.upsert_inventory("inv1", "Kitchen", "", "", "", None)
+    item_a = await repo.create_item("inv1", {FIELD_NAME: "Oatmeal", FIELD_QUANTITY: 1})
+    item_b = await repo.create_item("inv1", {FIELD_NAME: "Granola", FIELD_QUANTITY: 1})
+
+    await repo.set_item_aliases(item_a, "inv1", ["breakfast food"])
+
+    with pytest.raises(aiosqlite.IntegrityError):
+        await repo.set_item_aliases(item_b, "inv1", ["breakfast food"])
+
+
+@pytest.mark.asyncio
+async def test_aliases_show_in_list_items_with_details(repo: InventoryRepository) -> None:
+    await repo.upsert_inventory("inv1", "Kitchen", "", "", "", None)
+    item_id = await repo.create_item("inv1", {FIELD_NAME: "Oatmeal", FIELD_QUANTITY: 1})
+    await repo.set_item_aliases(item_id, "inv1", ["oats", "hot cereal"])
+
+    items = await repo.list_items_with_details("inv1")
+    assert len(items) == 1
+    assert sorted(items[0]["aliases"]) == ["hot cereal", "oats"]
+
+
+@pytest.mark.asyncio
+async def test_delete_item_cascades_aliases(repo: InventoryRepository) -> None:
+    await repo.upsert_inventory("inv1", "Kitchen", "", "", "", None)
+    item_id = await repo.create_item("inv1", {FIELD_NAME: "Oatmeal", FIELD_QUANTITY: 1})
+    await repo.set_item_aliases(item_id, "inv1", ["oats"])
+
+    ok = await repo.delete_item(item_id)
+    assert ok is True
+
+    assert await repo.get_aliases_for_item(item_id) == []
+
+    items = await repo.list_items_with_details("inv1")
+    assert items == []
+
+
+@pytest.mark.asyncio
 async def test_get_barcode_provider_config_empty(repo: InventoryRepository) -> None:
     config = await repo.get_barcode_provider_config()
     assert config == {}

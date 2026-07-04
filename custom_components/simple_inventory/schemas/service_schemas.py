@@ -11,8 +11,24 @@ from ..const import (
 )
 
 INVENTORY_ID = vol.Required("inventory_id")
+INVENTORY_ID_OPTIONAL = vol.Optional("inventory_id")
+INVENTORY_NAME = vol.Optional("inventory_name")
 NAME = vol.Required("name")
 OLD_NAME = vol.Required("old_name")
+
+
+def _require_inventory_id_or_name(data: dict) -> dict:
+    """Validate that exactly one of inventory_id or inventory_name is provided."""
+    has_id = "inventory_id" in data and data["inventory_id"]
+    has_name = "inventory_name" in data and data["inventory_name"]
+
+    if not (has_id or has_name):
+        raise vol.Invalid("Either 'inventory_id' or 'inventory_name' is required")
+    if has_id and has_name:
+        raise vol.Invalid("Cannot specify both 'inventory_id' and 'inventory_name'")
+
+    return data
+
 
 ITEM_SCHEMA = {
     NAME: cv.string,
@@ -21,6 +37,7 @@ ITEM_SCHEMA = {
     vol.Optional("auto_add_to_list_quantity"): vol.All(
         vol.Coerce(float), vol.Range(min=DEFAULT_AUTO_ADD_TO_LIST_QUANTITY)
     ),
+    vol.Optional("aliases"): cv.string,
     vol.Optional("barcode"): cv.string,
     vol.Optional("category"): cv.string,
     vol.Optional("description"): cv.string,
@@ -39,9 +56,24 @@ ITEM_SCHEMA = {
     vol.Optional("price"): vol.All(vol.Coerce(float), vol.Range(min=0)),
 }
 
-ADD_ITEM_SCHEMA = vol.Schema({INVENTORY_ID: cv.string, **ITEM_SCHEMA})
+ADD_ITEM_SCHEMA = vol.Schema(
+    vol.All(
+        {INVENTORY_ID_OPTIONAL: cv.string, INVENTORY_NAME: cv.string, **ITEM_SCHEMA},
+        _require_inventory_id_or_name,
+    )
+)
 
-UPDATE_ITEM_SCHEMA = vol.Schema({INVENTORY_ID: cv.string, OLD_NAME: cv.string, **ITEM_SCHEMA})
+UPDATE_ITEM_SCHEMA = vol.Schema(
+    vol.All(
+        {
+            INVENTORY_ID_OPTIONAL: cv.string,
+            INVENTORY_NAME: cv.string,
+            OLD_NAME: cv.string,
+            **ITEM_SCHEMA,
+        },
+        _require_inventory_id_or_name,
+    )
+)
 
 
 def _require_name_or_barcode(data: dict) -> dict:
@@ -56,18 +88,21 @@ def _require_name_or_barcode(data: dict) -> dict:
 REMOVE_ITEM_SCHEMA = vol.Schema(
     vol.All(
         {
-            INVENTORY_ID: cv.string,
+            INVENTORY_ID_OPTIONAL: cv.string,
+            INVENTORY_NAME: cv.string,
             vol.Optional("name"): cv.string,
             vol.Optional("barcode"): cv.string,
         },
         _require_name_or_barcode,
+        _require_inventory_id_or_name,
     )
 )
 
 QUANTITY_UPDATE_SCHEMA = vol.Schema(
     vol.All(
         {
-            INVENTORY_ID: cv.string,
+            INVENTORY_ID_OPTIONAL: cv.string,
+            INVENTORY_NAME: cv.string,
             vol.Optional("name"): cv.string,
             vol.Optional("barcode"): cv.string,
             vol.Optional("amount", default=DEFAULT_QUANTITY): vol.All(
@@ -76,23 +111,9 @@ QUANTITY_UPDATE_SCHEMA = vol.Schema(
             vol.Optional("price"): vol.All(vol.Coerce(float), vol.Range(min=0)),
         },
         _require_name_or_barcode,
+        _require_inventory_id_or_name,
     )
 )
-
-
-# Accepts either inventory_id OR inventory_name
-def validate_get_items(data: dict) -> dict:
-    """Validate that exactly one of inventory_id or inventory_name is provided."""
-    has_id = "inventory_id" in data and data["inventory_id"]
-    has_name = "inventory_name" in data and data["inventory_name"]
-
-    if not (has_id or has_name):
-        raise vol.Invalid("Either 'inventory_id' or 'inventory_name' is required")
-    if has_id and has_name:
-        raise vol.Invalid("Cannot specify both 'inventory_id' and 'inventory_name'")
-
-    return data
-
 
 GET_ITEMS_SCHEMA = vol.Schema(
     vol.All(
@@ -100,7 +121,7 @@ GET_ITEMS_SCHEMA = vol.Schema(
             vol.Optional("inventory_id"): cv.string,
             vol.Optional("inventory_name"): cv.string,
         },
-        validate_get_items,
+        _require_inventory_id_or_name,
     )
 )
 
