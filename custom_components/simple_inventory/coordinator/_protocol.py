@@ -29,5 +29,13 @@ class _CoordinatorProtocol(Protocol):
     async def _apply_category_updates(self, item_id: str, category_name: str) -> None:
         pass
 
+    async def _apply_alias_updates(
+        self,
+        inventory_id: str,
+        item_id: str,
+        aliases_str: str,
+    ) -> None:
+        pass
+
     async def _after_change(self, inventory_id: str) -> None:
         pass

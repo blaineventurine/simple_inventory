@@ -69,6 +69,10 @@
     "add_item": {
       "description": "Agregar un artículo a un inventario",
       "fields": {
+        "aliases": {
+          "description": "Nombres alternativos para el artículo, utilizables en cualquier lugar donde se acepte el nombre del artículo (separados por comas)",
+          "name": "Alias"
+        },
         "auto_add_enabled": {
           "description": "Habilitar agregado automático a la lista de tareas",
           "name": "Auto Agregar Habilitado"
@@ -326,6 +330,10 @@
     "update_item": {
       "description": "Actualizar un artículo existente del inventario",
       "fields": {
+        "aliases": {
+          "description": "Nombres alternativos para el artículo, utilizables en cualquier lugar donde se acepte el nombre del artículo (separados por comas)",
+          "name": "Alias"
+        },
         "auto_add_enabled": {
           "description": "Habilitar auto-agregar a lista de tareas",
           "name": "Auto Agregar Habilitado"

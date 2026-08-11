@@ -26,9 +26,6 @@ def intents_obj() -> Intents:
 
 
 def _recognize(intents_obj: Intents, text: str) -> RecognizeResult | None:
-    # Matches homeassistant/components/conversation/default_agent.py's
-    # _recognize_strict() call exactly, so this test reflects HA's real
-    # ambiguity-resolution behavior, not hassil's bare default.
     return recognize_best(
         text,
         intents_obj,
@@ -157,12 +154,5 @@ def test_set_item_quantity_phrase_routes_correctly(intents_obj: Intents) -> None
 
 
 def test_set_item_quantity_without_inventory_does_not_match(intents_obj: Intents) -> None:
-    """Regression guard for a genuinely ambiguous phrasing dropped during design:
-    an earlier draft template ('set {item} in [the] {inventory} [inventory] to
-    {quantity}') let the {item} wildcard silently swallow 'in the freezer' whole,
-    producing item='aluminum foil in the freezer' with no inventory slot at all.
-    That phrasing was removed entirely; the sole remaining template requires the
-    inventory clause, so a command omitting it must simply not match anything
-    (a clean 'didn't understand', not a wrong/ambiguous match)."""
     result = _recognize(intents_obj, "set aluminum foil to 5")
     assert result is None

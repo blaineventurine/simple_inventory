@@ -1269,6 +1269,44 @@ async def test_import_json_overwrite(
 
 
 @pytest.mark.asyncio
+async def test_import_json_overwrite_updates_aliases_from_list(
+    coordinator: SimpleInventoryCoordinator, mock_repository: MagicMock
+) -> None:
+    """Exported items carry aliases as a list; overwrite import must apply it."""
+    mock_repository.get_item_by_name = AsyncMock(
+        return_value={"id": "existing", "name": "Milk", "quantity": 5}
+    )
+
+    data = {"items": [{"name": "Milk", "quantity": 10, "aliases": ["2% milk", "dairy"]}]}
+
+    with patch.object(EventBus, "async_fire"):
+        await coordinator.async_import_inventory("kitchen_123", data, "json", "overwrite")
+
+    mock_repository.set_item_aliases.assert_awaited_once_with(
+        "existing", "kitchen_123", ["2% milk", "dairy"]
+    )
+
+
+@pytest.mark.asyncio
+async def test_import_json_overwrite_updates_aliases_from_comma_string(
+    coordinator: SimpleInventoryCoordinator, mock_repository: MagicMock
+) -> None:
+    """Hand-written import data may supply aliases as a comma-separated string."""
+    mock_repository.get_item_by_name = AsyncMock(
+        return_value={"id": "existing", "name": "Milk", "quantity": 5}
+    )
+
+    data = {"items": [{"name": "Milk", "quantity": 10, "aliases": "2% milk, dairy"}]}
+
+    with patch.object(EventBus, "async_fire"):
+        await coordinator.async_import_inventory("kitchen_123", data, "json", "overwrite")
+
+    mock_repository.set_item_aliases.assert_awaited_once_with(
+        "existing", "kitchen_123", ["2% milk", "dairy"]
+    )
+
+
+@pytest.mark.asyncio
 async def test_import_json_merge_quantities(
     coordinator: SimpleInventoryCoordinator, mock_repository: MagicMock
 ) -> None:
@@ -1306,6 +1344,24 @@ async def test_import_new_item(
 
 
 @pytest.mark.asyncio
+async def test_import_new_item_sets_aliases(
+    coordinator: SimpleInventoryCoordinator, mock_repository: MagicMock
+) -> None:
+    mock_repository.get_item_by_name = AsyncMock(return_value=None)
+    mock_repository.create_item.reset_mock()
+
+    data = {"items": [{"name": "NewItem", "quantity": 7, "aliases": ["alt name"]}]}
+
+    with patch.object(EventBus, "async_fire"):
+        summary = await coordinator.async_import_inventory("kitchen_123", data, "json", "skip")
+
+    assert summary["added"] == 1
+    mock_repository.set_item_aliases.assert_awaited_once_with(
+        "new-item-id", "kitchen_123", ["alt name"]
+    )
+
+
+@pytest.mark.asyncio
 async def test_csv_round_trip(
     coordinator: SimpleInventoryCoordinator, mock_repository: MagicMock
 ) -> None:
@@ -1320,6 +1376,7 @@ async def test_csv_round_trip(
             "locations": ["Fridge"],
             "categories": ["Dairy"],
             "barcodes": ["123"],
+            "aliases": ["2% milk", "dairy"],
             "expiry_date": "2025-12-31",
             "expiry_alert_days": 7,
             "auto_add_enabled": True,
@@ -1335,6 +1392,7 @@ async def test_csv_round_trip(
     assert parsed[0]["name"] == "Milk"
     assert parsed[0]["quantity"] == 3.0
     assert parsed[0]["unit"] == "gallons"
+    assert parsed[0]["aliases"] == "2% milk, dairy"
 
 
 # ---------------------------------------------------------------------------

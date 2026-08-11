@@ -69,6 +69,10 @@
     "add_item": {
       "description": "Dodaj predmet v zalogo",
       "fields": {
+        "aliases": {
+          "description": "Druga imena za predmet, uporabna povsod, kjer se sprejme ime predmeta (ločena z vejico)",
+          "name": "Vzdevki"
+        },
         "auto_add_enabled": {
           "description": "Omogoči samodejno dodajanje na seznam opravil",
           "name": "Samodejno dodajanje"
@@ -326,6 +330,10 @@
     "update_item": {
       "description": "Posodobi obstoječ predmet v zalogi",
       "fields": {
+        "aliases": {
+          "description": "Druga imena za predmet, uporabna povsod, kjer se sprejme ime predmeta (ločena z vejico)",
+          "name": "Vzdevki"
+        },
         "auto_add_enabled": {
           "description": "Omogoči samodejno dodajanje na seznam opravil",
           "name": "Samodejno dodajanje"

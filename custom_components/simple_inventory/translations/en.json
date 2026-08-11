@@ -69,6 +69,10 @@
     "add_item": {
       "description": "Add an item to an inventory",
       "fields": {
+        "aliases": {
+          "description": "Alternate names for the item, usable anywhere the item name is accepted (comma-separated)",
+          "name": "Aliases"
+        },
         "auto_add_enabled": {
           "description": "Enable automatic adding to todo list",
           "name": "Auto Add Enabled"
@@ -326,6 +330,10 @@
     "update_item": {
       "description": "Update an existing inventory item",
       "fields": {
+        "aliases": {
+          "description": "Alternate names for the item, usable anywhere the item name is accepted (comma-separated)",
+          "name": "Aliases"
+        },
         "auto_add_enabled": {
           "description": "Enable auto-add to todo list",
           "name": "Auto Add Enabled"

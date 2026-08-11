@@ -69,6 +69,10 @@
     "add_item": {
       "description": "Ajouter un article à un inventaire",
       "fields": {
+        "aliases": {
+          "description": "Noms alternatifs pour l'article, utilisables partout où le nom de l'article est accepté (séparés par des virgules)",
+          "name": "Alias"
+        },
         "auto_add_enabled": {
           "description": "Activer l'ajout automatique à la liste de tâches",
           "name": "Ajout automatique activé"
@@ -326,6 +330,10 @@
     "update_item": {
       "description": "Mettre à jour un article existant de l'inventaire",
       "fields": {
+        "aliases": {
+          "description": "Noms alternatifs pour l'article, utilisables partout où le nom de l'article est accepté (séparés par des virgules)",
+          "name": "Alias"
+        },
         "auto_add_enabled": {
           "description": "Activer l'ajout automatique à la liste de tâches",
           "name": "Ajout automatique activé"
