@@ -130,6 +130,17 @@ class TestHandleListItems:
             1, "inventory_not_found", "Inventory 'missing' not found"
         )
 
+    async def test_list_items_coordinator_error(
+        self, hass_mock: MagicMock, mock_connection: MagicMock, mock_coordinator_ws: MagicMock
+    ) -> None:
+        hass_mock.data[DOMAIN]["coordinators"]["inv1"] = mock_coordinator_ws
+        mock_coordinator_ws.async_list_items = AsyncMock(side_effect=RuntimeError("db error"))
+        msg = {"id": 1, "type": f"{DOMAIN}/list_items", "inventory_id": "inv1"}
+
+        await _handle_list_items(hass_mock, mock_connection, msg)
+
+        mock_connection.send_error.assert_called_once_with(1, "list_items_failed", "db error")
+
 
 class TestHandleGetItem:
     async def test_get_item_success(
@@ -185,6 +196,22 @@ class TestHandleGetItem:
             "item_not_found",
             "Item 'nonexistent' not found in inventory 'inv1'",
         )
+
+    async def test_get_item_coordinator_error(
+        self, hass_mock: MagicMock, mock_connection: MagicMock, mock_coordinator_ws: MagicMock
+    ) -> None:
+        hass_mock.data[DOMAIN]["coordinators"]["inv1"] = mock_coordinator_ws
+        mock_coordinator_ws.async_get_item = AsyncMock(side_effect=RuntimeError("db error"))
+        msg = {
+            "id": 3,
+            "type": f"{DOMAIN}/get_item",
+            "inventory_id": "inv1",
+            "name": "milk",
+        }
+
+        await _handle_get_item(hass_mock, mock_connection, msg)
+
+        mock_connection.send_error.assert_called_once_with(3, "get_item_failed", "db error")
 
 
 class TestHandleSubscribe:
@@ -244,6 +271,27 @@ class TestHandleSubscribe:
         assert event_data[0] == 6
         assert "items" in event_data[1]
 
+    async def test_forward_event_logs_and_does_not_raise(
+        self, hass_mock: MagicMock, mock_connection: MagicMock, mock_coordinator_ws: MagicMock
+    ) -> None:
+        hass_mock.data[DOMAIN]["coordinators"]["inv1"] = mock_coordinator_ws
+        mock_coordinator_ws.async_list_items = AsyncMock(side_effect=RuntimeError("boom"))
+        msg = {
+            "id": 7,
+            "type": f"{DOMAIN}/subscribe",
+            "inventory_id": "inv1",
+        }
+
+        _handle_subscribe(hass_mock, mock_connection, msg)
+
+        listener_callback = hass_mock.bus.async_listen.call_args[0][1]
+        mock_event = MagicMock()
+
+        # Should not raise even though the coordinator call fails.
+        await listener_callback(mock_event)
+
+        mock_connection.send_event.assert_not_called()
+
 
 class TestHandleGetHistory:
     async def test_get_inventory_history(
@@ -290,6 +338,23 @@ class TestHandleGetHistory:
         await _handle_get_history(hass_mock, mock_connection, msg)
 
         mock_connection.send_error.assert_called_once()
+
+    async def test_get_history_coordinator_error(
+        self, hass_mock: MagicMock, mock_connection: MagicMock, mock_coordinator_ws: MagicMock
+    ) -> None:
+        hass_mock.data[DOMAIN]["coordinators"]["inv1"] = mock_coordinator_ws
+        mock_coordinator_ws.async_get_inventory_history = AsyncMock(
+            side_effect=RuntimeError("db error")
+        )
+        msg = {
+            "id": 23,
+            "type": f"{DOMAIN}/get_history",
+            "inventory_id": "inv1",
+        }
+
+        await _handle_get_history(hass_mock, mock_connection, msg)
+
+        mock_connection.send_error.assert_called_once_with(23, "history_failed", "db error")
 
 
 class TestHandleExport:
@@ -356,6 +421,26 @@ class TestHandleImport:
         await _handle_import(hass_mock, mock_connection, msg)
 
         mock_connection.send_error.assert_called_once()
+
+    async def test_import_coordinator_error(
+        self, hass_mock: MagicMock, mock_connection: MagicMock, mock_coordinator_ws: MagicMock
+    ) -> None:
+        hass_mock.data[DOMAIN]["coordinators"]["inv1"] = mock_coordinator_ws
+        mock_coordinator_ws.async_import_inventory = AsyncMock(
+            side_effect=ValueError("malformed data")
+        )
+        msg = {
+            "id": 42,
+            "type": f"{DOMAIN}/import",
+            "inventory_id": "inv1",
+            "data": {"items": [{"name": "Apple", "quantity": 5}]},
+            "format": "json",
+            "merge_strategy": "skip",
+        }
+
+        await _handle_import(hass_mock, mock_connection, msg)
+
+        mock_connection.send_error.assert_called_once_with(42, "import_failed", "malformed data")
 
 
 class TestHandleGetItemConsumptionRates:
@@ -433,6 +518,26 @@ class TestHandleGetItemConsumptionRates:
             "inv1", "milk", window_days=30
         )
 
+    async def test_coordinator_error(
+        self, hass_mock: MagicMock, mock_connection: MagicMock, mock_coordinator_ws: MagicMock
+    ) -> None:
+        hass_mock.data[DOMAIN]["coordinators"]["inv1"] = mock_coordinator_ws
+        mock_coordinator_ws.async_get_item_consumption_rates = AsyncMock(
+            side_effect=RuntimeError("db error")
+        )
+        msg = {
+            "id": 54,
+            "type": f"{DOMAIN}/get_item_consumption_rates",
+            "inventory_id": "inv1",
+            "item_name": "milk",
+        }
+
+        await _handle_get_item_consumption_rates(hass_mock, mock_connection, msg)
+
+        mock_connection.send_error.assert_called_once_with(
+            54, "item_consumption_rates_failed", "db error"
+        )
+
 
 class TestHandleGetInventoryConsumptionRates:
     async def test_success(
@@ -484,6 +589,25 @@ class TestHandleGetInventoryConsumptionRates:
             "inv1", window_days=90
         )
 
+    async def test_coordinator_error(
+        self, hass_mock: MagicMock, mock_connection: MagicMock, mock_coordinator_ws: MagicMock
+    ) -> None:
+        hass_mock.data[DOMAIN]["coordinators"]["inv1"] = mock_coordinator_ws
+        mock_coordinator_ws.async_get_inventory_consumption_rates = AsyncMock(
+            side_effect=RuntimeError("db error")
+        )
+        msg = {
+            "id": 63,
+            "type": f"{DOMAIN}/get_inventory_consumption_rates",
+            "inventory_id": "inv1",
+        }
+
+        await _handle_get_inventory_consumption_rates(hass_mock, mock_connection, msg)
+
+        mock_connection.send_error.assert_called_once_with(
+            63, "inventory_consumption_rates_failed", "db error"
+        )
+
 
 class TestHandleGetInventoryStatistics:
     async def test_success(
@@ -520,6 +644,25 @@ class TestHandleGetInventoryStatistics:
             66, "inventory_not_found", "Inventory 'missing' not found"
         )
 
+    async def test_coordinator_error(
+        self, hass_mock: MagicMock, mock_connection: MagicMock, mock_coordinator_ws: MagicMock
+    ) -> None:
+        hass_mock.data[DOMAIN]["coordinators"]["inv1"] = mock_coordinator_ws
+        mock_coordinator_ws.async_get_inventory_statistics = AsyncMock(
+            side_effect=RuntimeError("db error")
+        )
+        msg = {
+            "id": 67,
+            "type": f"{DOMAIN}/get_inventory_statistics",
+            "inventory_id": "inv1",
+        }
+
+        await _handle_get_inventory_statistics(hass_mock, mock_connection, msg)
+
+        mock_connection.send_error.assert_called_once_with(
+            67, "inventory_statistics_failed", "db error"
+        )
+
 
 class TestHandleLookupByBarcode:
     async def test_lookup_success(
@@ -544,6 +687,21 @@ class TestHandleLookupByBarcode:
 
         mock_connection.send_error.assert_called_once_with(
             71, "no_inventories", "No inventories configured"
+        )
+
+    async def test_lookup_coordinator_error(
+        self, hass_mock: MagicMock, mock_connection: MagicMock, mock_coordinator_ws: MagicMock
+    ) -> None:
+        hass_mock.data[DOMAIN]["coordinators"]["inv1"] = mock_coordinator_ws
+        mock_coordinator_ws.async_lookup_by_barcode = AsyncMock(
+            side_effect=RuntimeError("db error")
+        )
+        msg = {"id": 72, "type": f"{DOMAIN}/lookup_by_barcode", "barcode": "123456"}
+
+        await _handle_lookup_by_barcode(hass_mock, mock_connection, msg)
+
+        mock_connection.send_error.assert_called_once_with(
+            72, "lookup_by_barcode_failed", "db error"
         )
 
 
@@ -723,6 +881,21 @@ class TestHandleLookupBarcodeProduct:
             91, {"barcode": "000000", "results": results}
         )
 
+    async def test_external_lookup_error(
+        self, hass_mock: MagicMock, mock_connection: MagicMock
+    ) -> None:
+        with patch(
+            "custom_components.simple_inventory.websocket_api.async_lookup_barcode_all_providers",
+            new_callable=AsyncMock,
+            side_effect=RuntimeError("provider timeout"),
+        ):
+            msg = {"id": 92, "type": f"{DOMAIN}/lookup_barcode_product", "barcode": "123456"}
+            await _handle_lookup_barcode_product(hass_mock, mock_connection, msg)
+
+        mock_connection.send_error.assert_called_once_with(
+            92, "lookup_barcode_product_failed", "provider timeout"
+        )
+
 
 class TestHandleGetBarcodeProviderConfig:
     async def test_returns_config(self, hass_mock: MagicMock, mock_connection: MagicMock) -> None:
@@ -746,6 +919,18 @@ class TestHandleGetBarcodeProviderConfig:
         await _handle_get_barcode_provider_config(hass_mock, mock_connection, msg)
 
         mock_connection.send_result.assert_called_once_with(101, {})
+
+    async def test_repository_error(self, hass_mock: MagicMock, mock_connection: MagicMock) -> None:
+        mock_repo = MagicMock()
+        mock_repo.get_barcode_provider_config = AsyncMock(side_effect=RuntimeError("db error"))
+        hass_mock.data[DOMAIN]["repository"] = mock_repo
+
+        msg = {"id": 102, "type": f"{DOMAIN}/get_barcode_provider_config"}
+        await _handle_get_barcode_provider_config(hass_mock, mock_connection, msg)
+
+        mock_connection.send_error.assert_called_once_with(
+            102, "get_barcode_provider_config_failed", "db error"
+        )
 
 
 class TestHandleSetBarcodeProviderConfig:
@@ -780,4 +965,20 @@ class TestHandleSetBarcodeProviderConfig:
 
         mock_connection.send_error.assert_called_once_with(
             111, "no_repository", "Repository not available"
+        )
+
+    async def test_repository_error(self, hass_mock: MagicMock, mock_connection: MagicMock) -> None:
+        mock_repo = MagicMock()
+        mock_repo.set_barcode_provider_config = AsyncMock(side_effect=RuntimeError("db error"))
+        hass_mock.data[DOMAIN]["repository"] = mock_repo
+
+        msg = {
+            "id": 112,
+            "type": f"{DOMAIN}/set_barcode_provider_config",
+            "provider": "openfoodfacts",
+        }
+        await _handle_set_barcode_provider_config(hass_mock, mock_connection, msg)
+
+        mock_connection.send_error.assert_called_once_with(
+            112, "set_barcode_provider_config_failed", "db error"
         )

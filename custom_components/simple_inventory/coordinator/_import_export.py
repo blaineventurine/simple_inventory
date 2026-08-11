@@ -110,17 +110,21 @@ class _ImportExportMixin(_CoordinatorProtocol):
                     continue
 
                 if existing and merge_strategy == "merge_quantities":
-                    new_qty = float(existing.get(FIELD_QUANTITY, 0)) + float(
-                        item_data.get(FIELD_QUANTITY, 0)
-                    )
-                    await self.repository.update_item(existing["id"], {FIELD_QUANTITY: new_qty})
+                    delta = float(item_data.get(FIELD_QUANTITY, 0))
+                    result = await self.repository.adjust_item_quantity(existing["id"], delta)
+                    if result is None:
+                        errors.append(
+                            f"Item '{item_data.get(FIELD_NAME, '?')}' no longer exists, skipped"
+                        )
+                        continue
+                    qty_before, qty_after = result
                     await self.repository.record_history_event(
                         item_id=existing["id"],
                         inventory_id=inventory_id,
                         event_type="import",
-                        amount=float(item_data.get(FIELD_QUANTITY, 0)),
-                        quantity_before=float(existing.get(FIELD_QUANTITY, 0)),
-                        quantity_after=new_qty,
+                        amount=delta,
+                        quantity_before=qty_before,
+                        quantity_after=qty_after,
                         source="import",
                     )
                     updated += 1

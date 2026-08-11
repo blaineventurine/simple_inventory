@@ -287,10 +287,12 @@ class InventoryService(BaseServiceHandler):
                 None,
             )
             if not matching_entry:
-                raise ValueError(f"Inventory with name '{inventory_name}' not found")
+                raise ServiceValidationError(f"Inventory with name '{inventory_name}' not found")
             inventory_id = matching_entry.entry_id
         else:
-            raise ValueError("Either 'inventory_id' or 'inventory_name' must be provided")
+            raise ServiceValidationError(
+                "Either 'inventory_id' or 'inventory_name' must be provided"
+            )
 
         coordinator = self._require_coordinator(inventory_id)
         if coordinator:
@@ -298,7 +300,7 @@ class InventoryService(BaseServiceHandler):
         else:
             repo = get_repository(self.hass)
             if repo is None:
-                raise ValueError(
+                raise ServiceValidationError(
                     f"No coordinator or repository available for inventory '{inventory_id}'"
                 )
             items_list = await repo.list_items_with_details(inventory_id)

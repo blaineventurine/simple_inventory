@@ -563,10 +563,9 @@ class SimpleInventoryCoordinator(_StatisticsMixin, _ImportExportMixin, _Analytic
         else:
             item_price = float(item.get(FIELD_PRICE, 0))
 
-        qty_before = float(item.get(FIELD_QUANTITY, 0))
-        new_quantity = max(0, qty_before + delta)
-        updated = await self.repository.update_item(item["id"], {FIELD_QUANTITY: new_quantity})
-        if updated:
+        result = await self.repository.adjust_item_quantity(item["id"], delta)
+        if result is not None:
+            qty_before, new_quantity = result
             event_type = "increment" if delta > 0 else "decrement"
             await self.repository.record_history_event(
                 item_id=item["id"],
@@ -611,7 +610,7 @@ class SimpleInventoryCoordinator(_StatisticsMixin, _ImportExportMixin, _Analytic
             )
 
             await self._after_change(inventory_id)
-        return updated
+        return result is not None
 
     async def _apply_barcode_updates(
         self, inventory_id: str, item_id: str, barcode_str: str

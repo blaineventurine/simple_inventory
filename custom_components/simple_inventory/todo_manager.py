@@ -299,6 +299,16 @@ class TodoManager:
 
             if matching_item:
                 await self._update_todo_item(todo_list, matching_item, new_name, description)
+                self.hass.bus.async_fire(
+                    EVENT_ITEM_ADDED_TO_LIST,
+                    {
+                        "item_name": item_name,
+                        "inventory_id": item_data.get("inventory_id", ""),
+                        "quantity": quantity,
+                        "todo_list": todo_list,
+                        "quantity_needed": quantity_needed,
+                    },
+                )
             else:
                 await self._add_todo_item(todo_list, new_name, description)
                 self.hass.bus.async_fire(
@@ -389,6 +399,16 @@ class TodoManager:
                     new_name = item_name
                     description = base_description
                 await self._update_todo_item(todo_list, matching_item, new_name, description)
+                self.hass.bus.async_fire(
+                    EVENT_ITEM_ADDED_TO_LIST,
+                    {
+                        "item_name": item_name,
+                        "inventory_id": item_data.get("inventory_id", ""),
+                        "quantity": quantity,
+                        "todo_list": todo_list,
+                        "quantity_needed": quantity_needed,
+                    },
+                )
 
             return True
 

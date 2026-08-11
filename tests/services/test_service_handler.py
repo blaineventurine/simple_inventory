@@ -5,6 +5,7 @@ from __future__ import annotations
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from homeassistant.exceptions import ServiceValidationError
 from typing_extensions import Self
 
 from custom_components.simple_inventory.const import DOMAIN
@@ -334,7 +335,7 @@ class TestServiceHandler:
         mock_hass: MagicMock,
         mock_todo_manager: MagicMock,
     ) -> None:
-        """Raises ValueError when inventory_id has no coordinator."""
+        """Raises ServiceValidationError when inventory_id has no coordinator."""
         call = MagicMock()
         call.data = {"inventory_id": "missing"}
 
@@ -347,8 +348,77 @@ class TestServiceHandler:
             ),
         ):
             handler = ServiceHandler(mock_hass, mock_todo_manager)
-            with pytest.raises(ValueError, match="missing"):
+            with pytest.raises(ServiceValidationError, match="missing"):
                 await handler.async_get_inventory_consumption_rates(call)
+
+    @pytest.mark.asyncio
+    async def test_async_lookup_by_barcode_no_inventories_raises(
+        self: Self,
+        mock_hass: MagicMock,
+        mock_todo_manager: MagicMock,
+    ) -> None:
+        """Raises ServiceValidationError when no inventories are configured."""
+        call = MagicMock()
+        call.data = {"barcode": "012345678901"}
+
+        with (
+            patch("custom_components.simple_inventory.services.InventoryService"),
+            patch("custom_components.simple_inventory.services.QuantityService"),
+            patch(
+                "custom_components.simple_inventory.services.get_coordinators",
+                return_value={},
+            ),
+        ):
+            handler = ServiceHandler(mock_hass, mock_todo_manager)
+            with pytest.raises(ServiceValidationError, match="No inventories configured"):
+                await handler.async_lookup_by_barcode(call)
+
+    @pytest.mark.asyncio
+    async def test_async_get_item_consumption_rates_no_coordinator_raises(
+        self: Self,
+        mock_hass: MagicMock,
+        mock_todo_manager: MagicMock,
+    ) -> None:
+        """Raises ServiceValidationError when inventory_id has no coordinator."""
+        call = MagicMock()
+        call.data = {"inventory_id": "missing", "name": "Milk"}
+
+        with (
+            patch("custom_components.simple_inventory.services.InventoryService"),
+            patch("custom_components.simple_inventory.services.QuantityService"),
+            patch(
+                "custom_components.simple_inventory.services.get_coordinators",
+                return_value={},
+            ),
+        ):
+            handler = ServiceHandler(mock_hass, mock_todo_manager)
+            with pytest.raises(ServiceValidationError, match="missing"):
+                await handler.async_get_item_consumption_rates(call)
+
+    @pytest.mark.asyncio
+    async def test_async_get_item_consumption_rates_item_not_found_raises(
+        self: Self,
+        mock_hass: MagicMock,
+        mock_todo_manager: MagicMock,
+    ) -> None:
+        """Raises ServiceValidationError when the coordinator finds no such item."""
+        mock_coordinator = MagicMock()
+        mock_coordinator.async_get_item_consumption_rates = AsyncMock(return_value=None)
+
+        call = MagicMock()
+        call.data = {"inventory_id": "kitchen", "name": "Ghost Item"}
+
+        with (
+            patch("custom_components.simple_inventory.services.InventoryService"),
+            patch("custom_components.simple_inventory.services.QuantityService"),
+            patch(
+                "custom_components.simple_inventory.services.get_coordinators",
+                return_value={"kitchen": mock_coordinator},
+            ),
+        ):
+            handler = ServiceHandler(mock_hass, mock_todo_manager)
+            with pytest.raises(ServiceValidationError, match="Ghost Item"):
+                await handler.async_get_item_consumption_rates(call)
 
     def test_exports(self: Self) -> None:
         """Test that __all__ exports are correct."""

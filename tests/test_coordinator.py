@@ -84,6 +84,7 @@ def mock_repository(sample_inventory_data: dict) -> MagicMock:
 
     repo.create_item = AsyncMock(return_value="new-item-id")
     repo.update_item = AsyncMock(return_value=True)
+    repo.adjust_item_quantity = AsyncMock(return_value=None)
     repo.delete_item = AsyncMock(return_value=True)
 
     repo.ensure_location = AsyncMock(return_value=1)
@@ -253,7 +254,7 @@ async def test_async_increment_item_update_fails_returns_false(
     coordinator: SimpleInventoryCoordinator, mock_repository: MagicMock
 ) -> None:
     mock_repository.get_item_by_name = AsyncMock(return_value={"id": "x", "quantity": 1})
-    mock_repository.update_item = AsyncMock(return_value=False)
+    mock_repository.adjust_item_quantity = AsyncMock(return_value=None)
 
     with patch.object(EventBus, "async_fire"):
         ok = await coordinator.async_increment_item("kitchen_123", "milk", 1)
@@ -534,13 +535,13 @@ async def test_async_increment_item_adjusts_quantity(
     coordinator: SimpleInventoryCoordinator, mock_repository: MagicMock
 ) -> None:
     mock_repository.get_item_by_name = AsyncMock(return_value={"id": "milk-id", "quantity": 2})
-    mock_repository.update_item = AsyncMock(return_value=True)
+    mock_repository.adjust_item_quantity = AsyncMock(return_value=(2, 5))
 
     with patch.object(EventBus, "async_fire"):
         ok = await coordinator.async_increment_item("kitchen_123", "milk", 3)
 
     assert ok is True
-    mock_repository.update_item.assert_awaited_once_with("milk-id", {FIELD_QUANTITY: 5})
+    mock_repository.adjust_item_quantity.assert_awaited_once_with("milk-id", 3)
 
 
 @pytest.mark.asyncio
@@ -548,13 +549,13 @@ async def test_async_increment_item_decimal_amount(
     coordinator: SimpleInventoryCoordinator, mock_repository: MagicMock
 ) -> None:
     mock_repository.get_item_by_name = AsyncMock(return_value={"id": "bacon-id", "quantity": 1.0})
-    mock_repository.update_item = AsyncMock(return_value=True)
+    mock_repository.adjust_item_quantity = AsyncMock(return_value=(1.0, 1.5))
 
     with patch.object(EventBus, "async_fire"):
         ok = await coordinator.async_increment_item("kitchen_123", "bacon", 0.5)
 
     assert ok is True
-    mock_repository.update_item.assert_awaited_once_with("bacon-id", {FIELD_QUANTITY: 1.5})
+    mock_repository.adjust_item_quantity.assert_awaited_once_with("bacon-id", 0.5)
 
 
 @pytest.mark.asyncio
@@ -562,13 +563,13 @@ async def test_async_decrement_item_decimal_amount(
     coordinator: SimpleInventoryCoordinator, mock_repository: MagicMock
 ) -> None:
     mock_repository.get_item_by_name = AsyncMock(return_value={"id": "bacon-id", "quantity": 1.5})
-    mock_repository.update_item = AsyncMock(return_value=True)
+    mock_repository.adjust_item_quantity = AsyncMock(return_value=(1.5, 1.0))
 
     with patch.object(EventBus, "async_fire"):
         ok = await coordinator.async_decrement_item("kitchen_123", "bacon", 0.5)
 
     assert ok is True
-    mock_repository.update_item.assert_awaited_once_with("bacon-id", {FIELD_QUANTITY: 1.0})
+    mock_repository.adjust_item_quantity.assert_awaited_once_with("bacon-id", -0.5)
 
 
 @pytest.mark.asyncio
@@ -585,13 +586,13 @@ async def test_async_decrement_item_does_not_go_below_zero(
     coordinator: SimpleInventoryCoordinator, mock_repository: MagicMock
 ) -> None:
     mock_repository.get_item_by_name = AsyncMock(return_value={"id": "milk-id", "quantity": 2})
-    mock_repository.update_item = AsyncMock(return_value=True)
+    mock_repository.adjust_item_quantity = AsyncMock(return_value=(2, 0))
 
     with patch.object(EventBus, "async_fire"):
         ok = await coordinator.async_decrement_item("kitchen_123", "milk", 99)
 
     assert ok is True
-    mock_repository.update_item.assert_awaited_once_with("milk-id", {FIELD_QUANTITY: 0})
+    mock_repository.adjust_item_quantity.assert_awaited_once_with("milk-id", -99)
 
 
 @pytest.mark.asyncio
@@ -1090,14 +1091,14 @@ async def test_async_increment_item_by_barcode(
 ) -> None:
     mock_repository.get_item_by_barcode = AsyncMock(return_value={"id": "milk-id", "name": "Milk"})
     mock_repository.get_item_by_name = AsyncMock(return_value={"id": "milk-id", "quantity": 2})
-    mock_repository.update_item = AsyncMock(return_value=True)
+    mock_repository.adjust_item_quantity = AsyncMock(return_value=(2, 5))
 
     with patch.object(EventBus, "async_fire"):
         ok = await coordinator.async_increment_item("kitchen_123", barcode="BC-MILK", amount=3)
 
     assert ok is True
     mock_repository.get_item_by_barcode.assert_awaited_once_with("kitchen_123", "BC-MILK")
-    mock_repository.update_item.assert_awaited_once_with("milk-id", {FIELD_QUANTITY: 5})
+    mock_repository.adjust_item_quantity.assert_awaited_once_with("milk-id", 3)
 
 
 @pytest.mark.asyncio
@@ -1106,13 +1107,13 @@ async def test_async_decrement_item_by_barcode(
 ) -> None:
     mock_repository.get_item_by_barcode = AsyncMock(return_value={"id": "milk-id", "name": "Milk"})
     mock_repository.get_item_by_name = AsyncMock(return_value={"id": "milk-id", "quantity": 5})
-    mock_repository.update_item = AsyncMock(return_value=True)
+    mock_repository.adjust_item_quantity = AsyncMock(return_value=(5, 3))
 
     with patch.object(EventBus, "async_fire"):
         ok = await coordinator.async_decrement_item("kitchen_123", barcode="BC-MILK", amount=2)
 
     assert ok is True
-    mock_repository.update_item.assert_awaited_once_with("milk-id", {FIELD_QUANTITY: 3})
+    mock_repository.adjust_item_quantity.assert_awaited_once_with("milk-id", -2)
 
 
 @pytest.mark.asyncio
@@ -1157,6 +1158,7 @@ async def test_adjust_quantity_records_history(
     mock_repository.get_item_by_name = AsyncMock(
         return_value={"id": "milk-id", "name": "Milk", "quantity": 5}
     )
+    mock_repository.adjust_item_quantity = AsyncMock(return_value=(5, 7))
 
     with patch.object(EventBus, "async_fire"):
         ok = await coordinator.async_increment_item("kitchen_123", "Milk", 2)
@@ -1313,6 +1315,7 @@ async def test_import_json_merge_quantities(
     mock_repository.get_item_by_name = AsyncMock(
         return_value={"id": "existing", "name": "Milk", "quantity": 5}
     )
+    mock_repository.adjust_item_quantity = AsyncMock(return_value=(5, 8))
 
     data = {"items": [{"name": "Milk", "quantity": 3}]}
 
@@ -1322,9 +1325,7 @@ async def test_import_json_merge_quantities(
         )
 
     assert summary["updated"] == 1
-    mock_repository.update_item.assert_awaited_once()
-    update_args = mock_repository.update_item.call_args
-    assert update_args[0][1]["quantity"] == 8  # 5 + 3
+    mock_repository.adjust_item_quantity.assert_awaited_once_with("existing", 3)  # 5 + 3 = 8
 
 
 @pytest.mark.asyncio
@@ -1687,7 +1688,7 @@ async def test_event_item_depleted_fires(
     mock_repository.get_item_by_name = AsyncMock(
         return_value={"id": "milk-id", "name": "Milk", "quantity": 1}
     )
-    mock_repository.update_item = AsyncMock(return_value=True)
+    mock_repository.adjust_item_quantity = AsyncMock(return_value=(1, 0))
 
     with patch.object(EventBus, "async_fire") as mock_fire:
         ok = await coordinator.async_decrement_item("kitchen_123", "Milk", 1)
@@ -1707,7 +1708,7 @@ async def test_event_item_depleted_does_not_fire_when_not_zero(
     mock_repository.get_item_by_name = AsyncMock(
         return_value={"id": "milk-id", "name": "Milk", "quantity": 5}
     )
-    mock_repository.update_item = AsyncMock(return_value=True)
+    mock_repository.adjust_item_quantity = AsyncMock(return_value=(5, 3))
 
     with patch.object(EventBus, "async_fire") as mock_fire:
         await coordinator.async_decrement_item("kitchen_123", "Milk", 2)
@@ -1723,7 +1724,7 @@ async def test_event_item_restocked_fires(
     mock_repository.get_item_by_name = AsyncMock(
         return_value={"id": "milk-id", "name": "Milk", "quantity": 0}
     )
-    mock_repository.update_item = AsyncMock(return_value=True)
+    mock_repository.adjust_item_quantity = AsyncMock(return_value=(0, 3))
 
     with patch.object(EventBus, "async_fire") as mock_fire:
         ok = await coordinator.async_increment_item("kitchen_123", "Milk", 3)
@@ -1743,7 +1744,7 @@ async def test_event_item_restocked_does_not_fire_when_already_stocked(
     mock_repository.get_item_by_name = AsyncMock(
         return_value={"id": "milk-id", "name": "Milk", "quantity": 2}
     )
-    mock_repository.update_item = AsyncMock(return_value=True)
+    mock_repository.adjust_item_quantity = AsyncMock(return_value=(2, 5))
 
     with patch.object(EventBus, "async_fire") as mock_fire:
         await coordinator.async_increment_item("kitchen_123", "Milk", 3)
@@ -1759,7 +1760,7 @@ async def test_event_quantity_changed_fires_on_increment(
     mock_repository.get_item_by_name = AsyncMock(
         return_value={"id": "milk-id", "name": "Milk", "quantity": 2}
     )
-    mock_repository.update_item = AsyncMock(return_value=True)
+    mock_repository.adjust_item_quantity = AsyncMock(return_value=(2, 5))
 
     with patch.object(EventBus, "async_fire") as mock_fire:
         await coordinator.async_increment_item("kitchen_123", "Milk", 3)
@@ -1782,7 +1783,7 @@ async def test_event_quantity_changed_fires_on_decrement(
     mock_repository.get_item_by_name = AsyncMock(
         return_value={"id": "milk-id", "name": "Milk", "quantity": 5}
     )
-    mock_repository.update_item = AsyncMock(return_value=True)
+    mock_repository.adjust_item_quantity = AsyncMock(return_value=(5, 3))
 
     with patch.object(EventBus, "async_fire") as mock_fire:
         await coordinator.async_decrement_item("kitchen_123", "Milk", 2)
@@ -1866,7 +1867,7 @@ async def test_scan_barcode_increment(
     mock_repository.get_item_by_name = AsyncMock(
         return_value={"id": "milk-id", "name": "Milk", "quantity": 3}
     )
-    mock_repository.update_item = AsyncMock(return_value=True)
+    mock_repository.adjust_item_quantity = AsyncMock(return_value=(3.0, 5.0))
 
     with patch.object(EventBus, "async_fire"):
         result = await coordinator.async_scan_barcode("123456", "increment", 2.0)
@@ -1895,7 +1896,7 @@ async def test_scan_barcode_decrement(
     mock_repository.get_item_by_name = AsyncMock(
         return_value={"id": "milk-id", "name": "Milk", "quantity": 5}
     )
-    mock_repository.update_item = AsyncMock(return_value=True)
+    mock_repository.adjust_item_quantity = AsyncMock(return_value=(5.0, 4.0))
 
     with patch.object(EventBus, "async_fire"):
         result = await coordinator.async_scan_barcode("123456", "decrement", 1.0)

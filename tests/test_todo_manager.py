@@ -1050,13 +1050,15 @@ class TestTodoManager:
             assert payload["quantity_needed"] == 4  # 5 - 2 + 1
 
     @pytest.mark.asyncio
-    async def test_event_does_not_fire_on_todo_update(self, todo_manager: TodoManager) -> None:
-        """Test EVENT_ITEM_ADDED_TO_LIST does NOT fire when updating existing item."""
+    async def test_event_fires_on_todo_update(self, todo_manager: TodoManager) -> None:
+        """Test EVENT_ITEM_ADDED_TO_LIST also fires when an item already on the todo
+        list has its quantity-needed display updated (not just on first add)."""
         item_data: InventoryItem = {
             "auto_add_enabled": True,
             "quantity": 2,
             "auto_add_to_list_quantity": 5,
             "todo_list": "todo.shopping_list",
+            "inventory_id": "kitchen_123",
         }
 
         with (
@@ -1073,7 +1075,14 @@ class TestTodoManager:
             result = await todo_manager.check_and_add_item("Bread", item_data)
 
             assert result is True
-            mock_fire.assert_not_called()
+            mock_fire.assert_called_once()
+            call_args = mock_fire.call_args
+            assert call_args[0][0] == EVENT_ITEM_ADDED_TO_LIST
+            payload = call_args[0][1]
+            assert payload["item_name"] == "Bread"
+            assert payload["inventory_id"] == "kitchen_123"
+            assert payload["todo_list"] == "todo.shopping_list"
+            assert payload["quantity_needed"] == 4  # 5 - 2 + 1
 
     @pytest.mark.asyncio
     async def test_event_fires_on_todo_remove_legacy(self, todo_manager: TodoManager) -> None:
@@ -1139,15 +1148,17 @@ class TestTodoManager:
             assert mock_fire.call_args[0][0] == EVENT_ITEM_REMOVED_FROM_LIST
 
     @pytest.mark.asyncio
-    async def test_event_does_not_fire_on_todo_update_not_remove(
+    async def test_event_fires_added_not_removed_on_todo_update_not_remove(
         self, todo_manager: TodoManager
     ) -> None:
-        """Test no removal event fires when quantity is updated but not removed."""
+        """Test EVENT_ITEM_ADDED_TO_LIST (not EVENT_ITEM_REMOVED_FROM_LIST) fires when
+        quantity is updated but the item stays on the list."""
         item_data: InventoryItem = {
             "auto_add_enabled": True,
             "quantity": 1,
             "auto_add_to_list_quantity": 2,
             "todo_list": "todo.shopping_list",
+            "inventory_id": "kitchen_123",
         }
 
         matching_item = {"summary": "Bread (x2)", "uid": "123"}
@@ -1158,10 +1169,18 @@ class TestTodoManager:
                 "_find_matching_incomplete_item",
                 new=AsyncMock(return_value=matching_item),
             ),
-            patch.object(todo_manager, "_update_todo_item", new=AsyncMock()),
+            patch.object(todo_manager, "_update_todo_item", new=AsyncMock()) as mock_update,
             patch.object(todo_manager.hass.bus, "async_fire") as mock_fire,
         ):
             result = await todo_manager.check_and_remove_item("Bread", item_data)
 
             assert result is True
-            mock_fire.assert_not_called()
+            mock_update.assert_called_once()
+            mock_fire.assert_called_once()
+            call_args = mock_fire.call_args
+            assert call_args[0][0] == EVENT_ITEM_ADDED_TO_LIST
+            payload = call_args[0][1]
+            assert payload["item_name"] == "Bread"
+            assert payload["inventory_id"] == "kitchen_123"
+            assert payload["todo_list"] == "todo.shopping_list"
+            assert payload["quantity_needed"] == 2  # 2 - 1 + 1

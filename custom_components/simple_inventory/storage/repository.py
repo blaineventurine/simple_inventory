@@ -190,11 +190,12 @@ class InventoryRepository:
         assert self._conn is not None
         import json
 
-        await self._conn.execute(
-            "INSERT OR REPLACE INTO metadata (key, value) VALUES (?, ?)",
-            ("barcode_lookup_provider", json.dumps(config)),
-        )
-        await self._conn.commit()
+        async with self._lock:
+            await self._conn.execute(
+                "INSERT OR REPLACE INTO metadata (key, value) VALUES (?, ?)",
+                ("barcode_lookup_provider", json.dumps(config)),
+            )
+            await self._conn.commit()
 
     async def async_close(self) -> None:
         """Close the database connection."""
@@ -629,6 +630,25 @@ class InventoryRepository:
             )
             await conn.commit()
             return cursor.rowcount > 0
+
+    async def adjust_item_quantity(self, item_id: str, delta: float) -> tuple[float, float] | None:
+        """Atomically apply a quantity delta (clamped to >= 0); returns (before, after) or None."""
+        conn = self._connection()
+        async with self._lock:
+            cursor = await conn.execute("SELECT quantity FROM items WHERE id = ?", (item_id,))
+            row = await cursor.fetchone()
+            await cursor.close()
+            if row is None:
+                return None
+
+            quantity_before = float(row[0])
+            quantity_after = max(0.0, quantity_before + delta)
+            await conn.execute(
+                "UPDATE items SET quantity = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+                (quantity_after, item_id),
+            )
+            await conn.commit()
+            return quantity_before, quantity_after
 
     async def delete_item(self, item_id: str) -> bool:
         """Delete an item and any related rows."""

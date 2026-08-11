@@ -4,6 +4,7 @@ import logging
 from typing import cast
 
 from homeassistant.core import HomeAssistant, ServiceCall
+from homeassistant.exceptions import ServiceValidationError
 from homeassistant.util.json import JsonObjectType
 
 from ..const import DOMAIN
@@ -81,7 +82,7 @@ class ServiceHandler:
         barcode: str = call.data["barcode"]
         coordinators = get_coordinators(self.hass)
         if not coordinators:
-            raise ValueError("No inventories configured")
+            raise ServiceValidationError("No inventories configured")
         coordinator = next(iter(coordinators.values()))
         results = await coordinator.async_lookup_by_barcode(barcode)
         return cast(JsonObjectType, {"items": results})
@@ -131,7 +132,7 @@ class ServiceHandler:
         coordinators = get_coordinators(self.hass)
         coordinator = coordinators.get(inventory_id)
         if coordinator is None:
-            raise ValueError(f"No coordinator available for inventory '{inventory_id}'")
+            raise ServiceValidationError(f"No coordinator available for inventory '{inventory_id}'")
 
         result = await coordinator.async_get_inventory_consumption_rates(
             inventory_id, window_days=window_days
@@ -148,13 +149,15 @@ class ServiceHandler:
         coordinators = get_coordinators(self.hass)
         coordinator = coordinators.get(inventory_id)
         if coordinator is None:
-            raise ValueError(f"No coordinator available for inventory '{inventory_id}'")
+            raise ServiceValidationError(f"No coordinator available for inventory '{inventory_id}'")
 
         result = await coordinator.async_get_item_consumption_rates(
             inventory_id, item_name, window_days=window_days
         )
         if result is None:
-            raise ValueError(f"Item '{item_name}' not found in inventory '{inventory_id}'")
+            raise ServiceValidationError(
+                f"Item '{item_name}' not found in inventory '{inventory_id}'"
+            )
         return cast(JsonObjectType, result)
 
 

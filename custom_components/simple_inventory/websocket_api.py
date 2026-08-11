@@ -62,7 +62,12 @@ async def _handle_list_items(
     if (coordinator := _get_coordinator(hass, connection, msg, inventory_id)) is None:
         return
 
-    items = await coordinator.async_list_items(inventory_id)
+    try:
+        items = await coordinator.async_list_items(inventory_id)
+    except Exception as exc:
+        connection.send_error(msg["id"], "list_items_failed", str(exc))
+        return
+
     connection.send_result(msg["id"], {"items": items})
 
 
@@ -77,7 +82,12 @@ async def _handle_get_item(
     if (coordinator := _get_coordinator(hass, connection, msg, inventory_id)) is None:
         return
 
-    item = await coordinator.async_get_item(inventory_id, name)
+    try:
+        item = await coordinator.async_get_item(inventory_id, name)
+    except Exception as exc:
+        connection.send_error(msg["id"], "get_item_failed", str(exc))
+        return
+
     if item is None:
         connection.send_error(
             msg["id"],
@@ -106,25 +116,29 @@ async def _handle_get_history(
     limit = msg.get("limit", 100)
     offset = msg.get("offset", 0)
 
-    if item_name:
-        events = await coordinator.async_get_item_history(
-            inventory_id,
-            item_name,
-            event_type=event_type,
-            start_date=start_date,
-            end_date=end_date,
-            limit=limit,
-            offset=offset,
-        )
-    else:
-        events = await coordinator.async_get_inventory_history(
-            inventory_id,
-            event_type=event_type,
-            start_date=start_date,
-            end_date=end_date,
-            limit=limit,
-            offset=offset,
-        )
+    try:
+        if item_name:
+            events = await coordinator.async_get_item_history(
+                inventory_id,
+                item_name,
+                event_type=event_type,
+                start_date=start_date,
+                end_date=end_date,
+                limit=limit,
+                offset=offset,
+            )
+        else:
+            events = await coordinator.async_get_inventory_history(
+                inventory_id,
+                event_type=event_type,
+                start_date=start_date,
+                end_date=end_date,
+                limit=limit,
+                offset=offset,
+            )
+    except Exception as exc:
+        connection.send_error(msg["id"], "history_failed", str(exc))
+        return
 
     connection.send_result(msg["id"], {"events": events})
 
@@ -160,7 +174,12 @@ async def _handle_import(
     if (coordinator := _get_coordinator(hass, connection, msg, inventory_id)) is None:
         return
 
-    summary = await coordinator.async_import_inventory(inventory_id, data, fmt, merge_strategy)
+    try:
+        summary = await coordinator.async_import_inventory(inventory_id, data, fmt, merge_strategy)
+    except Exception as exc:
+        connection.send_error(msg["id"], "import_failed", str(exc))
+        return
+
     connection.send_result(msg["id"], summary)
 
 
@@ -179,12 +198,15 @@ def _handle_subscribe(
 
     async def _forward_event(event: Any) -> None:
         """Forward HA event to WS subscriber."""
-        coordinator = get_coordinators(hass).get(inventory_id or "")
-        if inventory_id and coordinator:
-            items = await coordinator.async_list_items(inventory_id)
-            connection.send_event(msg["id"], {"items": items})
-        else:
-            connection.send_event(msg["id"], {"event": "updated"})
+        try:
+            coordinator = get_coordinators(hass).get(inventory_id or "")
+            if inventory_id and coordinator:
+                items = await coordinator.async_list_items(inventory_id)
+                connection.send_event(msg["id"], {"items": items})
+            else:
+                connection.send_event(msg["id"], {"event": "updated"})
+        except Exception as exc:
+            _LOGGER.error("Error forwarding inventory update event: %s", exc)
 
     unsub = hass.bus.async_listen(event_type, _forward_event)
     connection.subscriptions[msg["id"]] = unsub
@@ -296,9 +318,14 @@ async def _handle_get_item_consumption_rates(
     if (coordinator := _get_coordinator(hass, connection, msg, inventory_id)) is None:
         return
 
-    result = await coordinator.async_get_item_consumption_rates(
-        inventory_id, item_name, window_days=window_days
-    )
+    try:
+        result = await coordinator.async_get_item_consumption_rates(
+            inventory_id, item_name, window_days=window_days
+        )
+    except Exception as exc:
+        connection.send_error(msg["id"], "item_consumption_rates_failed", str(exc))
+        return
+
     if result is None:
         connection.send_error(
             msg["id"],
@@ -321,9 +348,14 @@ async def _handle_get_inventory_consumption_rates(
     if (coordinator := _get_coordinator(hass, connection, msg, inventory_id)) is None:
         return
 
-    result = await coordinator.async_get_inventory_consumption_rates(
-        inventory_id, window_days=window_days
-    )
+    try:
+        result = await coordinator.async_get_inventory_consumption_rates(
+            inventory_id, window_days=window_days
+        )
+    except Exception as exc:
+        connection.send_error(msg["id"], "inventory_consumption_rates_failed", str(exc))
+        return
+
     connection.send_result(msg["id"], result)
 
 
@@ -337,7 +369,12 @@ async def _handle_get_inventory_statistics(
     if (coordinator := _get_coordinator(hass, connection, msg, inventory_id)) is None:
         return
 
-    result = await coordinator.async_get_inventory_statistics(inventory_id)
+    try:
+        result = await coordinator.async_get_inventory_statistics(inventory_id)
+    except Exception as exc:
+        connection.send_error(msg["id"], "inventory_statistics_failed", str(exc))
+        return
+
     connection.send_result(msg["id"], result)
 
 
@@ -421,7 +458,12 @@ async def _handle_lookup_by_barcode(
         return
 
     coordinator = next(iter(coordinators.values()))
-    results = await coordinator.async_lookup_by_barcode(barcode)
+    try:
+        results = await coordinator.async_lookup_by_barcode(barcode)
+    except Exception as exc:
+        connection.send_error(msg["id"], "lookup_by_barcode_failed", str(exc))
+        return
+
     connection.send_result(msg["id"], {"items": results})
 
 
@@ -477,23 +519,28 @@ async def _handle_lookup_barcode_product(
 
     # Check if an item with this barcode already exists in any inventory
     coordinators = get_coordinators(hass)
-    if coordinators:
-        coordinator = next(iter(coordinators.values()))
-        existing = await coordinator.async_lookup_by_barcode(barcode)
-        if existing:
-            item = existing[0]
-            product: dict[str, Any] = {"name": item.get("name", "")}
-            if item.get("description"):
-                product["description"] = item["description"]
-            if item.get("category"):
-                product["category"] = item["category"]
-            if item.get("unit"):
-                product["unit"] = item["unit"]
-            results = [{"provider": "inventory", "found": True, "product": product}]
-            connection.send_result(msg["id"], {"barcode": barcode, "results": results})
-            return
+    try:
+        if coordinators:
+            coordinator = next(iter(coordinators.values()))
+            existing = await coordinator.async_lookup_by_barcode(barcode)
+            if existing:
+                item = existing[0]
+                product: dict[str, Any] = {"name": item.get("name", "")}
+                if item.get("description"):
+                    product["description"] = item["description"]
+                if item.get("category"):
+                    product["category"] = item["category"]
+                if item.get("unit"):
+                    product["unit"] = item["unit"]
+                results = [{"provider": "inventory", "found": True, "product": product}]
+                connection.send_result(msg["id"], {"barcode": barcode, "results": results})
+                return
 
-    results = await async_lookup_barcode_all_providers(hass, barcode)
+        results = await async_lookup_barcode_all_providers(hass, barcode)
+    except Exception as exc:
+        connection.send_error(msg["id"], "lookup_barcode_product_failed", str(exc))
+        return
+
     connection.send_result(msg["id"], {"barcode": barcode, "results": results})
 
 
@@ -507,7 +554,12 @@ async def _handle_get_barcode_provider_config(
     if repository is None:
         connection.send_result(msg["id"], {})
         return
-    config = await repository.get_barcode_provider_config()
+    try:
+        config = await repository.get_barcode_provider_config()
+    except Exception as exc:
+        connection.send_error(msg["id"], "get_barcode_provider_config_failed", str(exc))
+        return
+
     connection.send_result(msg["id"], config)
 
 
@@ -522,7 +574,12 @@ async def _handle_set_barcode_provider_config(
     if repository is None:
         connection.send_error(msg["id"], "no_repository", "Repository not available")
         return
-    await repository.set_barcode_provider_config({"provider": provider})
+    try:
+        await repository.set_barcode_provider_config({"provider": provider})
+    except Exception as exc:
+        connection.send_error(msg["id"], "set_barcode_provider_config_failed", str(exc))
+        return
+
     connection.send_result(msg["id"], {"provider": provider})
 
 

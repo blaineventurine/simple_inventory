@@ -373,7 +373,8 @@ class TestInventoryService:
         with (
             patch.object(hass.config_entries, "async_entries", return_value=[]),
             pytest.raises(
-                ValueError, match="Inventory with name 'Non-existent Inventory' not found"
+                ServiceValidationError,
+                match="Inventory with name 'Non-existent Inventory' not found",
             ),
         ):
             await inventory_service.async_get_items(call)
@@ -387,7 +388,8 @@ class TestInventoryService:
         call.data = {}
 
         with pytest.raises(
-            ValueError, match="Either 'inventory_id' or 'inventory_name' must be provided"
+            ServiceValidationError,
+            match="Either 'inventory_id' or 'inventory_name' must be provided",
         ):
             await inventory_service.async_get_items(call)
 

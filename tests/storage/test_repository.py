@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 from collections.abc import AsyncGenerator
 from datetime import date, timedelta
 from pathlib import Path
@@ -1119,3 +1120,44 @@ async def test_set_barcode_provider_config_overwrites(repo: InventoryRepository)
     await repo.set_barcode_provider_config({"provider": "custom_provider"})
     config = await repo.get_barcode_provider_config()
     assert config == {"provider": "custom_provider"}
+
+
+@pytest.mark.asyncio
+async def test_set_barcode_provider_config_locked_write_round_trips(
+    repo: InventoryRepository,
+) -> None:
+    """set_barcode_provider_config now acquires self._lock (matching every other
+    write method in InventoryRepository, e.g. upsert_inventory) before writing to
+    the metadata table. A single-threaded integration test cannot directly observe
+    lock acquisition or exercise the race it prevents (concurrent writers
+    interleaving INSERT OR REPLACE statements) - that requires a coordinator-level
+    concurrency test. This test instead confirms the locked write path still
+    behaves correctly for the common case: a single call writes a value that
+    round-trips exactly through get_barcode_provider_config.
+    """
+    await repo.set_barcode_provider_config({"provider": "upcitemdb", "api_key": "abc123"})
+    config = await repo.get_barcode_provider_config()
+    assert config == {"provider": "upcitemdb", "api_key": "abc123"}
+
+
+@pytest.mark.asyncio
+async def test_adjust_item_quantity_concurrent_increments_are_atomic(
+    repo: InventoryRepository,
+) -> None:
+    """Concurrent adjust_item_quantity calls on the same item must not lose
+    updates: the single-lock critical section serializes the read-modify-write,
+    so N concurrent +1 deltas must land as N distinct, non-overlapping steps.
+    """
+    await repo.upsert_inventory("inv1", "Kitchen", "", "", "", None)
+    item_id = await repo.create_item("inv1", {FIELD_NAME: "Milk", FIELD_QUANTITY: 10})
+
+    results = await asyncio.gather(*(repo.adjust_item_quantity(item_id, 1) for _ in range(10)))
+
+    assert all(result is not None for result in results)
+    pairs = sorted((before, after) for before, after in results)  # type: ignore[misc]
+    for (_before, after), (next_before, _next_after) in zip(pairs, pairs[1:]):
+        assert after == next_before
+
+    item = await repo.get_item_by_name("inv1", "milk")
+    assert item is not None
+    assert item[FIELD_QUANTITY] == 20  # 10 + 10 * 1, no lost updates
