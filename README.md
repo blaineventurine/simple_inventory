@@ -177,7 +177,7 @@ The integration fires Home Assistant events on key inventory transitions, enabli
 | `simple_inventory_item_quantity_changed` | Any increment or decrement |
 | `simple_inventory_item_depleted` | Quantity drops to 0 (was > 0) |
 | `simple_inventory_item_restocked` | Quantity rises above 0 (was 0) |
-| `simple_inventory_item_added_to_list` | Item is newly added to a todo list |
+| `simple_inventory_item_added_to_list` | Item is added to a todo list, or its quantity-needed display is updated while already on the list |
 | `simple_inventory_item_removed_from_list` | Item is removed from a todo list |
 
 **Event payloads:**
