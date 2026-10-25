@@ -40,17 +40,17 @@ Coverage must stay at or above **80%**. New code needs tests. If you're touching
 A few things that are easy to get wrong:
 
 - **Field constants**: use `FIELD_*` constants from `const.py` as dict keys everywhere except `services.yaml` and voluptuous schema definitions.
-- **Field update pipeline**: any new updateable field must be added to **two** allowlists — `_UPDATEABLE_FIELDS` in `services/inventory_service.py` and `_get_allowed_update_fields()` in `coordinator/_core.py`. Missing either one silently drops the field.
+- **Field update pipeline**: scalar item fields are declared once in `ITEM_FIELDS` (`item_fields.py`). The update allowlists, coercion sets, the repository column map and the import/export columns are derived from it. A new field needs a registry entry plus the explicit `ITEM_SCHEMA`, both service TypedDicts in `types.py`, `services.yaml` and the translation files; `tests/test_item_fields.py` fails if they disagree with the registry.
 - **Numeric types**: quantities, prices, and amounts are `float` throughout the stack. `expiry_alert_days` is `int`. Don't mix them.
-- **Services**: adding a new service call requires updates in seven places: `const.py`, `schemas/service_schemas.py`, `services/__init__.py`, `__init__.py` (registration table + `_SERVICE_NAMES`), `services.yaml`, and all three translation files (`translations/en.json`, `es.json`, `fr.json`). See the existing services for the pattern.
-- **Translation files**: all three locale files (`en.json`, `es.json`, `fr.json`) are structurally identical and must be kept in sync. Make the same structural change to all three.
-- **`services.yaml`**: do not include `supports_response` — that key is only valid in the programmatic `hass.services.async_register()` call.
+- **Services**: to add a service, add its `SERVICE_*` name to `const.py`; add its schema and one `ServiceSpec(name, schema[, SupportsResponse.OPTIONAL])` row to the `SERVICES` table in `schemas/service_schemas.py` (that table drives registration, unregistration and `ALL_SCHEMAS`); add an `async_<name>` method to `ServiceHandler` in `services/__init__.py`; add its fields to `services.yaml` and its name and descriptions to all four translation files. `tests/test_service_registry.py` fails until the names and fields agree with the schema; also extend the service-name sets asserted in `tests/test_init_module.py`.
+- **Translation files**: all four locale files (`translations/en.json`, `es.json`, `fr.json`, `sl.json`) are structurally identical and must be kept in sync. Make the same structural change to all four. Quote placeholders with escaped double quotes (`\"{name}\"`), never apostrophes: HA's frontend renders translations as ICU MessageFormat, where `'{name}'` shows the raw `{name}` (`tests/test_translations.py` enforces this).
+- **`services.yaml`**: structure only — `fields` with `required`, `example`, `default` and `selector`. Service and field `name`/`description` text lives only in the translation files (HA shows those; `tests/test_service_registry.py` rejects prose in `services.yaml` and requires a translated name and description for every service and field). Do not include `supports_response` — whether a service responds is set by the `response` column of its `ServiceSpec` row.
 - **Coordinator pattern**: services call coordinator methods; nothing calls the repository directly.
 
 ## What makes a good PR
 
 - Includes tests for new behavior.
-- Updates `services.yaml` and all translation files if services are added or changed.
+- Updates `services.yaml` (fields) and all translation files (names and descriptions) if services are added or changed.
 - Has a clear description of what changed and why.
 
 ## Running a subset of tests

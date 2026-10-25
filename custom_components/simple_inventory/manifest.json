@@ -1,21 +1,27 @@
 {
   "domain": "simple_inventory",
   "name": "Simple Inventory",
+  "after_dependencies": [
+    "image_upload",
+    "media_source",
+    "todo"
+  ],
   "codeowners": [
     "@blaineventurine"
   ],
   "config_flow": true,
   "dependencies": [
     "frontend",
-    "lovelace",
+    "http",
+    "panel_custom",
     "websocket_api"
   ],
   "documentation": "https://github.com/blaineventurine/simple_inventory",
   "integration_type": "device",
-  "iot_class": "local_polling",
+  "iot_class": "local_push",
   "issue_tracker": "https://github.com/blaineventurine/simple_inventory/issues",
   "requirements": [
     "aiosqlite==0.22.1"
   ],
-  "version": "0.6.0"
+  "version": "0.11.0"
 }

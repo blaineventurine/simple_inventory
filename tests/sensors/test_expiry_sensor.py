@@ -2,27 +2,27 @@
 
 from __future__ import annotations
 
+from collections.abc import Awaitable, Callable
+from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from homeassistant.core import EventBus, HomeAssistant
+from homeassistant.core import HomeAssistant
 
+from custom_components.simple_inventory.const import DOMAIN
 from custom_components.simple_inventory.sensors import ItemsExpiringSoonSensor
 
 
 @pytest.fixture
-def mock_sensor_coordinator() -> MagicMock:
-    coordinator = MagicMock()
-    coordinator.async_get_items_expiring_soon = AsyncMock(return_value=[])
-    coordinator.async_add_listener = MagicMock(return_value=lambda: None)
-    return coordinator
+def mock_hub() -> MagicMock:
+    hub = MagicMock()
+    hub.async_items_expiring_soon = AsyncMock(return_value=[])
+    return hub
 
 
 @pytest.fixture
-def expiry_sensor(
-    hass: HomeAssistant, mock_sensor_coordinator: MagicMock
-) -> ItemsExpiringSoonSensor:
-    return ItemsExpiringSoonSensor(hass, mock_sensor_coordinator, "kitchen_inventory", "Kitchen")
+def expiry_sensor(hass: HomeAssistant, mock_hub: MagicMock) -> ItemsExpiringSoonSensor:
+    return ItemsExpiringSoonSensor(hass, mock_hub, "kitchen_inventory", "Kitchen")
 
 
 def test_init(expiry_sensor: ItemsExpiringSoonSensor) -> None:
@@ -34,22 +34,8 @@ def test_init(expiry_sensor: ItemsExpiringSoonSensor) -> None:
 
 
 @pytest.mark.asyncio
-async def test_async_added_to_hass(expiry_sensor: ItemsExpiringSoonSensor) -> None:
-    with (
-        patch.object(expiry_sensor, "_async_update_state", new=AsyncMock()) as mock_update,
-        patch.object(EventBus, "async_listen") as mock_listen,
-        patch.object(expiry_sensor, "async_on_remove") as mock_on_remove,
-    ):
-        await expiry_sensor.async_added_to_hass()
-
-        mock_update.assert_awaited_once()
-        assert mock_listen.call_count >= 2
-        mock_on_remove.assert_called()
-
-
-@pytest.mark.asyncio
 async def test_update_state_with_items(
-    expiry_sensor: ItemsExpiringSoonSensor, mock_sensor_coordinator: MagicMock
+    expiry_sensor: ItemsExpiringSoonSensor, mock_hub: MagicMock
 ) -> None:
     test_items = [
         {
@@ -74,7 +60,7 @@ async def test_update_state_with_items(
         },
     ]
 
-    mock_sensor_coordinator.async_get_items_expiring_soon.return_value = test_items
+    mock_hub.async_items_expiring_soon.return_value = test_items
 
     with patch.object(expiry_sensor, "async_write_ha_state"):
         await expiry_sensor._async_update_state()
@@ -95,9 +81,9 @@ async def test_update_state_with_items(
 
 @pytest.mark.asyncio
 async def test_update_state_no_items(
-    expiry_sensor: ItemsExpiringSoonSensor, mock_sensor_coordinator: MagicMock
+    expiry_sensor: ItemsExpiringSoonSensor, mock_hub: MagicMock
 ) -> None:
-    mock_sensor_coordinator.async_get_items_expiring_soon.return_value = []
+    mock_hub.async_items_expiring_soon.return_value = []
 
     with patch.object(expiry_sensor, "async_write_ha_state"):
         await expiry_sensor._async_update_state()
@@ -123,7 +109,7 @@ async def test_update_state_no_items(
 @pytest.mark.asyncio
 async def test_icon_tiers(
     expiry_sensor: ItemsExpiringSoonSensor,
-    mock_sensor_coordinator: MagicMock,
+    mock_hub: MagicMock,
     days_until_expiry: int,
     expected_icon: str,
 ) -> None:
@@ -135,7 +121,7 @@ async def test_icon_tiers(
             "quantity": 1,
         }
     ]
-    mock_sensor_coordinator.async_get_items_expiring_soon.return_value = test_items
+    mock_hub.async_items_expiring_soon.return_value = test_items
 
     with patch.object(expiry_sensor, "async_write_ha_state"):
         await expiry_sensor._async_update_state()
@@ -146,15 +132,13 @@ async def test_icon_tiers(
 
 
 @pytest.mark.asyncio
-async def test_coordinator_called_with_inventory_id(
-    expiry_sensor: ItemsExpiringSoonSensor, mock_sensor_coordinator: MagicMock
+async def test_hub_called_with_inventory_id(
+    expiry_sensor: ItemsExpiringSoonSensor, mock_hub: MagicMock
 ) -> None:
     with patch.object(expiry_sensor, "async_write_ha_state"):
         await expiry_sensor._async_update_state()
 
-    mock_sensor_coordinator.async_get_items_expiring_soon.assert_awaited_once_with(
-        "kitchen_inventory"
-    )
+    mock_hub.async_items_expiring_soon.assert_awaited_once_with("kitchen_inventory")
 
 
 def test_handle_update_schedules_task(expiry_sensor: ItemsExpiringSoonSensor) -> None:
@@ -165,15 +149,47 @@ def test_handle_update_schedules_task(expiry_sensor: ItemsExpiringSoonSensor) ->
         mock_create_task.assert_called_once()
 
 
-def test_handle_update_invalidates_cache(expiry_sensor: ItemsExpiringSoonSensor) -> None:
+def test_handle_update_invalidates_cache(
+    expiry_sensor: ItemsExpiringSoonSensor, mock_hub: MagicMock
+) -> None:
     """_handle_update must evict the per-inventory cache key so the next refresh is fresh."""
-    cache: dict = {"kitchen_inventory": (0.0, [{"name": "stale"}]), None: (0.0, [])}
-    expiry_sensor.coordinator._expiry_cache = cache
-
     with patch.object(
         expiry_sensor.hass, "async_create_task", side_effect=lambda coro: coro.close()
     ):
         expiry_sensor._handle_update(None)
 
-    assert "kitchen_inventory" not in cache
-    assert None in cache
+    mock_hub.invalidate.assert_called_once_with("kitchen_inventory")
+
+
+async def test_refreshes_only_on_entry_scoped_event(
+    hass: HomeAssistant,
+    expiry_sensor: ItemsExpiringSoonSensor,
+    mock_hub: MagicMock,
+    attach_sensor: Callable[[Any], Awaitable[Any]],
+) -> None:
+    await attach_sensor(expiry_sensor)
+    mock_hub.async_items_expiring_soon.reset_mock()
+
+    hass.bus.async_fire(f"{DOMAIN}_updated")
+    await hass.async_block_till_done()
+    mock_hub.async_items_expiring_soon.assert_not_awaited()
+
+    hass.bus.async_fire(f"{DOMAIN}_updated_kitchen_inventory")
+    await hass.async_block_till_done()
+    mock_hub.async_items_expiring_soon.assert_awaited_once_with("kitchen_inventory")
+
+
+async def test_local_midnight_recomputes_and_evicts_cache(
+    expiry_sensor: ItemsExpiringSoonSensor,
+    mock_hub: MagicMock,
+    attach_sensor: Callable[[Any], Awaitable[Any]],
+    fire_next_local_midnight: Callable[[], Awaitable[None]],
+) -> None:
+    await attach_sensor(expiry_sensor)
+    mock_hub.invalidate.reset_mock()
+    mock_hub.async_items_expiring_soon.reset_mock()
+
+    await fire_next_local_midnight()
+
+    mock_hub.async_items_expiring_soon.assert_awaited_once_with("kitchen_inventory")
+    mock_hub.invalidate.assert_called_once_with("kitchen_inventory")

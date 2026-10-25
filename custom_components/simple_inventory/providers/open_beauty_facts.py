@@ -8,8 +8,5 @@ from .openfoodfacts import OpenFoodFactsProvider
 class OpenBeautyFactsProvider(OpenFoodFactsProvider):
     """Barcode lookup via Open Beauty Facts API."""
 
+    name = "openbeautyfacts"
     _API_BASE = "https://world.openbeautyfacts.org"
-
-    @property
-    def provider_name(self) -> str:
-        return "openbeautyfacts"

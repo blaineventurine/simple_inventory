@@ -2,11 +2,14 @@
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any
+
+from homeassistant.util import dt as dt_util
 
 from ..const import (
     ANALYTICS_MIN_EVENTS,
+    FIELD_ITEMS,
     FIELD_NAME,
     FIELD_QUANTITY,
     FIELD_UNIT,
@@ -23,6 +26,19 @@ def _compute_avg_restock_days(timestamps: list[str]) -> float | None:
     return round(sum(gaps) / len(gaps), 1)
 
 
+def _observed_span_days(first_ts: str | None, window_days: int | None) -> float:
+    """Days from ``first_ts`` to now, capped at ``window_days``, floored at one day."""
+    if not first_ts:
+        return 1.0
+    first_dt = datetime.fromisoformat(first_ts)
+    if first_dt.tzinfo is None:
+        first_dt = first_dt.replace(tzinfo=UTC)  # history timestamps are naive UTC
+    span = (dt_util.utcnow() - first_dt).total_seconds() / 86400
+    if window_days is not None:
+        span = min(span, float(window_days))
+    return max(span, 1.0)
+
+
 class _AnalyticsMixin(_CoordinatorProtocol):
     """Mixin providing consumption analytics methods."""
 
@@ -36,7 +52,6 @@ class _AnalyticsMixin(_CoordinatorProtocol):
         decrement_count = raw["decrement_count"]
         total_consumed = raw["total_consumed"]
         window_days = raw["window_days"]
-        first_event_ts = raw.get("first_event_ts")
         has_sufficient_data = decrement_count >= min_events
 
         daily_rate: float | None = None
@@ -44,36 +59,23 @@ class _AnalyticsMixin(_CoordinatorProtocol):
         days_until_depletion: float | None = None
 
         if has_sufficient_data and total_consumed > 0:
-            if window_days is not None:
-                span_days = float(window_days)
-            elif first_event_ts:
-                first_dt = datetime.fromisoformat(first_event_ts)
-                span_days = max((datetime.utcnow() - first_dt).total_seconds() / 86400, 1.0)
-            else:
-                span_days = 1.0
-
+            span_days = _observed_span_days(raw["first_event_ts"], window_days)
             daily_rate = round(total_consumed / span_days, 4)
             weekly_rate = round(daily_rate * 7, 4)
 
             if daily_rate > 0:
                 days_until_depletion = round(current_quantity / daily_rate, 1)
 
-        avg_restock_days = _compute_avg_restock_days(raw.get("restock_timestamps", []))
+        avg_restock_days = _compute_avg_restock_days(raw["restock_timestamps"])
 
-        # Spend rate calculations
-        total_spend = raw.get("total_spend", 0.0)
-        restock_spend_count = raw.get("restock_spend_count", 0)
+        # Spend rate: priced restocks spread over the time since the first priced restock.
+        total_spend = raw["total_spend"]
+        restock_spend_count = raw["restock_spend_count"]
         daily_spend_rate: float | None = None
         weekly_spend_rate: float | None = None
 
         if restock_spend_count > 0 and total_spend > 0:
-            if window_days is not None:
-                spend_span = float(window_days)
-            elif first_event_ts:
-                first_dt = datetime.fromisoformat(first_event_ts)
-                spend_span = max((datetime.utcnow() - first_dt).total_seconds() / 86400, 1.0)
-            else:
-                spend_span = 1.0
+            spend_span = _observed_span_days(raw["first_spend_ts"], window_days)
             daily_spend_rate = round(total_spend / spend_span, 4)
             weekly_spend_rate = round(daily_spend_rate * 7, 4)
 
@@ -108,7 +110,7 @@ class _AnalyticsMixin(_CoordinatorProtocol):
         rates = self._compute_consumption_rates(raw, float(item.get(FIELD_QUANTITY, 0)))
         rates["item_name"] = item.get(FIELD_NAME, item_name)
         rates["current_quantity"] = float(item.get(FIELD_QUANTITY, 0))
-        rates["unit"] = item.get(FIELD_UNIT, "")
+        rates[FIELD_UNIT] = item.get(FIELD_UNIT, "")
         return rates
 
     async def async_get_inventory_consumption_rates(
@@ -143,7 +145,7 @@ class _AnalyticsMixin(_CoordinatorProtocol):
         return {
             "inventory_id": inventory_id,
             "window_days": window_days,
-            "items": items,
+            FIELD_ITEMS: items,
             "summary": {
                 "total_items_tracked": len(tracked),
                 "total_consumed": total_consumed,

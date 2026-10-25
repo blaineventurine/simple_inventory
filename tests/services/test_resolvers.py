@@ -12,6 +12,8 @@ from custom_components.simple_inventory.services.resolvers import (
     resolve_item_name,
 )
 
+from ..error_assertions import assert_translated_error
+
 
 def _entry(entry_id: str, name: str, entry_type: str = "inventory") -> MagicMock:
     entry = MagicMock()
@@ -79,16 +81,20 @@ async def test_resolve_inventory_id_fuzzy_match_typo() -> None:
 async def test_resolve_inventory_id_ambiguous_substring_raises() -> None:
     hass = _hass_with_entries([_entry("inv_1", "Garage Freezer"), _entry("inv_2", "Chest Freezer")])
 
-    with pytest.raises(ServiceValidationError, match="multiple inventories"):
+    with pytest.raises(ServiceValidationError) as err:
         await resolve_inventory_id(hass, None, "freezer")
+    assert_translated_error(
+        err.value, "ambiguous_inventory", name="freezer", matches="Chest Freezer, Garage Freezer"
+    )
 
 
 @pytest.mark.asyncio
 async def test_resolve_inventory_id_no_match_raises() -> None:
     hass = _hass_with_entries([_entry("inv_1", "Kitchen")])
 
-    with pytest.raises(ServiceValidationError, match="No inventory"):
+    with pytest.raises(ServiceValidationError) as err:
         await resolve_inventory_id(hass, None, "nonexistent zzz")
+    assert_translated_error(err.value, "inventory_not_found", name="nonexistent zzz")
 
 
 @pytest.mark.asyncio
@@ -97,16 +103,18 @@ async def test_resolve_inventory_id_excludes_global_entry() -> None:
         [_entry("global_1", "Simple Inventory", entry_type="global"), _entry("inv_1", "Kitchen")]
     )
 
-    with pytest.raises(ServiceValidationError, match="No inventory"):
+    with pytest.raises(ServiceValidationError) as err:
         await resolve_inventory_id(hass, None, "Simple Inventory")
+    assert_translated_error(err.value, "inventory_not_found", name="Simple Inventory")
 
 
 @pytest.mark.asyncio
 async def test_resolve_inventory_id_missing_both_raises() -> None:
     hass = MagicMock()
 
-    with pytest.raises(ServiceValidationError, match="inventory_id.*inventory_name"):
+    with pytest.raises(ServiceValidationError) as err:
         await resolve_inventory_id(hass, None, None)
+    assert_translated_error(err.value, "inventory_identifier_required")
 
 
 @pytest.mark.asyncio
@@ -136,16 +144,18 @@ async def test_resolve_item_name_no_match_raises() -> None:
     coordinator = MagicMock()
     coordinator.async_list_items = AsyncMock(return_value=[{"name": "Paper Towels"}])
 
-    with pytest.raises(ServiceValidationError, match="No item"):
+    with pytest.raises(ServiceValidationError) as err:
         await resolve_item_name(coordinator, "inv_1", "aluminum foil")
+    assert_translated_error(err.value, "item_not_found", name="aluminum foil", inventory="inv_1")
 
 
 @pytest.mark.asyncio
 async def test_resolve_item_name_missing_name_raises() -> None:
     coordinator = MagicMock()
 
-    with pytest.raises(ServiceValidationError, match="name"):
+    with pytest.raises(ServiceValidationError) as err:
         await resolve_item_name(coordinator, "inv_1", "")
+    assert_translated_error(err.value, "empty_item_name", inventory="inv_1")
 
 
 @pytest.mark.asyncio
@@ -153,8 +163,9 @@ async def test_resolve_inventory_id_whitespace_only_query_raises() -> None:
     """A whitespace-only name must never silently resolve to the only inventory."""
     hass = _hass_with_entries([_entry("inv_1", "Kitchen")])
 
-    with pytest.raises(ServiceValidationError, match="No inventory"):
+    with pytest.raises(ServiceValidationError) as err:
         await resolve_inventory_id(hass, None, "   ")
+    assert_translated_error(err.value, "inventory_not_found", name="   ")
 
 
 @pytest.mark.asyncio
@@ -184,8 +195,15 @@ async def test_resolve_item_name_ambiguous_raises() -> None:
         return_value=[{"name": "Garage Freezer Bag"}, {"name": "Chest Freezer Bag"}]
     )
 
-    with pytest.raises(ServiceValidationError, match="multiple items"):
+    with pytest.raises(ServiceValidationError) as err:
         await resolve_item_name(coordinator, "inv_1", "freezer bag")
+    assert_translated_error(
+        err.value,
+        "ambiguous_item",
+        name="freezer bag",
+        inventory="inv_1",
+        matches="Chest Freezer Bag, Garage Freezer Bag",
+    )
 
 
 @pytest.mark.asyncio
@@ -265,8 +283,11 @@ async def test_resolve_item_name_alias_colliding_with_other_item_name_raises() -
         ]
     )
 
-    with pytest.raises(ServiceValidationError, match="multiple items"):
+    with pytest.raises(ServiceValidationError) as err:
         await resolve_item_name(coordinator, "inv_1", "Oats")
+    assert_translated_error(
+        err.value, "ambiguous_item", name="Oats", inventory="inv_1", matches="Oatmeal, Oats"
+    )
 
 
 @pytest.mark.asyncio

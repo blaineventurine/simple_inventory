@@ -15,17 +15,6 @@ from custom_components.simple_inventory.voice_sentences import (
 )
 
 
-@pytest.fixture
-def hass_with_tmp_config(hass: HomeAssistant, tmp_path: Path) -> HomeAssistant:
-    hass.config.config_dir = str(tmp_path)
-
-    def _path(*parts: str) -> str:
-        return str(tmp_path.joinpath(*parts))
-
-    hass.config.path = _path  # type: ignore[method-assign]
-    return hass
-
-
 def test_can_offer_voice_sentences_true_for_english(hass: HomeAssistant) -> None:
     hass.config.language = "en"
     assert can_offer_voice_sentences(hass) is True

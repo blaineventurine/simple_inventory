@@ -4,6 +4,7 @@
   },
   "config": {
     "error": {
+      "invalid_name": "Le nom de l'inventaire doit contenir au moins une lettre ou un chiffre (le mot « inventaire » est supprimé)",
       "name_exists": "Un inventaire avec ce nom existe déjà"
     },
     "step": {
@@ -17,48 +18,376 @@
         "data_description": {
           "description": "Description de cet inventaire (optionnelle)",
           "icon": "Cliquez sur le champ icône pour ouvrir le sélecteur d'icônes avec toutes les icônes Material Design",
-          "install_voice_sentences": "Copie un exemple de fichier de phrases pour Assist local (Home Assistant Voice) dans votre répertoire de configuration et recharge les phrases personnalisées. N'écrase jamais un fichier existant. Affiché uniquement lorsque la langue de Home Assistant est l'anglais."
+          "install_voice_sentences": "Copie un exemple de fichier de phrases pour Assist local (Home Assistant Voice) dans votre répertoire de configuration et recharge les phrases personnalisées. N'écrase jamais un fichier existant. Affiché uniquement lorsque la langue de Home Assistant est l'anglais, l'espagnol, le français ou le slovène."
         },
         "description": "Créez un nouvel inventaire pour suivre vos articles.",
         "title": "Ajouter un inventaire"
       }
     }
   },
-  "entity": {
-    "sensor": {
-      "all_expired_items": {
-        "name": "Tous les articles expirés"
+  "exceptions": {
+    "alias_conflict": {
+      "message": "Alias déjà attribué(s) à un autre article de cet inventaire : {aliases}"
+    },
+    "alias_is_item_name": {
+      "message": "Alias \"{aliases}\" déjà utilisé(s) comme nom pour un autre article (inventaire \"{inventory}\")"
+    },
+    "ambiguous_barcode": {
+      "message": "Le code-barres \"{barcode}\" a été trouvé dans plusieurs inventaires : {inventories}. Précisez inventory_id pour lever l'ambiguïté."
+    },
+    "ambiguous_inventory": {
+      "message": "\"{name}\" correspond à plusieurs inventaires : {matches}. Veuillez être plus précis."
+    },
+    "ambiguous_item": {
+      "message": "\"{name}\" correspond à plusieurs articles de l'inventaire \"{inventory}\" : {matches}. Veuillez être plus précis."
+    },
+    "barcode_conflict": {
+      "message": "Code(s)-barres déjà attribué(s) à un autre article de cet inventaire : {barcodes}"
+    },
+    "barcode_not_found": {
+      "message": "Aucun article trouvé pour le code-barres \"{barcode}\""
+    },
+    "barcode_not_on_item": {
+      "message": "Le code-barres \"{barcode}\" n'appartient pas à \"{name}\"."
+    },
+    "batch_not_found": {
+      "message": "Aucun lot \"{batch_id}\" trouvé pour cet article"
+    },
+    "batch_required": {
+      "message": "{name} a {count} lots ; modifiez le lot lui-même plutôt que le champ {field} de l'article"
+    },
+    "category_assignment_failed": {
+      "message": "Impossible d'attribuer les catégories \"{categories}\""
+    },
+    "duplicate_item_name": {
+      "message": "Un article nommé \"{name}\" existe déjà dans l'inventaire \"{inventory}\""
+    },
+    "empty_item_name": {
+      "message": "Un nom d'article est requis dans l'inventaire \"{inventory}\""
+    },
+    "image_download_failed": {
+      "message": "Impossible de télécharger la photo du produit de \"{name}\"."
+    },
+    "image_invalid": {
+      "message": "Le fichier n'est pas une image prise en charge. Utilisez un fichier JPEG, PNG, WebP ou GIF."
+    },
+    "image_not_found": {
+      "message": "Aucune photo de produit trouvée pour \"{name}\"."
+    },
+    "image_too_large": {
+      "message": "L'image est trop volumineuse (10 Mo maximum)."
+    },
+    "insufficient_stock": {
+      "message": "Seulement {available} de {name} disponible(s) à {location} ; rien n'a été déplacé"
+    },
+    "invalid_amount": {
+      "message": "La quantité à transférer doit être supérieure à 0 (reçu {amount})"
+    },
+    "invalid_auto_add_config": {
+      "message": "Impossible d'ajouter l'article \"{name}\" à l'inventaire \"{inventory}\" (configuration d'ajout automatique invalide)"
+    },
+    "invalid_scan_action": {
+      "message": "Action invalide \"{action}\". Doit être 'increment', 'decrement' ou 'lookup'"
+    },
+    "inventory_identifier_required": {
+      "message": "'inventory_id' ou 'inventory_name' est requis"
+    },
+    "inventory_not_found": {
+      "message": "Aucun inventaire nommé \"{name}\" trouvé"
+    },
+    "inventory_not_loaded": {
+      "message": "L'inventaire \"{inventory}\" n'est pas chargé actuellement"
+    },
+    "item_identifier_required": {
+      "message": "'name' ou 'barcode' est requis pour identifier un article dans l'inventaire \"{inventory}\""
+    },
+    "item_not_found": {
+      "message": "Aucun article nommé \"{name}\" trouvé dans l'inventaire \"{inventory}\""
+    },
+    "location_assignment_failed": {
+      "message": "Impossible d'attribuer les emplacements \"{locations}\" dans l'inventaire \"{inventory}\""
+    },
+    "location_required": {
+      "message": "Un emplacement de destination est requis"
+    },
+    "name_is_alias": {
+      "message": "Le nom \"{name}\" est déjà un alias de \"{item}\" (inventaire \"{inventory}\")"
+    },
+    "no_inventories_configured": {
+      "message": "Aucun inventaire configuré"
+    },
+    "no_stock_at_location": {
+      "message": "Il n'y a pas de stock de {name} à \"{location}\""
+    },
+    "no_stock_for_expiry": {
+      "message": "{name} n'a pas de stock ; réapprovisionnez-le plutôt avec une date de péremption"
+    },
+    "same_location": {
+      "message": "Le stock est déjà à \"{location}\""
+    },
+    "speech_add_failed": {
+      "message": "Désolé, je n'ai pas pu ajouter {item} à {inventory}."
+    },
+    "speech_added": {
+      "message": "J'ai ajouté {amount} {item} à {inventory}."
+    },
+    "speech_added_now_at": {
+      "message": "J'ai ajouté {amount} {item} à {inventory}. Il y en a maintenant {remaining}."
+    },
+    "speech_ambiguous_location": {
+      "message": "Quel emplacement de {inventory} voulez-vous dire : {locations} ?"
+    },
+    "speech_amount_at_location": {
+      "message": "{amount} à {location}"
+    },
+    "speech_amount_unassigned": {
+      "message": "{amount} sans emplacement"
+    },
+    "speech_count_expired_few": {
+      "message": "{count} articles sont périmés"
+    },
+    "speech_count_expired_in_few": {
+      "message": "{count} articles sont périmés dans {inventory}"
+    },
+    "speech_count_expired_in_one": {
+      "message": "{count} article est périmé dans {inventory}"
+    },
+    "speech_count_expired_in_other": {
+      "message": "{count} articles sont périmés dans {inventory}"
+    },
+    "speech_count_expired_in_two": {
+      "message": "{count} articles sont périmés dans {inventory}"
+    },
+    "speech_count_expired_one": {
+      "message": "{count} article est périmé"
+    },
+    "speech_count_expired_other": {
+      "message": "{count} articles sont périmés"
+    },
+    "speech_count_expired_two": {
+      "message": "{count} articles sont périmés"
+    },
+    "speech_count_expiring_soon_few": {
+      "message": "{count} articles expirent bientôt"
+    },
+    "speech_count_expiring_soon_in_few": {
+      "message": "{count} articles expirent bientôt dans {inventory}"
+    },
+    "speech_count_expiring_soon_in_one": {
+      "message": "{count} article expire bientôt dans {inventory}"
+    },
+    "speech_count_expiring_soon_in_other": {
+      "message": "{count} articles expirent bientôt dans {inventory}"
+    },
+    "speech_count_expiring_soon_in_two": {
+      "message": "{count} articles expirent bientôt dans {inventory}"
+    },
+    "speech_count_expiring_soon_one": {
+      "message": "{count} article expire bientôt"
+    },
+    "speech_count_expiring_soon_other": {
+      "message": "{count} articles expirent bientôt"
+    },
+    "speech_count_expiring_soon_two": {
+      "message": "{count} articles expirent bientôt"
+    },
+    "speech_count_low_stock_few": {
+      "message": "{count} articles sont presque épuisés"
+    },
+    "speech_count_low_stock_in_few": {
+      "message": "{count} articles sont presque épuisés dans {inventory}"
+    },
+    "speech_count_low_stock_in_one": {
+      "message": "{count} article est presque épuisé dans {inventory}"
+    },
+    "speech_count_low_stock_in_other": {
+      "message": "{count} articles sont presque épuisés dans {inventory}"
+    },
+    "speech_count_low_stock_in_two": {
+      "message": "{count} articles sont presque épuisés dans {inventory}"
+    },
+    "speech_count_low_stock_one": {
+      "message": "{count} article est presque épuisé"
+    },
+    "speech_count_low_stock_other": {
+      "message": "{count} articles sont presque épuisés"
+    },
+    "speech_count_low_stock_two": {
+      "message": "{count} articles sont presque épuisés"
+    },
+    "speech_find_match": {
+      "message": "{amount} {item} dans {inventory}"
+    },
+    "speech_find_match_at": {
+      "message": "{amount} {item} dans {inventory} ({locations})"
+    },
+    "speech_find_matches_other": {
+      "message": "J'ai trouvé {count} résultats pour {item} : {matches}."
+    },
+    "speech_item_missing": {
+      "message": "Je n'ai pas trouvé {item} dans {inventory}."
+    },
+    "speech_item_missing_anywhere": {
+      "message": "Je n'ai trouvé {item} dans aucun inventaire."
+    },
+    "speech_item_quantity": {
+      "message": "{inventory} contient {amount} {item}."
+    },
+    "speech_item_quantity_at": {
+      "message": "{inventory} contient {amount} {item}, à {locations}."
+    },
+    "speech_item_quantity_breakdown": {
+      "message": "{inventory} contient {amount} {item} : {breakdown}."
+    },
+    "speech_list_and_many": {
+      "message": "{first} et {last}"
+    },
+    "speech_list_and_two": {
+      "message": "{first} et {last}"
+    },
+    "speech_list_or": {
+      "message": "{first} ou {last}"
+    },
+    "speech_more_one": {
+      "message": "{count} autre"
+    },
+    "speech_more_other": {
+      "message": "{count} autres"
+    },
+    "speech_move_failed": {
+      "message": "Désolé, je n'ai pas pu déplacer {item} dans {inventory}."
+    },
+    "speech_moved": {
+      "message": "J'ai déplacé {what} vers {to_location}."
+    },
+    "speech_moved_from": {
+      "message": "J'ai déplacé {what} de {from_location} vers {to_location}."
+    },
+    "speech_not_at_locations": {
+      "message": "Il n'y a pas de {item} à {locations} dans {inventory}."
+    },
+    "speech_out_of_stock_among_one": {
+      "message": "dont {count} en rupture de stock"
+    },
+    "speech_out_of_stock_among_other": {
+      "message": "dont {count} en rupture de stock"
+    },
+    "speech_out_of_stock_item": {
+      "message": "{item} (en rupture de stock)"
+    },
+    "speech_remove_failed": {
+      "message": "Désolé, je n'ai pas pu retirer {item} de {inventory}."
+    },
+    "speech_removed": {
+      "message": "J'ai retiré {amount} {item} de {inventory}."
+    },
+    "speech_removed_left": {
+      "message": "J'ai retiré {amount} {item} de {inventory}. Il en reste {remaining}."
+    },
+    "speech_removed_none_left": {
+      "message": "J'ai retiré {amount} {item} de {inventory}. Il n'en reste plus."
+    },
+    "speech_set_quantity": {
+      "message": "J'ai mis {item} à {quantity} dans {inventory}."
+    },
+    "speech_unknown_location": {
+      "message": "Je ne connais pas d'emplacement appelé {location} dans {inventory}."
+    },
+    "speech_update_failed": {
+      "message": "Désolé, je n'ai pas pu mettre à jour {item} dans {inventory}."
+    },
+    "unsupported_media_source": {
+      "message": "\"{media_content_id}\" n'est ni un fichier des dossiers multimédias locaux ni une image téléversée de Home Assistant."
+    },
+    "update_item_failed": {
+      "message": "Impossible de mettre à jour l'article \"{name}\" dans l'inventaire \"{inventory}\""
+    }
+  },
+  "issues": {
+    "database_from_newer_version": {
+      "description": "La base de données de Simple Inventory utilise la version de schéma {found_version}, mais cette version de l'intégration prend en charge au plus la version de schéma {supported_version}. Cela se produit après un retour à une version antérieure de Simple Inventory. Vos données n'ont pas été modifiées.\n\nInstallez la version de Simple Inventory qui a créé la base de données (ou une version plus récente), puis redémarrez Home Assistant.",
+      "title": "La base de données de Simple Inventory provient d'une version plus récente"
+    },
+    "missing_todo_list": {
+      "fix_flow": {
+        "abort": {
+          "inventory_not_loaded": "L'inventaire {inventory} n'est pas chargé. Chargez-le, puis réessayez."
+        },
+        "error": {
+          "invalid_todo_list": "Choisissez une liste de tâches existante autre que celle qui manque."
+        },
+        "step": {
+          "clear": {
+            "description": "Retire la liste de tâches de tous les articles de {inventory} qui utilisent {entity_id} et désactive leur ajout automatique.",
+            "title": "Retirer la liste de tâches"
+          },
+          "init": {
+            "description": "{count} article(s) de {inventory} s'ajoutent à la liste de tâches {entity_id}, qui n'existe plus. Choisissez une liste de remplacement, ou retirez la liste et désactivez l'ajout automatique pour ces articles.",
+            "menu_options": {
+              "clear": "Retirer la liste de tâches et désactiver l'ajout automatique",
+              "replace": "Choisir une liste de tâches de remplacement"
+            },
+            "title": "La liste de tâches {entity_id} n'existe plus"
+          },
+          "replace": {
+            "data": {
+              "todo_list": "Liste de tâches"
+            },
+            "description": "Les articles de {inventory} qui utilisaient {entity_id} utiliseront désormais cette liste de tâches.",
+            "title": "Choisir une liste de tâches de remplacement"
+          }
+        }
       },
-      "all_expiring_items": {
-        "name": "Tous les articles expirant bientôt"
+      "title": "La liste de tâches {entity_id} utilisée par {inventory} n'existe plus"
+    },
+    "orphaned_inventory_data": {
+      "fix_flow": {
+        "abort": {
+          "not_loaded": "Simple Inventory n'est pas chargé. Chargez un inventaire, puis réessayez."
+        },
+        "step": {
+          "confirm": {
+            "description": "La base de données contient encore des données d'inventaires supprimés de Home Assistant (inventaire : nombre d'articles) :\n\n{inventories}\n\nValidez pour supprimer définitivement ces données. Cette action est irréversible.",
+            "title": "Supprimer les données des inventaires supprimés"
+          }
+        }
       },
-      "expired_items": {
-        "name": "Articles expirés dans {inventory_name}"
-      },
-      "expiring_items": {
-        "name": "Articles dans {inventory_name} expirant bientôt"
-      },
-      "inventory": {
-        "name": "Inventaire de {inventory_name}"
-      }
+      "title": "Simple Inventory conserve des données d'inventaires supprimés"
+    },
+    "panel_bundle_missing": {
+      "description": "Le panneau de la barre latérale est activé, mais son fichier est introuvable à l'emplacement \"{path}\". Installez ou mettez à jour la carte Simple Inventory via HACS (ou copiez ses fichiers dans ce dossier), puis redémarrez Home Assistant ou enregistrez à nouveau les options de l'intégration.",
+      "title": "Le panneau Inventaire nécessite la carte Simple Inventory"
     }
   },
   "options": {
     "error": {
+      "invalid_name": "Le nom de l'inventaire doit contenir au moins une lettre ou un chiffre (le mot « inventaire » est supprimé)",
       "name_exists": "Un inventaire avec ce nom existe déjà"
     },
     "step": {
+      "global_settings": {
+        "data": {
+          "install_voice_sentences": "Installer des exemples de commandes vocales",
+          "panel_admin_only": "Seuls les administrateurs peuvent voir le panneau",
+          "show_panel": "Afficher le panneau Inventaire dans la barre latérale"
+        },
+        "data_description": {
+          "install_voice_sentences": "Copie un exemple de fichier de phrases pour Assist local (Home Assistant Voice) dans votre répertoire de configuration et recharge les phrases personnalisées. N'écrase jamais un fichier existant. Affiché uniquement lorsque la langue de Home Assistant est l'anglais, l'espagnol, le français ou le slovène.",
+          "panel_admin_only": "Masque le panneau aux utilisateurs qui ne sont pas administrateurs.",
+          "show_panel": "Ajoute une entrée Inventaire à la barre latérale, avec un onglet par inventaire. Nécessite la carte Simple Inventory (installée via HACS)."
+        },
+        "description": "Affichez un panneau Inventaire en pleine page dans la barre latérale et choisissez qui peut le voir. Le panneau nécessite que la carte Simple Inventory soit installée.",
+        "title": "Paramètres de Simple Inventory"
+      },
       "init": {
         "data": {
           "description": "Description",
           "icon": "Icône",
-          "install_voice_sentences": "Installer des exemples de commandes vocales",
           "name": "Nom de l'inventaire"
         },
         "data_description": {
           "description": "Description de cet inventaire (optionnelle)",
-          "icon": "Cliquez sur le champ icône pour parcourir toutes les icônes disponibles",
-          "install_voice_sentences": "Copie un exemple de fichier de phrases pour Assist local (Home Assistant Voice) dans votre répertoire de configuration et recharge les phrases personnalisées. N'écrase jamais un fichier existant. Affiché uniquement pour l'appareil global Simple Inventory, et uniquement lorsque la langue de Home Assistant est l'anglais."
+          "icon": "Cliquez sur le champ icône pour parcourir toutes les icônes disponibles"
         },
         "description": "Mettre à jour les paramètres pour {current_name}",
         "title": "Configurer l'inventaire"
@@ -70,7 +399,7 @@
       "description": "Ajouter un article à un inventaire",
       "fields": {
         "aliases": {
-          "description": "Noms alternatifs pour l'article, utilisables partout où le nom de l'article est accepté (séparés par des virgules)",
+          "description": "Noms alternatifs pour l'article, utilisables partout où le nom de l'article est accepté (voix, outils LLM, services). Plusieurs alias peuvent être indiqués sous forme de liste séparée par des virgules.",
           "name": "Alias"
         },
         "auto_add_enabled": {
@@ -78,7 +407,7 @@
           "name": "Ajout automatique activé"
         },
         "auto_add_id_to_description_enabled": {
-          "description": "Active l'ajout automatique de l'identifiant de l'inventaire à la description",
+          "description": "Ajoute l'identifiant de l'inventaire à la description",
           "name": "Ajouter automatiquement l'ID de l'inventaire à la description"
         },
         "auto_add_to_list_quantity": {
@@ -86,11 +415,11 @@
           "name": "Seuil d'ajout automatique"
         },
         "barcode": {
-          "description": "Code-barres à associer à l'article (UPC, EAN, etc.)",
+          "description": "Code-barres à associer à l'article (UPC, EAN, etc.). Doit être entre guillemets en YAML s'il commence par des zéros.",
           "name": "Code-barres"
         },
         "category": {
-          "description": "Catégorie de l'article",
+          "description": "Catégorie de l'article. Plusieurs catégories peuvent être indiquées sous forme de liste séparée par des virgules.",
           "name": "Catégorie"
         },
         "description": {
@@ -98,7 +427,7 @@
           "name": "Description"
         },
         "desired_quantity": {
-          "description": "Niveau de stock souhaité pour le réapprovisionnement (0 = utiliser le seuil d'ajout automatique)",
+          "description": "Niveau de stock souhaité pour le réapprovisionnement. S'il est défini, la tâche affiche cette quantité elle-même (par ex. \"Œufs (x12)\") et est supprimée dès que le stock l'atteint. À 0, la quantité est basée sur le seuil d'ajout automatique.",
           "name": "Quantité souhaitée"
         },
         "expiry_alert_days": {
@@ -109,16 +438,20 @@
           "description": "Date d'expiration",
           "name": "Date d'expiration"
         },
+        "icon": {
+          "description": "Icône de l'article (par ex. mdi:apple). Laissez vide pour l'icône par défaut.",
+          "name": "Icône"
+        },
         "inventory_id": {
-          "description": "ID de l'inventaire auquel ajouter",
+          "description": "ID de l'inventaire auquel ajouter. Indiquez ceci ou inventory_name (pas les deux).",
           "name": "ID de l'inventaire"
         },
         "inventory_name": {
-          "description": "Nom de l'inventaire (insensible à la casse)",
+          "description": "Nom de l'inventaire (insensible à la casse). Indiquez ceci ou inventory_id (pas les deux).",
           "name": "Nom de l'inventaire"
         },
         "location": {
-          "description": "Emplacement de l'article dans l'inventaire",
+          "description": "Emplacement de l'article dans l'inventaire. Plusieurs emplacements peuvent être indiqués sous forme de liste séparée par des virgules.",
           "name": "Emplacement"
         },
         "name": {
@@ -138,7 +471,7 @@
           "name": "Liste de tâches"
         },
         "todo_quantity_placement": {
-          "description": "Où afficher la quantité dans les tâches (nom, description ou aucun)",
+          "description": "Où afficher la quantité dans les tâches. \"name\" la place dans le nom de la tâche (par ex. \"Lait (x4)\"), \"description\" la place dans le champ de description, \"none\" l'omet complètement.",
           "name": "Emplacement de la quantité dans la tâche"
         },
         "unit": {
@@ -148,6 +481,28 @@
       },
       "name": "Ajouter un article"
     },
+    "clear_item_image": {
+      "description": "Supprime l'image de l'article.",
+      "fields": {
+        "barcode": {
+          "description": "Code-barres de l'article (alternative au nom). Doit être entre guillemets en YAML s'il commence par des zéros.",
+          "name": "Code-barres"
+        },
+        "inventory_id": {
+          "description": "ID de l'inventaire. Indiquez ceci ou inventory_name (pas les deux).",
+          "name": "ID de l'inventaire"
+        },
+        "inventory_name": {
+          "description": "Nom de l'inventaire (insensible à la casse). Indiquez ceci ou inventory_id (pas les deux).",
+          "name": "Nom de l'inventaire"
+        },
+        "name": {
+          "description": "Nom ou alias de l'article (obligatoire sauf si barcode est fourni)",
+          "name": "Nom de l'article"
+        }
+      },
+      "name": "Supprimer l'image de l'article"
+    },
     "decrement_item": {
       "description": "Décrémenter la quantité d'un article",
       "fields": {
@@ -156,19 +511,27 @@
           "name": "Montant"
         },
         "barcode": {
-          "description": "Code-barres de l'article (alternative au nom)",
+          "description": "Code-barres de l'article (alternative au nom). Doit être entre guillemets en YAML s'il commence par des zéros.",
           "name": "Code-barres"
         },
+        "batch_id": {
+          "description": "Ne prélever que dans ce lot. Prioritaire sur l'emplacement.",
+          "name": "ID du lot"
+        },
         "inventory_id": {
-          "description": "ID de l'inventaire",
+          "description": "ID de l'inventaire. Indiquez ceci ou inventory_name (pas les deux).",
           "name": "ID de l'inventaire"
         },
         "inventory_name": {
-          "description": "Nom de l'inventaire (insensible à la casse)",
+          "description": "Nom de l'inventaire (insensible à la casse). Indiquez ceci ou inventory_id (pas les deux).",
           "name": "Nom de l'inventaire"
         },
+        "location": {
+          "description": "Ne prélever que le stock rangé à cet emplacement",
+          "name": "Emplacement"
+        },
         "name": {
-          "description": "Nom de l'article",
+          "description": "Nom ou alias de l'article (obligatoire sauf si barcode est fourni)",
           "name": "Nom de l'article"
         },
         "price": {
@@ -179,21 +542,21 @@
       "name": "Décrémenter un article"
     },
     "get_inventory_consumption_rates": {
-      "description": "Obtenir les analyses de consommation pour tous les articles d'un inventaire basées sur leur historique de décréments",
+      "description": "Obtenir les analyses de consommation pour tous les articles d'un inventaire basées sur leur historique de décréments. Retourne les taux journaliers/hebdomadaires, les jours avant épuisement et l'intervalle moyen de réapprovisionnement par article.",
       "fields": {
         "inventory_id": {
           "description": "ID de l'inventaire",
           "name": "ID de l'inventaire"
         },
         "window_days": {
-          "description": "Nombre de jours à consulter pour les données de consommation (omettre pour tout l'historique)",
+          "description": "Nombre de jours à consulter pour les données de consommation. Omettre pour utiliser tout l'historique.",
           "name": "Jours de fenêtre"
         }
       },
       "name": "Obtenir les taux de consommation de l'inventaire"
     },
     "get_item_consumption_rates": {
-      "description": "Obtenir les analyses de consommation pour un article spécifique basées sur son historique de décréments",
+      "description": "Obtenir les analyses de consommation pour un article spécifique basées sur son historique de décréments. Retourne les taux journaliers/hebdomadaires, les jours avant épuisement et l'intervalle moyen de réapprovisionnement.",
       "fields": {
         "inventory_id": {
           "description": "ID de l'inventaire",
@@ -204,14 +567,14 @@
           "name": "Nom de l'article"
         },
         "window_days": {
-          "description": "Nombre de jours à consulter pour les données de consommation (omettre pour tout l'historique)",
+          "description": "Nombre de jours à consulter pour les données de consommation. Omettre pour utiliser tout l'historique.",
           "name": "Jours de fenêtre"
         }
       },
       "name": "Obtenir les taux de consommation"
     },
     "get_items": {
-      "description": "Retourne la liste complète des articles d'un inventaire. Peut spécifier soit inventory_id soit inventory_name.",
+      "description": "Retourne la liste complète des articles d'un inventaire. Peut spécifier soit inventory_id soit inventory_name (mais pas les deux).",
       "fields": {
         "inventory_id": {
           "description": "ID de l'inventaire",
@@ -225,7 +588,7 @@
       "name": "Obtenir les articles"
     },
     "get_items_from_all_inventories": {
-      "description": "Retourne la liste complète des articles regroupés par inventaire",
+      "description": "Retourne la liste complète des articles regroupés par inventaire.",
       "fields": {},
       "name": "Obtenir tous les articles"
     },
@@ -237,101 +600,275 @@
           "name": "Montant"
         },
         "barcode": {
-          "description": "Code-barres de l'article (alternative au nom)",
+          "description": "Code-barres de l'article (alternative au nom). Doit être entre guillemets en YAML s'il commence par des zéros.",
           "name": "Code-barres"
         },
+        "expiry_date": {
+          "description": "Date d'expiration du stock ajouté. Un réapprovisionnement avec la même expiration, le même emplacement et le même prix unitaire est fusionné avec le lot existant (en conservant la date d'achat la plus ancienne) ; sinon, un nouveau lot est créé.",
+          "name": "Date d'expiration"
+        },
         "inventory_id": {
-          "description": "ID de l'inventaire",
+          "description": "ID de l'inventaire. Indiquez ceci ou inventory_name (pas les deux).",
           "name": "ID de l'inventaire"
         },
         "inventory_name": {
-          "description": "Nom de l'inventaire (insensible à la casse)",
+          "description": "Nom de l'inventaire (insensible à la casse). Indiquez ceci ou inventory_id (pas les deux).",
           "name": "Nom de l'inventaire"
         },
+        "location": {
+          "description": "Emplacement où le stock ajouté est rangé",
+          "name": "Emplacement"
+        },
         "name": {
-          "description": "Nom de l'article",
+          "description": "Nom ou alias de l'article (obligatoire sauf si barcode est fourni)",
           "name": "Nom de l'article"
         },
         "price": {
           "description": "Prix unitaire à enregistrer pour cette transaction",
           "name": "Prix"
+        },
+        "purchased_at": {
+          "description": "Date d'achat du stock ajouté (aujourd'hui par défaut)",
+          "name": "Date d'achat"
         }
       },
       "name": "Incrémenter un article"
     },
     "lookup_barcode_product": {
-      "description": "Rechercher un code-barres dans une base de données de produits externe et retourner les informations du produit",
+      "description": "Rechercher un code-barres dans une base de données de produits externe (par ex. Open Food Facts) et retourner les informations du produit.",
       "fields": {
         "barcode": {
-          "description": "Code-barres à rechercher (UPC, EAN, etc.)",
+          "description": "Code-barres à rechercher (UPC, EAN, etc.). Doit être entre guillemets en YAML s'il commence par des zéros.",
           "name": "Code-barres"
         }
       },
       "name": "Rechercher un produit par code-barres"
     },
     "lookup_by_barcode": {
-      "description": "Rechercher un article par code-barres dans tous les inventaires",
+      "description": "Rechercher un article par code-barres dans tous les inventaires. Retourne tous les articles correspondants.",
       "fields": {
         "barcode": {
-          "description": "Code-barres à rechercher (UPC, EAN, etc.)",
+          "description": "Code-barres à rechercher (UPC, EAN, etc.). Doit être entre guillemets en YAML s'il commence par des zéros.",
           "name": "Code-barres"
         }
       },
       "name": "Rechercher par code-barres"
     },
+    "remove_batch": {
+      "description": "Supprime un lot d'un article, ainsi que son stock.",
+      "fields": {
+        "batch_id": {
+          "description": "ID du lot (issu de la liste des lots de l'article)",
+          "name": "ID du lot"
+        },
+        "inventory_id": {
+          "description": "ID de l'inventaire. Indiquez ceci ou inventory_name (pas les deux).",
+          "name": "ID de l'inventaire"
+        },
+        "inventory_name": {
+          "description": "Nom de l'inventaire (insensible à la casse). Indiquez ceci ou inventory_id (pas les deux).",
+          "name": "Nom de l'inventaire"
+        }
+      },
+      "name": "Supprimer un lot"
+    },
     "remove_item": {
       "description": "Supprimer un article d'un inventaire",
       "fields": {
         "barcode": {
-          "description": "Code-barres de l'article à supprimer (alternative au nom)",
+          "description": "Code-barres de l'article à supprimer (alternative au nom). Doit être entre guillemets en YAML s'il commence par des zéros.",
           "name": "Code-barres"
         },
         "inventory_id": {
-          "description": "ID de l'inventaire duquel supprimer",
+          "description": "ID de l'inventaire duquel supprimer. Indiquez ceci ou inventory_name (pas les deux).",
           "name": "ID de l'inventaire"
         },
         "inventory_name": {
-          "description": "Nom de l'inventaire (insensible à la casse)",
+          "description": "Nom de l'inventaire (insensible à la casse). Indiquez ceci ou inventory_id (pas les deux).",
           "name": "Nom de l'inventaire"
         },
         "name": {
-          "description": "Nom de l'article à supprimer",
+          "description": "Nom ou alias de l'article à supprimer (obligatoire sauf si barcode est fourni)",
           "name": "Nom de l'article"
         }
       },
       "name": "Supprimer un article"
     },
     "scan_barcode": {
-      "description": "Scanner un code-barres et effectuer une action (incrémenter, décrémenter ou rechercher)",
+      "description": "Scanner un code-barres et effectuer une action (incrémenter, décrémenter ou rechercher). Retrouve automatiquement l'article parmi les inventaires.",
       "fields": {
         "action": {
           "description": "Action à effectuer sur l'article trouvé",
           "name": "Action"
         },
         "amount": {
-          "description": "Montant à incrémenter ou décrémenter",
+          "description": "Montant à incrémenter ou décrémenter (ignoré pour la recherche)",
           "name": "Montant"
         },
         "barcode": {
-          "description": "Code-barres à scanner (UPC, EAN, etc.)",
+          "description": "Code-barres à scanner (UPC, EAN, etc.). Doit être entre guillemets en YAML s'il commence par des zéros.",
           "name": "Code-barres"
         },
+        "batch_id": {
+          "description": "Décrément uniquement - prélever dans ce lot. Prioritaire sur l'emplacement.",
+          "name": "ID du lot"
+        },
+        "expiry_date": {
+          "description": "Incrément uniquement - date d'expiration du stock ajouté",
+          "name": "Date d'expiration"
+        },
         "inventory_id": {
-          "description": "ID de l'inventaire optionnel pour limiter la recherche",
+          "description": "ID de l'inventaire optionnel pour limiter la recherche. Obligatoire si le code-barres existe dans plusieurs inventaires.",
           "name": "ID de l'inventaire"
+        },
+        "location": {
+          "description": "Incrément - emplacement où le stock ajouté est rangé. Décrément - ne prélever que le stock rangé à cet emplacement.",
+          "name": "Emplacement"
         },
         "price": {
           "description": "Prix unitaire à enregistrer pour cette transaction",
           "name": "Prix"
+        },
+        "purchased_at": {
+          "description": "Incrément uniquement - date d'achat du stock ajouté (aujourd'hui par défaut)",
+          "name": "Date d'achat"
         }
       },
       "name": "Scanner un code-barres"
+    },
+    "set_item_image_from_barcode": {
+      "description": "Utilise la photo du produit trouvée par la recherche de code-barres comme image de l'article. La photo est téléchargée et stockée par l'intégration.",
+      "fields": {
+        "barcode": {
+          "description": "Code-barres de l'article (alternative au nom). Doit être entre guillemets en YAML s'il commence par des zéros.",
+          "name": "Code-barres"
+        },
+        "inventory_id": {
+          "description": "ID de l'inventaire. Indiquez ceci ou inventory_name (pas les deux).",
+          "name": "ID de l'inventaire"
+        },
+        "inventory_name": {
+          "description": "Nom de l'inventaire (insensible à la casse). Indiquez ceci ou inventory_id (pas les deux).",
+          "name": "Nom de l'inventaire"
+        },
+        "lookup_barcode": {
+          "description": "Code-barres à rechercher. Doit être l'un des codes-barres de l'article ; par défaut le premier.",
+          "name": "Code-barres à rechercher"
+        },
+        "name": {
+          "description": "Nom ou alias de l'article (obligatoire sauf si barcode est fourni)",
+          "name": "Nom de l'article"
+        }
+      },
+      "name": "Image de l'article depuis le code-barres"
+    },
+    "set_item_image_from_media": {
+      "description": "Copie une image des dossiers multimédias locaux ou des images téléversées de Home Assistant comme image de l'article.",
+      "fields": {
+        "barcode": {
+          "description": "Code-barres de l'article (alternative au nom). Doit être entre guillemets en YAML s'il commence par des zéros.",
+          "name": "Code-barres"
+        },
+        "inventory_id": {
+          "description": "ID de l'inventaire. Indiquez ceci ou inventory_name (pas les deux).",
+          "name": "ID de l'inventaire"
+        },
+        "inventory_name": {
+          "description": "Nom de l'inventaire (insensible à la casse). Indiquez ceci ou inventory_id (pas les deux).",
+          "name": "Nom de l'inventaire"
+        },
+        "media_content_id": {
+          "description": "ID de source multimédia d'un fichier d'un dossier multimédia local ou d'une image téléversée.",
+          "name": "Média"
+        },
+        "name": {
+          "description": "Nom ou alias de l'article (obligatoire sauf si barcode est fourni)",
+          "name": "Nom de l'article"
+        }
+      },
+      "name": "Image de l'article depuis les médias"
+    },
+    "transfer_item": {
+      "description": "Déplace le stock d'un article vers un autre emplacement du même inventaire. La date d'expiration, le prix unitaire et la date d'achat suivent le stock.",
+      "fields": {
+        "amount": {
+          "description": "Quantité à déplacer. Omettez-la pour tout déplacer depuis la source.",
+          "name": "Montant"
+        },
+        "barcode": {
+          "description": "Code-barres de l'article (alternative au nom). Doit être entre guillemets en YAML s'il commence par des zéros.",
+          "name": "Code-barres"
+        },
+        "batch_id": {
+          "description": "Ne déplacer que le stock de ce lot. Prioritaire sur l'emplacement d'origine.",
+          "name": "ID du lot"
+        },
+        "from_location": {
+          "description": "Ne déplacer que le stock rangé à cet emplacement. Sans lui (et sans batch_id), c'est le stock qui expire le plus tôt et qui n'est pas déjà à la destination qui est déplacé.",
+          "name": "Emplacement d'origine"
+        },
+        "inventory_id": {
+          "description": "ID de l'inventaire. Indiquez ceci ou inventory_name (pas les deux).",
+          "name": "ID de l'inventaire"
+        },
+        "inventory_name": {
+          "description": "Nom de l'inventaire (insensible à la casse). Indiquez ceci ou inventory_id (pas les deux).",
+          "name": "Nom de l'inventaire"
+        },
+        "name": {
+          "description": "Nom ou alias de l'article (obligatoire sauf si barcode est fourni)",
+          "name": "Nom de l'article"
+        },
+        "to_location": {
+          "description": "Emplacement où déplacer le stock (créé s'il est nouveau)",
+          "name": "Emplacement de destination"
+        }
+      },
+      "name": "Transférer un article"
+    },
+    "update_batch": {
+      "description": "Modifie un lot d'un article. Seuls les champs fournis sont modifiés. Une quantité de 0 supprime le lot.",
+      "fields": {
+        "batch_id": {
+          "description": "ID du lot (issu de la liste des lots de l'article)",
+          "name": "ID du lot"
+        },
+        "expiry_date": {
+          "description": "Nouvelle date d'expiration du lot (vide pour aucune expiration)",
+          "name": "Date d'expiration"
+        },
+        "inventory_id": {
+          "description": "ID de l'inventaire. Indiquez ceci ou inventory_name (pas les deux).",
+          "name": "ID de l'inventaire"
+        },
+        "inventory_name": {
+          "description": "Nom de l'inventaire (insensible à la casse). Indiquez ceci ou inventory_id (pas les deux).",
+          "name": "Nom de l'inventaire"
+        },
+        "location": {
+          "description": "Nouvel emplacement du lot",
+          "name": "Emplacement"
+        },
+        "purchased_at": {
+          "description": "Nouvelle date d'achat du lot",
+          "name": "Date d'achat"
+        },
+        "quantity": {
+          "description": "Nouvelle quantité du lot",
+          "name": "Quantité"
+        },
+        "unit_price": {
+          "description": "Nouveau prix unitaire du lot",
+          "name": "Prix unitaire"
+        }
+      },
+      "name": "Modifier un lot"
     },
     "update_item": {
       "description": "Mettre à jour un article existant de l'inventaire",
       "fields": {
         "aliases": {
-          "description": "Noms alternatifs pour l'article, utilisables partout où le nom de l'article est accepté (séparés par des virgules)",
+          "description": "Noms alternatifs pour l'article, utilisables partout où le nom de l'article est accepté (voix, outils LLM, services). Plusieurs alias peuvent être indiqués sous forme de liste séparée par des virgules.",
           "name": "Alias"
         },
         "auto_add_enabled": {
@@ -339,7 +876,7 @@
           "name": "Ajout automatique activé"
         },
         "auto_add_id_to_description_enabled": {
-          "description": "active l'ajout automatique de l'identifiant de l'inventaire à la description",
+          "description": "Ajoute l'identifiant de l'inventaire à la description",
           "name": "ajouter automatiquement l'id de l'inventaire à la description"
         },
         "auto_add_to_list_quantity": {
@@ -347,11 +884,11 @@
           "name": "Seuil d'ajout automatique"
         },
         "barcode": {
-          "description": "Code-barres à associer à l'article (UPC, EAN, etc.)",
+          "description": "Code-barres à associer à l'article (UPC, EAN, etc.). Doit être entre guillemets en YAML s'il commence par des zéros.",
           "name": "Code-barres"
         },
         "category": {
-          "description": "Catégorie",
+          "description": "Catégorie de l'article. Plusieurs catégories peuvent être indiquées sous forme de liste séparée par des virgules.",
           "name": "Catégorie"
         },
         "description": {
@@ -359,7 +896,7 @@
           "name": "Description"
         },
         "desired_quantity": {
-          "description": "Niveau de stock souhaité pour le réapprovisionnement (0 = utiliser le seuil d'ajout automatique)",
+          "description": "Niveau de stock souhaité pour le réapprovisionnement. S'il est défini, la tâche affiche cette quantité elle-même (par ex. \"Œufs (x12)\") et est supprimée dès que le stock l'atteint. À 0, la quantité est basée sur le seuil d'ajout automatique.",
           "name": "Quantité souhaitée"
         },
         "expiry_alert_days": {
@@ -370,16 +907,20 @@
           "description": "Date d'expiration",
           "name": "Date d'expiration"
         },
+        "icon": {
+          "description": "Icône de l'article (par ex. mdi:apple). Une chaîne vide rétablit l'icône par défaut.",
+          "name": "Icône"
+        },
         "inventory_id": {
-          "description": "ID de l'inventaire",
+          "description": "ID de l'inventaire. Indiquez ceci ou inventory_name (pas les deux).",
           "name": "ID de l'inventaire"
         },
         "inventory_name": {
-          "description": "Nom de l'inventaire (insensible à la casse)",
+          "description": "Nom de l'inventaire (insensible à la casse). Indiquez ceci ou inventory_id (pas les deux).",
           "name": "Nom de l'inventaire"
         },
         "location": {
-          "description": "Emplacement de l'article dans l'inventaire",
+          "description": "Emplacement de l'article dans l'inventaire. Plusieurs emplacements peuvent être indiqués sous forme de liste séparée par des virgules.",
           "name": "Emplacement"
         },
         "name": {
@@ -403,7 +944,7 @@
           "name": "Liste de tâches"
         },
         "todo_quantity_placement": {
-          "description": "Où afficher la quantité dans les tâches (nom, description ou aucun)",
+          "description": "Où afficher la quantité dans les tâches. \"name\" la place dans le nom de la tâche (par ex. \"Lait (x4)\"), \"description\" la place dans le champ de description, \"none\" l'omet complètement.",
           "name": "Emplacement de la quantité dans la tâche"
         },
         "unit": {

@@ -16,8 +16,13 @@ mypy
 # Testing
 pytest
 pytest-cov
-pytest-homeassistant-custom-component
-hassil
+# Pins Home Assistant (2026.10.4). Bump it together with the conversation agent's own
+# requirements below (homeassistant/components/conversation/manifest.json).
+pytest-homeassistant-custom-component==0.13.375
+# Default conversation agent in the voice end-to-end tests
+hassil==3.12.1
+home-assistant-intents==2026.10.6
+gazetteer-matcher==1.1.0
 
 safety
 pre-commit

@@ -2,11 +2,14 @@
 
 from __future__ import annotations
 
+from collections.abc import Awaitable, Callable
+from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from homeassistant.core import EventBus, HomeAssistant
+from homeassistant.core import HomeAssistant
 
+from custom_components.simple_inventory.const import DOMAIN
 from custom_components.simple_inventory.sensors import InventorySensor
 
 
@@ -23,17 +26,23 @@ def mock_sensor_coordinator() -> MagicMock:
             "expiring_items": [],
         }
     )
-    coordinator.async_add_listener = MagicMock(return_value=lambda: None)
     return coordinator
+
+
+@pytest.fixture
+def mock_hub() -> MagicMock:
+    return MagicMock()
 
 
 @pytest.fixture
 def inventory_sensor(
     hass: HomeAssistant,
+    mock_hub: MagicMock,
     mock_sensor_coordinator: MagicMock,
 ) -> InventorySensor:
     return InventorySensor(
         hass,
+        mock_hub,
         mock_sensor_coordinator,
         "Kitchen",
         "mdi:fridge",
@@ -49,20 +58,6 @@ def test_init(inventory_sensor: InventorySensor) -> None:
     assert inventory_sensor._entry_id == "kitchen_123"
 
 
-@pytest.mark.asyncio
-async def test_async_added_to_hass(inventory_sensor: InventorySensor) -> None:
-    with (
-        patch.object(inventory_sensor, "_async_update_state", new=AsyncMock()) as mock_update,
-        patch.object(EventBus, "async_listen") as mock_listen,
-        patch.object(inventory_sensor, "async_on_remove") as mock_on_remove,
-    ):
-        await inventory_sensor.async_added_to_hass()
-
-        mock_update.assert_awaited_once()
-        assert mock_listen.call_count >= 2
-        mock_on_remove.assert_called()
-
-
 def test_handle_update_schedules_task(inventory_sensor: InventorySensor) -> None:
     with patch.object(
         inventory_sensor.hass, "async_create_task", side_effect=lambda coro: coro.close()
@@ -71,18 +66,16 @@ def test_handle_update_schedules_task(inventory_sensor: InventorySensor) -> None
         mock_create_task.assert_called_once()
 
 
-def test_handle_update_invalidates_cache(inventory_sensor: InventorySensor) -> None:
+def test_handle_update_invalidates_cache(
+    inventory_sensor: InventorySensor, mock_hub: MagicMock
+) -> None:
     """_handle_update must evict the per-inventory cache key so the next refresh is fresh."""
-    cache: dict = {"kitchen_123": (0.0, [{"name": "stale"}]), None: (0.0, [])}
-    inventory_sensor.coordinator._expiry_cache = cache
-
     with patch.object(
         inventory_sensor.hass, "async_create_task", side_effect=lambda coro: coro.close()
     ):
         inventory_sensor._handle_update(None)
 
-    assert "kitchen_123" not in cache
-    assert None in cache
+    mock_hub.invalidate.assert_called_once_with("kitchen_123")
 
 
 @pytest.mark.asyncio
@@ -164,12 +157,14 @@ async def test_coordinator_interaction(
 )
 def test_dynamic_sensor_names(
     hass: HomeAssistant,
+    mock_hub: MagicMock,
     mock_sensor_coordinator: MagicMock,
     inventory_name: str,
     expected_attr_name: str,
 ) -> None:
     sensor = InventorySensor(
         hass,
+        mock_hub,
         mock_sensor_coordinator,
         inventory_name,
         "mdi:test",
@@ -177,3 +172,52 @@ def test_dynamic_sensor_names(
     )
 
     assert sensor._attr_name == expected_attr_name
+
+
+async def test_refreshes_only_on_entry_scoped_event(
+    hass: HomeAssistant,
+    inventory_sensor: InventorySensor,
+    mock_sensor_coordinator: MagicMock,
+    attach_sensor: Callable[[Any], Awaitable[Any]],
+) -> None:
+    await attach_sensor(inventory_sensor)
+    stats_mock = mock_sensor_coordinator.async_get_inventory_statistics
+    stats_mock.reset_mock()
+
+    hass.bus.async_fire(f"{DOMAIN}_updated")
+    await hass.async_block_till_done()
+    stats_mock.assert_not_awaited()
+
+    hass.bus.async_fire(f"{DOMAIN}_updated_{inventory_sensor._entry_id}")
+    await hass.async_block_till_done()
+    stats_mock.assert_awaited_once_with(inventory_sensor._entry_id)
+
+
+async def test_local_midnight_refreshes_expiring_soon(
+    inventory_sensor: InventorySensor,
+    mock_sensor_coordinator: MagicMock,
+    attach_sensor: Callable[[Any], Awaitable[Any]],
+    fire_next_local_midnight: Callable[[], Awaitable[None]],
+) -> None:
+    await attach_sensor(inventory_sensor)
+    stats_mock = mock_sensor_coordinator.async_get_inventory_statistics
+    stats_mock.reset_mock()
+
+    await fire_next_local_midnight()
+
+    stats_mock.assert_awaited_once_with(inventory_sensor._entry_id)
+
+
+async def test_total_quantity_float_drift_rounded(
+    inventory_sensor: InventorySensor, mock_sensor_coordinator: MagicMock
+) -> None:
+    stats = await mock_sensor_coordinator.async_get_inventory_statistics()
+    mock_sensor_coordinator.async_get_inventory_statistics = AsyncMock(
+        return_value={**stats, "total_quantity": 0.1 + 0.2}
+    )
+
+    with patch.object(inventory_sensor, "async_write_ha_state"):
+        await inventory_sensor._async_update_state()
+
+    assert inventory_sensor._attr_native_value == 0.3
+    assert inventory_sensor._attr_extra_state_attributes["total_quantity"] == 0.3

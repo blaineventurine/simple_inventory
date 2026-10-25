@@ -4,6 +4,7 @@
   },
   "config": {
     "error": {
+      "invalid_name": "Ime zaloge mora vsebovati vsaj eno črko ali številko (beseda \"zaloga\" se odstrani)",
       "name_exists": "Ime zaloge že obstaja"
     },
     "step": {
@@ -17,48 +18,376 @@
         "data_description": {
           "description": "Neobvezen opis zaloge",
           "icon": "Kliknite polje za ikono, da odprete okno za izbiranje ikon (Material Design Icons)",
-          "install_voice_sentences": "Kopira primer datoteke stavkov za lokalni Assist (Home Assistant Voice) v vašo mapo z nastavitvami in znova naloži stavke po meri. Nikoli ne prepiše obstoječe datoteke. Prikazano samo, če je jezik Home Assistant angleščina."
+          "install_voice_sentences": "Kopira primer datoteke stavkov za lokalni Assist (Home Assistant Voice) v vašo mapo z nastavitvami in znova naloži stavke po meri. Nikoli ne prepiše obstoječe datoteke. Prikazano samo, če je jezik Home Assistant angleščina, španščina, francoščina ali slovenščina."
         },
         "description": "Ustvarite novo zalogo za spremljanje predmetov.",
         "title": "Dodaj zalogo"
       }
     }
   },
-  "entity": {
-    "sensor": {
-      "all_expired_items": {
-        "name": "Vsi predmeti s poteklim rokom"
+  "exceptions": {
+    "alias_conflict": {
+      "message": "Vzdevki so že dodeljeni drugemu artiklu v tem inventarju: {aliases}"
+    },
+    "alias_is_item_name": {
+      "message": "Vzdevki \"{aliases}\" so že uporabljeni kot ime drugega artikla v inventarju \"{inventory}\""
+    },
+    "ambiguous_barcode": {
+      "message": "Črtna koda \"{barcode}\" je bila najdena v več inventarjih: {inventories}. Za razločitev navedite inventory_id."
+    },
+    "ambiguous_inventory": {
+      "message": "\"{name}\" se ujema z več inventarji: {matches}. Prosimo, bodite natančnejši."
+    },
+    "ambiguous_item": {
+      "message": "\"{name}\" se ujema z več artikli v inventarju \"{inventory}\": {matches}. Prosimo, bodite natančnejši."
+    },
+    "barcode_conflict": {
+      "message": "Črtne kode so že dodeljene drugemu artiklu v tem inventarju: {barcodes}"
+    },
+    "barcode_not_found": {
+      "message": "Za črtno kodo \"{barcode}\" ni bil najden noben artikel"
+    },
+    "barcode_not_on_item": {
+      "message": "Črtna koda \"{barcode}\" ne pripada predmetu \"{name}\"."
+    },
+    "batch_not_found": {
+      "message": "Serije \"{batch_id}\" za ta izdelek ni mogoče najti"
+    },
+    "batch_required": {
+      "message": "{name} ima {count} serij; namesto polja {field} artikla spremenite serijo samo"
+    },
+    "category_assignment_failed": {
+      "message": "Kategorij \"{categories}\" ni bilo mogoče dodeliti"
+    },
+    "duplicate_item_name": {
+      "message": "Artikel z imenom \"{name}\" že obstaja v inventarju \"{inventory}\""
+    },
+    "empty_item_name": {
+      "message": "V inventarju \"{inventory}\" je zahtevano ime artikla"
+    },
+    "image_download_failed": {
+      "message": "Fotografije izdelka za \"{name}\" ni bilo mogoče prenesti."
+    },
+    "image_invalid": {
+      "message": "Datoteka ni podprta slika. Uporabite datoteko JPEG, PNG, WebP ali GIF."
+    },
+    "image_not_found": {
+      "message": "Za \"{name}\" ni bilo najdene fotografije izdelka."
+    },
+    "image_too_large": {
+      "message": "Slika je prevelika (največ 10 MB)."
+    },
+    "insufficient_stock": {
+      "message": "Na lokaciji {location} je na voljo le {available} izdelka {name}; nič ni bilo premaknjeno"
+    },
+    "invalid_amount": {
+      "message": "Količina za prenos mora biti večja od 0 (prejeto {amount})"
+    },
+    "invalid_auto_add_config": {
+      "message": "Artikla \"{name}\" ni bilo mogoče dodati v inventar \"{inventory}\" (neveljavna nastavitev samodejnega dodajanja)"
+    },
+    "invalid_scan_action": {
+      "message": "Neveljavno dejanje \"{action}\". Mora biti 'increment', 'decrement' ali 'lookup'"
+    },
+    "inventory_identifier_required": {
+      "message": "Zahtevan je 'inventory_id' ali 'inventory_name'"
+    },
+    "inventory_not_found": {
+      "message": "Inventar z imenom \"{name}\" ni bil najden"
+    },
+    "inventory_not_loaded": {
+      "message": "Inventar \"{inventory}\" trenutno ni naložen"
+    },
+    "item_identifier_required": {
+      "message": "Za določitev artikla v inventarju \"{inventory}\" je zahtevan 'name' ali 'barcode'"
+    },
+    "item_not_found": {
+      "message": "Artikel z imenom \"{name}\" ni bil najden v inventarju \"{inventory}\""
+    },
+    "location_assignment_failed": {
+      "message": "Lokacij \"{locations}\" v inventarju \"{inventory}\" ni bilo mogoče dodeliti"
+    },
+    "location_required": {
+      "message": "Ciljna lokacija je obvezna"
+    },
+    "name_is_alias": {
+      "message": "Ime \"{name}\" je že vzdevek artikla \"{item}\" v inventarju \"{inventory}\""
+    },
+    "no_inventories_configured": {
+      "message": "Ni nastavljenih inventarjev"
+    },
+    "no_stock_at_location": {
+      "message": "Na lokaciji \"{location}\" ni zaloge izdelka {name}"
+    },
+    "no_stock_for_expiry": {
+      "message": "{name} nima zaloge; namesto tega ga dopolnite z datumom izteka roka"
+    },
+    "same_location": {
+      "message": "Zaloga je že na lokaciji \"{location}\""
+    },
+    "speech_add_failed": {
+      "message": "Žal mi ni uspelo dodati {item} v inventar {inventory}."
+    },
+    "speech_added": {
+      "message": "V inventar {inventory} dodano: {amount} {item}."
+    },
+    "speech_added_now_at": {
+      "message": "V inventar {inventory} dodano: {amount} {item}. Skupaj: {remaining}."
+    },
+    "speech_ambiguous_location": {
+      "message": "Katero lokacijo v inventarju {inventory} ste mislili: {locations}?"
+    },
+    "speech_amount_at_location": {
+      "message": "{amount} na lokaciji {location}"
+    },
+    "speech_amount_unassigned": {
+      "message": "{amount} brez lokacije"
+    },
+    "speech_count_expired_few": {
+      "message": "{count} artikli so potekli"
+    },
+    "speech_count_expired_in_few": {
+      "message": "{count} artikli v inventarju {inventory} so potekli"
+    },
+    "speech_count_expired_in_one": {
+      "message": "{count} artikel v inventarju {inventory} je potekel"
+    },
+    "speech_count_expired_in_other": {
+      "message": "{count} artiklov v inventarju {inventory} je poteklo"
+    },
+    "speech_count_expired_in_two": {
+      "message": "{count} artikla v inventarju {inventory} sta potekla"
+    },
+    "speech_count_expired_one": {
+      "message": "{count} artikel je potekel"
+    },
+    "speech_count_expired_other": {
+      "message": "{count} artiklov je poteklo"
+    },
+    "speech_count_expired_two": {
+      "message": "{count} artikla sta potekla"
+    },
+    "speech_count_expiring_soon_few": {
+      "message": "{count} artikli kmalu potečejo"
+    },
+    "speech_count_expiring_soon_in_few": {
+      "message": "{count} artikli v inventarju {inventory} kmalu potečejo"
+    },
+    "speech_count_expiring_soon_in_one": {
+      "message": "{count} artikel v inventarju {inventory} kmalu poteče"
+    },
+    "speech_count_expiring_soon_in_other": {
+      "message": "{count} artiklov v inventarju {inventory} kmalu poteče"
+    },
+    "speech_count_expiring_soon_in_two": {
+      "message": "{count} artikla v inventarju {inventory} kmalu potečeta"
+    },
+    "speech_count_expiring_soon_one": {
+      "message": "{count} artikel kmalu poteče"
+    },
+    "speech_count_expiring_soon_other": {
+      "message": "{count} artiklov kmalu poteče"
+    },
+    "speech_count_expiring_soon_two": {
+      "message": "{count} artikla kmalu potečeta"
+    },
+    "speech_count_low_stock_few": {
+      "message": "{count} artikli imajo nizko zalogo"
+    },
+    "speech_count_low_stock_in_few": {
+      "message": "{count} artikli v inventarju {inventory} imajo nizko zalogo"
+    },
+    "speech_count_low_stock_in_one": {
+      "message": "{count} artikel v inventarju {inventory} ima nizko zalogo"
+    },
+    "speech_count_low_stock_in_other": {
+      "message": "{count} artiklov v inventarju {inventory} ima nizko zalogo"
+    },
+    "speech_count_low_stock_in_two": {
+      "message": "{count} artikla v inventarju {inventory} imata nizko zalogo"
+    },
+    "speech_count_low_stock_one": {
+      "message": "{count} artikel ima nizko zalogo"
+    },
+    "speech_count_low_stock_other": {
+      "message": "{count} artiklov ima nizko zalogo"
+    },
+    "speech_count_low_stock_two": {
+      "message": "{count} artikla imata nizko zalogo"
+    },
+    "speech_find_match": {
+      "message": "{amount} {item} v inventarju {inventory}"
+    },
+    "speech_find_match_at": {
+      "message": "{amount} {item} v inventarju {inventory} ({locations})"
+    },
+    "speech_find_matches_other": {
+      "message": "Zadetki za {item} ({count}): {matches}."
+    },
+    "speech_item_missing": {
+      "message": "V inventarju {inventory} ni {item}."
+    },
+    "speech_item_missing_anywhere": {
+      "message": "{item} ni v nobenem inventarju."
+    },
+    "speech_item_quantity": {
+      "message": "V inventarju {inventory}: {amount} {item}."
+    },
+    "speech_item_quantity_at": {
+      "message": "V inventarju {inventory}: {amount} {item}, lokacija: {locations}."
+    },
+    "speech_item_quantity_breakdown": {
+      "message": "V inventarju {inventory}: {amount} {item} ({breakdown})."
+    },
+    "speech_list_and_many": {
+      "message": "{first} in {last}"
+    },
+    "speech_list_and_two": {
+      "message": "{first} in {last}"
+    },
+    "speech_list_or": {
+      "message": "{first} ali {last}"
+    },
+    "speech_more_one": {
+      "message": "še {count}"
+    },
+    "speech_more_other": {
+      "message": "še {count}"
+    },
+    "speech_move_failed": {
+      "message": "Žal mi ni uspelo premakniti {item} v inventarju {inventory}."
+    },
+    "speech_moved": {
+      "message": "Premaknjeno: {what} na {to_location}."
+    },
+    "speech_moved_from": {
+      "message": "Premaknjeno: {what} iz {from_location} na {to_location}."
+    },
+    "speech_not_at_locations": {
+      "message": "Na lokaciji {locations} v inventarju {inventory} ni {item}."
+    },
+    "speech_out_of_stock_among_one": {
+      "message": "od tega {count} brez zaloge"
+    },
+    "speech_out_of_stock_among_other": {
+      "message": "od tega {count} brez zaloge"
+    },
+    "speech_out_of_stock_item": {
+      "message": "{item} (brez zaloge)"
+    },
+    "speech_remove_failed": {
+      "message": "Žal mi ni uspelo odstraniti {item} iz inventarja {inventory}."
+    },
+    "speech_removed": {
+      "message": "Iz inventarja {inventory} odstranjeno: {amount} {item}."
+    },
+    "speech_removed_left": {
+      "message": "Iz inventarja {inventory} odstranjeno: {amount} {item}. Ostalo: {remaining}."
+    },
+    "speech_removed_none_left": {
+      "message": "Iz inventarja {inventory} odstranjeno: {amount} {item}. Nič ni ostalo."
+    },
+    "speech_set_quantity": {
+      "message": "Količina za {item} v inventarju {inventory} je zdaj {quantity}."
+    },
+    "speech_unknown_location": {
+      "message": "V inventarju {inventory} ne poznam lokacije {location}."
+    },
+    "speech_update_failed": {
+      "message": "Žal mi ni uspelo posodobiti {item} v inventarju {inventory}."
+    },
+    "unsupported_media_source": {
+      "message": "\"{media_content_id}\" ni datoteka v lokalnih mapah s predstavnostmi niti naložena slika Home Assistanta."
+    },
+    "update_item_failed": {
+      "message": "Artikla \"{name}\" v inventarju \"{inventory}\" ni bilo mogoče posodobiti"
+    }
+  },
+  "issues": {
+    "database_from_newer_version": {
+      "description": "Podatkovna baza Simple Inventory uporablja različico sheme {found_version}, ta različica integracije pa podpira največ različico sheme {supported_version}. To se zgodi po vrnitvi na starejšo različico Simple Inventory. Vaši podatki niso bili spremenjeni.\n\nNamestite različico Simple Inventory, ki je ustvarila podatkovno bazo (ali novejšo), in znova zaženite Home Assistant.",
+      "title": "Podatkovna baza Simple Inventory je iz novejše različice"
+    },
+    "missing_todo_list": {
+      "fix_flow": {
+        "abort": {
+          "inventory_not_loaded": "Zaloga {inventory} ni naložena. Naložite jo in poskusite znova."
+        },
+        "error": {
+          "invalid_todo_list": "Izberite obstoječ seznam opravil, ki ni manjkajoči."
+        },
+        "step": {
+          "clear": {
+            "description": "Odstrani seznam opravil pri vseh predmetih v zalogi {inventory}, ki uporabljajo {entity_id}, in jim izklopi samodejno dodajanje.",
+            "title": "Odstrani seznam opravil"
+          },
+          "init": {
+            "description": "Predmeti v zalogi {inventory} ({count}) se dodajajo na seznam opravil {entity_id}, ki ne obstaja več. Izberite nadomestni seznam ali odstranite seznam in izklopite samodejno dodajanje za te predmete.",
+            "menu_options": {
+              "clear": "Odstrani seznam opravil in izklopi samodejno dodajanje",
+              "replace": "Izberi nadomestni seznam opravil"
+            },
+            "title": "Seznam opravil {entity_id} ne obstaja več"
+          },
+          "replace": {
+            "data": {
+              "todo_list": "Seznam opravil"
+            },
+            "description": "Predmeti v zalogi {inventory}, ki so uporabljali {entity_id}, bodo namesto tega uporabljali ta seznam opravil.",
+            "title": "Izberi nadomestni seznam opravil"
+          }
+        }
       },
-      "all_expiring_items": {
-        "name": "Vsi predmeti, ki kmalu potečejo"
+      "title": "Seznam opravil {entity_id}, ki ga uporablja zaloga {inventory}, ne obstaja več"
+    },
+    "orphaned_inventory_data": {
+      "fix_flow": {
+        "abort": {
+          "not_loaded": "Simple Inventory ni naložen. Naložite zalogo in poskusite znova."
+        },
+        "step": {
+          "confirm": {
+            "description": "Podatkovna baza še vedno vsebuje podatke zalog, ki so bile odstranjene iz Home Assistanta (zaloga: število predmetov):\n\n{inventories}\n\nPotrdite za trajen izbris teh podatkov. Tega ni mogoče razveljaviti.",
+            "title": "Izbriši podatke odstranjenih zalog"
+          }
+        }
       },
-      "expired_items": {
-        "name": "{inventory_name} – predmeti s poteklim rokom"
-      },
-      "expiring_items": {
-        "name": "{inventory_name} – predmeti, ki kmalu potečejo"
-      },
-      "inventory": {
-        "name": "{inventory_name} zaloga"
-      }
+      "title": "Simple Inventory hrani podatke odstranjenih zalog"
+    },
+    "panel_bundle_missing": {
+      "description": "Plošča v stranski vrstici je omogočena, vendar njene datoteke ni bilo mogoče najti na \"{path}\". Namestite ali posodobite kartico Simple Inventory prek HACS (ali kopirajte njene datoteke v to mapo), nato znova zaženite Home Assistant ali ponovno shranite možnosti integracije.",
+      "title": "Plošča Inventar potrebuje kartico Simple Inventory"
     }
   },
   "options": {
     "error": {
+      "invalid_name": "Ime zaloge mora vsebovati vsaj eno črko ali številko (beseda \"zaloga\" se odstrani)",
       "name_exists": "Ime zaloge že obstaja"
     },
     "step": {
+      "global_settings": {
+        "data": {
+          "install_voice_sentences": "Namesti primere glasovnih ukazov",
+          "panel_admin_only": "Ploščo lahko vidijo samo skrbniki",
+          "show_panel": "Prikaži ploščo Inventar v stranski vrstici"
+        },
+        "data_description": {
+          "install_voice_sentences": "Kopira primer datoteke stavkov za lokalni Assist (Home Assistant Voice) v vašo mapo z nastavitvami in znova naloži stavke po meri. Nikoli ne prepiše obstoječe datoteke. Prikazano samo, če je jezik Home Assistant angleščina, španščina, francoščina ali slovenščina.",
+          "panel_admin_only": "Skrije ploščo pred uporabniki, ki niso skrbniki.",
+          "show_panel": "V stransko vrstico doda vnos Inventar z enim zavihkom za vsak inventar. Zahteva kartico Simple Inventory (nameščeno prek HACS)."
+        },
+        "description": "Prikaži celozaslonsko ploščo Inventar v stranski vrstici in izberi, kdo jo lahko vidi. Plošča potrebuje nameščeno kartico Simple Inventory.",
+        "title": "Nastavitve Simple Inventory"
+      },
       "init": {
         "data": {
           "description": "Opis",
           "icon": "Ikona",
-          "install_voice_sentences": "Namesti primere glasovnih ukazov",
           "name": "Ime zaloge"
         },
         "data_description": {
           "description": "Neobvezen opis zaloge",
-          "icon": "Kliknite polje za ikono, da odprete okno za izbiranje ikon (Material Design Icons)",
-          "install_voice_sentences": "Kopira primer datoteke stavkov za lokalni Assist (Home Assistant Voice) v vašo mapo z nastavitvami in znova naloži stavke po meri. Nikoli ne prepiše obstoječe datoteke. Prikazano samo za globalno napravo Simple Inventory in samo, če je jezik Home Assistant angleščina."
+          "icon": "Kliknite polje za ikono, da odprete okno za izbiranje ikon (Material Design Icons)"
         },
         "description": "Posodobite nastavitve za {current_name}",
         "title": "Nastavitve zaloge"
@@ -70,7 +399,7 @@
       "description": "Dodaj predmet v zalogo",
       "fields": {
         "aliases": {
-          "description": "Druga imena za predmet, uporabna povsod, kjer se sprejme ime predmeta (ločena z vejico)",
+          "description": "Druga imena za predmet, uporabna povsod, kjer se sprejme ime predmeta (glas, orodja LLM, storitve). Več vzdevkov lahko navedete kot seznam, ločen z vejicami.",
           "name": "Vzdevki"
         },
         "auto_add_enabled": {
@@ -78,7 +407,7 @@
           "name": "Samodejno dodajanje"
         },
         "auto_add_id_to_description_enabled": {
-          "description": "Samodejno dodaj ID zaloge v opis",
+          "description": "Doda ID zaloge v opis",
           "name": "Dodaj ID zaloge v opis"
         },
         "auto_add_to_list_quantity": {
@@ -86,11 +415,11 @@
           "name": "Mejna količina"
         },
         "barcode": {
-          "description": "Črtna koda predmeta (UPC, EAN ipd.)",
+          "description": "Črtna koda predmeta (UPC, EAN ipd.). V YAML jo navedite v narekovajih, če se začne z ničlami.",
           "name": "Črtna koda"
         },
         "category": {
-          "description": "Kategorija predmeta",
+          "description": "Kategorija predmeta. Več kategorij lahko navedete kot seznam, ločen z vejicami.",
           "name": "Kategorija"
         },
         "description": {
@@ -98,7 +427,7 @@
           "name": "Opis"
         },
         "desired_quantity": {
-          "description": "Želena količina za ponovno naročanje (0 = uporabi mejno količino)",
+          "description": "Želena količina za ponovno naročanje. Če je nastavljena, opravilo prikaže prav to količino (npr. \"Jajca (x12)\") in se odstrani, ko zaloga doseže to količino. Pri 0 količina temelji na mejni količini za samodejno dodajanje.",
           "name": "Želena količina"
         },
         "expiry_alert_days": {
@@ -109,16 +438,20 @@
           "description": "Datum poteka",
           "name": "Datum poteka"
         },
+        "icon": {
+          "description": "Ikona predmeta (npr. mdi:apple). Pustite prazno za privzeto ikono.",
+          "name": "Ikona"
+        },
         "inventory_id": {
-          "description": "ID zaloge",
+          "description": "ID zaloge, v katero dodate predmet. Navedite to ali inventory_name (ne obojega).",
           "name": "ID zaloge"
         },
         "inventory_name": {
-          "description": "Ime zaloge (neobčutljivo na velike/male črke)",
+          "description": "Ime zaloge (neobčutljivo na velike/male črke). Navedite to ali inventory_id (ne obojega).",
           "name": "Ime zaloge"
         },
         "location": {
-          "description": "Lokacija v zalogi",
+          "description": "Lokacija predmeta v zalogi. Več lokacij lahko navedete kot seznam, ločen z vejicami.",
           "name": "Lokacija"
         },
         "name": {
@@ -138,7 +471,7 @@
           "name": "Seznam opravil"
         },
         "todo_quantity_placement": {
-          "description": "Kje prikazati količino (v imenu, opisu ali nikjer)",
+          "description": "Kje prikazati količino v opravilih. \"name\" jo doda v ime opravila (npr. \"Mleko (x4)\"), \"description\" jo doda v polje opisa, \"none\" je ne prikaže.",
           "name": "Prikaz količine"
         },
         "unit": {
@@ -148,6 +481,28 @@
       },
       "name": "Dodaj predmet"
     },
+    "clear_item_image": {
+      "description": "Odstrani sliko predmeta.",
+      "fields": {
+        "barcode": {
+          "description": "Črtna koda predmeta (namesto imena). V YAML jo navedite v narekovajih, če se začne z ničlami.",
+          "name": "Črtna koda"
+        },
+        "inventory_id": {
+          "description": "ID zaloge. Navedite to ali inventory_name (ne obojega).",
+          "name": "ID zaloge"
+        },
+        "inventory_name": {
+          "description": "Ime zaloge (neobčutljivo na velike/male črke). Navedite to ali inventory_id (ne obojega).",
+          "name": "Ime zaloge"
+        },
+        "name": {
+          "description": "Ime ali vzdevek predmeta (obvezno, razen če je naveden barcode)",
+          "name": "Ime predmeta"
+        }
+      },
+      "name": "Odstrani sliko predmeta"
+    },
     "decrement_item": {
       "description": "Zmanjšaj količino predmeta",
       "fields": {
@@ -156,19 +511,27 @@
           "name": "Količina"
         },
         "barcode": {
-          "description": "Črtna koda (namesto imena)",
+          "description": "Črtna koda predmeta (namesto imena). V YAML jo navedite v narekovajih, če se začne z ničlami.",
           "name": "Črtna koda"
         },
+        "batch_id": {
+          "description": "Vzemi zalogo samo iz te serije. Ima prednost pred lokacijo.",
+          "name": "ID serije"
+        },
         "inventory_id": {
-          "description": "ID zaloge",
+          "description": "ID zaloge. Navedite to ali inventory_name (ne obojega).",
           "name": "ID zaloge"
         },
         "inventory_name": {
-          "description": "Ime zaloge (neobčutljivo na velike/male črke)",
+          "description": "Ime zaloge (neobčutljivo na velike/male črke). Navedite to ali inventory_id (ne obojega).",
           "name": "Ime zaloge"
         },
+        "location": {
+          "description": "Vzemi samo zalogo, shranjeno na tej lokaciji",
+          "name": "Lokacija"
+        },
         "name": {
-          "description": "Ime predmeta",
+          "description": "Ime ali vzdevek predmeta (obvezno, razen če je naveden barcode)",
           "name": "Ime predmeta"
         },
         "price": {
@@ -179,21 +542,21 @@
       "name": "Zmanjšaj količino"
     },
     "get_inventory_consumption_rates": {
-      "description": "Pridobi analitiko porabe za vse predmete v zalogi na podlagi zgodovine zmanjševanja količine",
+      "description": "Pridobi analitiko porabe za vse predmete v zalogi na podlagi zgodovine zmanjševanja količine. Vrne dnevno/tedensko porabo, število dni do porabe in povprečni interval ponovnega polnjenja za vsak predmet.",
       "fields": {
         "inventory_id": {
           "description": "ID zaloge",
           "name": "ID zaloge"
         },
         "window_days": {
-          "description": "Število dni za analizo porabe (izpustite za celotno zgodovino)",
+          "description": "Število dni za analizo porabe. Izpustite za uporabo celotne zgodovine.",
           "name": "Obdobje (dni)"
         }
       },
       "name": "Pridobi analitiko porabe zaloge"
     },
     "get_item_consumption_rates": {
-      "description": "Pridobi analitiko porabe za določen predmet na podlagi zgodovine zmanjševanja količine",
+      "description": "Pridobi analitiko porabe za določen predmet na podlagi zgodovine zmanjševanja količine. Vrne dnevno/tedensko porabo, število dni do porabe in povprečni interval ponovnega polnjenja.",
       "fields": {
         "inventory_id": {
           "description": "ID zaloge",
@@ -204,14 +567,14 @@
           "name": "Ime predmeta"
         },
         "window_days": {
-          "description": "Število dni za analizo porabe (izpustite za celotno zgodovino)",
+          "description": "Število dni za analizo porabe. Izpustite za uporabo celotne zgodovine.",
           "name": "Obdobje (dni)"
         }
       },
       "name": "Pridobi analitiko porabe"
     },
     "get_items": {
-      "description": "Vrni celoten seznam predmetov za zalogo (z ID ali imenom).",
+      "description": "Vrni celoten seznam predmetov za zalogo. Navedete lahko inventory_id ali inventory_name (ne obojega).",
       "fields": {
         "inventory_id": {
           "description": "ID zaloge",
@@ -225,7 +588,7 @@
       "name": "Pridobi predmete"
     },
     "get_items_from_all_inventories": {
-      "description": "Vrni seznam vseh predmetov, razvrščen po zalogah",
+      "description": "Vrni seznam vseh predmetov, razvrščen po zalogah.",
       "fields": {},
       "name": "Pridobi predmete iz vseh zalog"
     },
@@ -237,101 +600,275 @@
           "name": "Količina"
         },
         "barcode": {
-          "description": "Črtna koda (namesto imena)",
+          "description": "Črtna koda predmeta (namesto imena). V YAML jo navedite v narekovajih, če se začne z ničlami.",
           "name": "Črtna koda"
         },
+        "expiry_date": {
+          "description": "Datum poteka dodane zaloge. Dopolnitev z enakim datumom poteka, lokacijo in ceno na enoto se združi z obstoječo serijo (ohrani se najzgodnejši datum nakupa); sicer se ustvari nova serija.",
+          "name": "Datum poteka"
+        },
         "inventory_id": {
-          "description": "ID zaloge",
+          "description": "ID zaloge. Navedite to ali inventory_name (ne obojega).",
           "name": "ID zaloge"
         },
         "inventory_name": {
-          "description": "Ime zaloge (neobčutljivo na velike/male črke)",
+          "description": "Ime zaloge (neobčutljivo na velike/male črke). Navedite to ali inventory_id (ne obojega).",
           "name": "Ime zaloge"
         },
+        "location": {
+          "description": "Lokacija, kjer je shranjena dodana zaloga",
+          "name": "Lokacija"
+        },
         "name": {
-          "description": "Ime predmeta",
+          "description": "Ime ali vzdevek predmeta (obvezno, razen če je naveden barcode)",
           "name": "Ime predmeta"
         },
         "price": {
           "description": "Cena na enoto za ta vnos",
           "name": "Cena"
+        },
+        "purchased_at": {
+          "description": "Datum nakupa dodane zaloge (privzeto danes)",
+          "name": "Datum nakupa"
         }
       },
       "name": "Povečaj količino"
     },
     "lookup_barcode_product": {
-      "description": "Poišči predmet po črtni kodi v zunanji podatkovni bazi",
+      "description": "Poišči črtno kodo v zunanji podatkovni bazi izdelkov (npr. Open Food Facts) in vrni podatke o izdelku.",
       "fields": {
         "barcode": {
-          "description": "Črtna koda (UPC, EAN ipd.)",
+          "description": "Črtna koda za iskanje (UPC, EAN ipd.). V YAML jo navedite v narekovajih, če se začne z ničlami.",
           "name": "Črtna koda"
         }
       },
       "name": "Iskanje predmeta po črtni kodi"
     },
     "lookup_by_barcode": {
-      "description": "Poišči predmet po črtni kodi v vseh zalogah",
+      "description": "Poišči predmet po črtni kodi v vseh zalogah. Vrne vse ujemajoče se predmete.",
       "fields": {
         "barcode": {
-          "description": "Črtna koda",
+          "description": "Črtna koda za iskanje (UPC, EAN ipd.). V YAML jo navedite v narekovajih, če se začne z ničlami.",
           "name": "Črtna koda"
         }
       },
       "name": "Iskanje po črtni kodi"
     },
+    "remove_batch": {
+      "description": "Izbriše eno serijo artikla skupaj z njeno zalogo.",
+      "fields": {
+        "batch_id": {
+          "description": "ID serije (s seznama serij artikla)",
+          "name": "ID serije"
+        },
+        "inventory_id": {
+          "description": "ID zaloge. Navedite to ali inventory_name (ne obojega).",
+          "name": "ID zaloge"
+        },
+        "inventory_name": {
+          "description": "Ime zaloge (neobčutljivo na velike/male črke). Navedite to ali inventory_id (ne obojega).",
+          "name": "Ime zaloge"
+        }
+      },
+      "name": "Odstrani serijo"
+    },
     "remove_item": {
       "description": "Odstrani predmet iz zaloge",
       "fields": {
         "barcode": {
-          "description": "Črtna koda (namesto imena)",
+          "description": "Črtna koda predmeta za odstranitev (namesto imena). V YAML jo navedite v narekovajih, če se začne z ničlami.",
           "name": "Črtna koda"
         },
         "inventory_id": {
-          "description": "ID zaloge",
+          "description": "ID zaloge, iz katere odstranite predmet. Navedite to ali inventory_name (ne obojega).",
           "name": "ID zaloge"
         },
         "inventory_name": {
-          "description": "Ime zaloge (neobčutljivo na velike/male črke)",
+          "description": "Ime zaloge (neobčutljivo na velike/male črke). Navedite to ali inventory_id (ne obojega).",
           "name": "Ime zaloge"
         },
         "name": {
-          "description": "Ime predmeta",
+          "description": "Ime ali vzdevek predmeta za odstranitev (obvezno, razen če je naveden barcode)",
           "name": "Ime predmeta"
         }
       },
       "name": "Odstrani predmet"
     },
     "scan_barcode": {
-      "description": "Skeniraj črtno kodo in izvedi dejanje (povečaj, zmanjšaj ali poišči)",
+      "description": "Skeniraj črtno kodo in izvedi dejanje (povečaj, zmanjšaj ali poišči). Predmet se samodejno poišče v vseh zalogah.",
       "fields": {
         "action": {
           "description": "Dejanje nad najdenim predmetom",
           "name": "Dejanje"
         },
         "amount": {
-          "description": "Količina za spremembo",
+          "description": "Količina za povečanje ali zmanjšanje (pri iskanju se ne upošteva)",
           "name": "Količina"
         },
         "barcode": {
-          "description": "Črtna koda za skeniranje",
+          "description": "Črtna koda za skeniranje (UPC, EAN ipd.). V YAML jo navedite v narekovajih, če se začne z ničlami.",
           "name": "Črtna koda"
         },
+        "batch_id": {
+          "description": "Samo zmanjšanje - vzemi zalogo iz te serije. Ima prednost pred lokacijo.",
+          "name": "ID serije"
+        },
+        "expiry_date": {
+          "description": "Samo povečanje - datum poteka dodane zaloge",
+          "name": "Datum poteka"
+        },
         "inventory_id": {
-          "description": "ID zaloge (neobvezno)",
+          "description": "ID zaloge za omejitev iskanja (neobvezno). Obvezno, če črtna koda obstaja v več zalogah.",
           "name": "ID zaloge"
+        },
+        "location": {
+          "description": "Povečanje - lokacija, kjer je shranjena dodana zaloga. Zmanjšanje - vzemi samo zalogo, shranjeno na tej lokaciji.",
+          "name": "Lokacija"
         },
         "price": {
           "description": "Cena na enoto za ta vnos",
           "name": "Cena"
+        },
+        "purchased_at": {
+          "description": "Samo povečanje - datum nakupa dodane zaloge (privzeto danes)",
+          "name": "Datum nakupa"
         }
       },
       "name": "Skeniraj črtno kodo"
+    },
+    "set_item_image_from_barcode": {
+      "description": "Kot sliko predmeta uporabi fotografijo izdelka iz iskanja po črtni kodi. Integracija fotografijo prenese in shrani.",
+      "fields": {
+        "barcode": {
+          "description": "Črtna koda predmeta (namesto imena). V YAML jo navedite v narekovajih, če se začne z ničlami.",
+          "name": "Črtna koda"
+        },
+        "inventory_id": {
+          "description": "ID zaloge. Navedite to ali inventory_name (ne obojega).",
+          "name": "ID zaloge"
+        },
+        "inventory_name": {
+          "description": "Ime zaloge (neobčutljivo na velike/male črke). Navedite to ali inventory_id (ne obojega).",
+          "name": "Ime zaloge"
+        },
+        "lookup_barcode": {
+          "description": "Črtna koda za iskanje. Biti mora ena od črtnih kod predmeta; privzeto prva.",
+          "name": "Črtna koda za iskanje"
+        },
+        "name": {
+          "description": "Ime ali vzdevek predmeta (obvezno, razen če je naveden barcode)",
+          "name": "Ime predmeta"
+        }
+      },
+      "name": "Slika predmeta iz črtne kode"
+    },
+    "set_item_image_from_media": {
+      "description": "Kot sliko predmeta kopira sliko iz lokalnih map s predstavnostmi ali naloženih slik Home Assistanta.",
+      "fields": {
+        "barcode": {
+          "description": "Črtna koda predmeta (namesto imena). V YAML jo navedite v narekovajih, če se začne z ničlami.",
+          "name": "Črtna koda"
+        },
+        "inventory_id": {
+          "description": "ID zaloge. Navedite to ali inventory_name (ne obojega).",
+          "name": "ID zaloge"
+        },
+        "inventory_name": {
+          "description": "Ime zaloge (neobčutljivo na velike/male črke). Navedite to ali inventory_id (ne obojega).",
+          "name": "Ime zaloge"
+        },
+        "media_content_id": {
+          "description": "ID vira predstavnosti za datoteko v lokalni mapi s predstavnostmi ali za naloženo sliko.",
+          "name": "Predstavnost"
+        },
+        "name": {
+          "description": "Ime ali vzdevek predmeta (obvezno, razen če je naveden barcode)",
+          "name": "Ime predmeta"
+        }
+      },
+      "name": "Slika predmeta iz predstavnosti"
+    },
+    "transfer_item": {
+      "description": "Premakne zalogo predmeta na drugo lokacijo v isti zalogi. Datum poteka, cena na enoto in datum nakupa se premaknejo skupaj z zalogo.",
+      "fields": {
+        "amount": {
+          "description": "Koliko premakniti. Izpustite, da premaknete vse z izvorne lokacije.",
+          "name": "Količina"
+        },
+        "barcode": {
+          "description": "Črtna koda predmeta (namesto imena). V YAML jo navedite v narekovajih, če se začne z ničlami.",
+          "name": "Črtna koda"
+        },
+        "batch_id": {
+          "description": "Premakni zalogo samo iz te serije. Ima prednost pred izvorno lokacijo.",
+          "name": "ID serije"
+        },
+        "from_location": {
+          "description": "Premakni samo zalogo, shranjeno na tej lokaciji. Brez nje (in brez batch_id) se premakne zaloga z najbližjim rokom uporabe, ki še ni na cilju.",
+          "name": "Izvorna lokacija"
+        },
+        "inventory_id": {
+          "description": "ID zaloge. Navedite to ali inventory_name (ne obojega).",
+          "name": "ID zaloge"
+        },
+        "inventory_name": {
+          "description": "Ime zaloge (neobčutljivo na velike/male črke). Navedite to ali inventory_id (ne obojega).",
+          "name": "Ime zaloge"
+        },
+        "name": {
+          "description": "Ime ali vzdevek predmeta (obvezno, razen če je naveden barcode)",
+          "name": "Ime predmeta"
+        },
+        "to_location": {
+          "description": "Lokacija, na katero se premakne zaloga (ustvari se, če je nova)",
+          "name": "Ciljna lokacija"
+        }
+      },
+      "name": "Premakni predmet"
+    },
+    "update_batch": {
+      "description": "Uredi eno serijo artikla. Spremenijo se samo podana polja. Količina 0 izbriše serijo.",
+      "fields": {
+        "batch_id": {
+          "description": "ID serije (s seznama serij artikla)",
+          "name": "ID serije"
+        },
+        "expiry_date": {
+          "description": "Nov datum poteka serije (prazno za brez poteka)",
+          "name": "Datum poteka"
+        },
+        "inventory_id": {
+          "description": "ID zaloge. Navedite to ali inventory_name (ne obojega).",
+          "name": "ID zaloge"
+        },
+        "inventory_name": {
+          "description": "Ime zaloge (neobčutljivo na velike/male črke). Navedite to ali inventory_id (ne obojega).",
+          "name": "Ime zaloge"
+        },
+        "location": {
+          "description": "Nova lokacija serije",
+          "name": "Lokacija"
+        },
+        "purchased_at": {
+          "description": "Nov datum nakupa serije",
+          "name": "Datum nakupa"
+        },
+        "quantity": {
+          "description": "Nova količina serije",
+          "name": "Količina"
+        },
+        "unit_price": {
+          "description": "Nova cena na enoto serije",
+          "name": "Cena na enoto"
+        }
+      },
+      "name": "Posodobi serijo"
     },
     "update_item": {
       "description": "Posodobi obstoječ predmet v zalogi",
       "fields": {
         "aliases": {
-          "description": "Druga imena za predmet, uporabna povsod, kjer se sprejme ime predmeta (ločena z vejico)",
+          "description": "Druga imena za predmet, uporabna povsod, kjer se sprejme ime predmeta (glas, orodja LLM, storitve). Več vzdevkov lahko navedete kot seznam, ločen z vejicami.",
           "name": "Vzdevki"
         },
         "auto_add_enabled": {
@@ -339,7 +876,7 @@
           "name": "Samodejno dodajanje"
         },
         "auto_add_id_to_description_enabled": {
-          "description": "Samodejno dodaj ID zaloge v opis",
+          "description": "Doda ID zaloge v opis",
           "name": "Dodaj ID zaloge v opis"
         },
         "auto_add_to_list_quantity": {
@@ -347,11 +884,11 @@
           "name": "Mejna količina"
         },
         "barcode": {
-          "description": "Črtna koda",
+          "description": "Črtna koda predmeta (UPC, EAN ipd.). V YAML jo navedite v narekovajih, če se začne z ničlami.",
           "name": "Črtna koda"
         },
         "category": {
-          "description": "Kategorija",
+          "description": "Kategorija predmeta. Več kategorij lahko navedete kot seznam, ločen z vejicami.",
           "name": "Kategorija"
         },
         "description": {
@@ -359,7 +896,7 @@
           "name": "Opis"
         },
         "desired_quantity": {
-          "description": "Želena količina",
+          "description": "Želena količina za ponovno naročanje. Če je nastavljena, opravilo prikaže prav to količino (npr. \"Jajca (x12)\") in se odstrani, ko zaloga doseže to količino. Pri 0 količina temelji na mejni količini za samodejno dodajanje.",
           "name": "Želena količina"
         },
         "expiry_alert_days": {
@@ -370,16 +907,20 @@
           "description": "Datum poteka",
           "name": "Datum poteka"
         },
+        "icon": {
+          "description": "Ikona predmeta (npr. mdi:apple). Prazen niz ponastavi na privzeto ikono.",
+          "name": "Ikona"
+        },
         "inventory_id": {
-          "description": "ID zaloge",
+          "description": "ID zaloge. Navedite to ali inventory_name (ne obojega).",
           "name": "ID zaloge"
         },
         "inventory_name": {
-          "description": "Ime zaloge (neobčutljivo na velike/male črke)",
+          "description": "Ime zaloge (neobčutljivo na velike/male črke). Navedite to ali inventory_id (ne obojega).",
           "name": "Ime zaloge"
         },
         "location": {
-          "description": "Lokacija v zalogi",
+          "description": "Lokacija predmeta v zalogi. Več lokacij lahko navedete kot seznam, ločen z vejicami.",
           "name": "Lokacija"
         },
         "name": {
@@ -403,7 +944,7 @@
           "name": "Seznam opravil"
         },
         "todo_quantity_placement": {
-          "description": "Kje prikazati količino (v imenu, opisu ali nikjer)",
+          "description": "Kje prikazati količino v opravilih. \"name\" jo doda v ime opravila (npr. \"Mleko (x4)\"), \"description\" jo doda v polje opisa, \"none\" je ne prikaže.",
           "name": "Prikaz količine"
         },
         "unit": {
