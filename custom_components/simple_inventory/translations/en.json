@@ -4,6 +4,7 @@
   },
   "config": {
     "error": {
+      "invalid_name": "Inventory name must contain at least one letter or number (the word \"inventory\" is removed)",
       "name_exists": "Inventory name already exists"
     },
     "step": {
@@ -17,48 +18,376 @@
         "data_description": {
           "description": "Optional description for this inventory",
           "icon": "Click the icon field to open the icon picker with all Material Design Icons",
-          "install_voice_sentences": "Copies an example sentence file for local Assist (Home Assistant Voice) into your config directory and reloads custom sentences. Never overwrites an existing file. Only shown when Home Assistant's language is English."
+          "install_voice_sentences": "Copies an example sentence file for local Assist (Home Assistant Voice) into your config directory and reloads custom sentences. Never overwrites an existing file. Only shown when Home Assistant's language is English, Spanish, French or Slovenian."
         },
         "description": "Create a new inventory to track your items.",
         "title": "Add Inventory"
       }
     }
   },
-  "entity": {
-    "sensor": {
-      "all_expired_items": {
-        "name": "All Expired Items"
+  "exceptions": {
+    "alias_conflict": {
+      "message": "Alias(es) already assigned to another item in this inventory: {aliases}"
+    },
+    "alias_is_item_name": {
+      "message": "Alias(es) \"{aliases}\" already used as the name of another item in inventory \"{inventory}\""
+    },
+    "ambiguous_barcode": {
+      "message": "Barcode \"{barcode}\" found in multiple inventories: {inventories}. Specify inventory_id to disambiguate."
+    },
+    "ambiguous_inventory": {
+      "message": "\"{name}\" matches multiple inventories: {matches}. Please be more specific."
+    },
+    "ambiguous_item": {
+      "message": "\"{name}\" matches multiple items in inventory \"{inventory}\": {matches}. Please be more specific."
+    },
+    "barcode_conflict": {
+      "message": "Barcode(s) already assigned to another item in this inventory: {barcodes}"
+    },
+    "barcode_not_found": {
+      "message": "No item found for barcode \"{barcode}\""
+    },
+    "barcode_not_on_item": {
+      "message": "Barcode \"{barcode}\" does not belong to \"{name}\"."
+    },
+    "batch_not_found": {
+      "message": "No batch \"{batch_id}\" found for this item"
+    },
+    "batch_required": {
+      "message": "{name} has {count} batches; change the batch itself instead of the item's {field}"
+    },
+    "category_assignment_failed": {
+      "message": "Could not assign categories \"{categories}\""
+    },
+    "duplicate_item_name": {
+      "message": "An item named \"{name}\" already exists in inventory \"{inventory}\""
+    },
+    "empty_item_name": {
+      "message": "An item name is required in inventory \"{inventory}\""
+    },
+    "image_download_failed": {
+      "message": "Could not download the product photo for \"{name}\"."
+    },
+    "image_invalid": {
+      "message": "The file is not a supported image. Use a JPEG, PNG, WebP or GIF file."
+    },
+    "image_not_found": {
+      "message": "No product photo found for \"{name}\"."
+    },
+    "image_too_large": {
+      "message": "The image is too large (maximum 10 MB)."
+    },
+    "insufficient_stock": {
+      "message": "Only {available} of {name} available at {location}; nothing was moved"
+    },
+    "invalid_amount": {
+      "message": "Transfer amount must be greater than 0 (got {amount})"
+    },
+    "invalid_auto_add_config": {
+      "message": "Could not add item \"{name}\" to inventory \"{inventory}\" (invalid auto-add configuration)"
+    },
+    "invalid_scan_action": {
+      "message": "Invalid action \"{action}\". Must be 'increment', 'decrement', or 'lookup'"
+    },
+    "inventory_identifier_required": {
+      "message": "Either 'inventory_id' or 'inventory_name' is required"
+    },
+    "inventory_not_found": {
+      "message": "No inventory named \"{name}\" found"
+    },
+    "inventory_not_loaded": {
+      "message": "Inventory \"{inventory}\" is not currently loaded"
+    },
+    "item_identifier_required": {
+      "message": "Either 'name' or 'barcode' is required to identify an item in inventory \"{inventory}\""
+    },
+    "item_not_found": {
+      "message": "No item named \"{name}\" found in inventory \"{inventory}\""
+    },
+    "location_assignment_failed": {
+      "message": "Could not assign locations \"{locations}\" in inventory \"{inventory}\""
+    },
+    "location_required": {
+      "message": "A destination location is required"
+    },
+    "name_is_alias": {
+      "message": "The name \"{name}\" is already an alias of \"{item}\" in inventory \"{inventory}\""
+    },
+    "no_inventories_configured": {
+      "message": "No inventories configured"
+    },
+    "no_stock_at_location": {
+      "message": "There is no {name} stock at \"{location}\""
+    },
+    "no_stock_for_expiry": {
+      "message": "{name} has no stock; restock it with an expiry date instead"
+    },
+    "same_location": {
+      "message": "The stock is already at \"{location}\""
+    },
+    "speech_add_failed": {
+      "message": "Sorry, I couldn't add {item} in {inventory}."
+    },
+    "speech_added": {
+      "message": "Added {amount} {item} to {inventory}."
+    },
+    "speech_added_now_at": {
+      "message": "Added {amount} {item} to {inventory}. Now at {remaining}."
+    },
+    "speech_ambiguous_location": {
+      "message": "Which location in {inventory} did you mean: {locations}?"
+    },
+    "speech_amount_at_location": {
+      "message": "{amount} in {location}"
+    },
+    "speech_amount_unassigned": {
+      "message": "{amount} unassigned"
+    },
+    "speech_count_expired_few": {
+      "message": "{count} items are expired"
+    },
+    "speech_count_expired_in_few": {
+      "message": "{count} items are expired in {inventory}"
+    },
+    "speech_count_expired_in_one": {
+      "message": "{count} item is expired in {inventory}"
+    },
+    "speech_count_expired_in_other": {
+      "message": "{count} items are expired in {inventory}"
+    },
+    "speech_count_expired_in_two": {
+      "message": "{count} items are expired in {inventory}"
+    },
+    "speech_count_expired_one": {
+      "message": "{count} item is expired"
+    },
+    "speech_count_expired_other": {
+      "message": "{count} items are expired"
+    },
+    "speech_count_expired_two": {
+      "message": "{count} items are expired"
+    },
+    "speech_count_expiring_soon_few": {
+      "message": "{count} items are expiring soon"
+    },
+    "speech_count_expiring_soon_in_few": {
+      "message": "{count} items are expiring soon in {inventory}"
+    },
+    "speech_count_expiring_soon_in_one": {
+      "message": "{count} item is expiring soon in {inventory}"
+    },
+    "speech_count_expiring_soon_in_other": {
+      "message": "{count} items are expiring soon in {inventory}"
+    },
+    "speech_count_expiring_soon_in_two": {
+      "message": "{count} items are expiring soon in {inventory}"
+    },
+    "speech_count_expiring_soon_one": {
+      "message": "{count} item is expiring soon"
+    },
+    "speech_count_expiring_soon_other": {
+      "message": "{count} items are expiring soon"
+    },
+    "speech_count_expiring_soon_two": {
+      "message": "{count} items are expiring soon"
+    },
+    "speech_count_low_stock_few": {
+      "message": "{count} items are low on stock"
+    },
+    "speech_count_low_stock_in_few": {
+      "message": "{count} items are low on stock in {inventory}"
+    },
+    "speech_count_low_stock_in_one": {
+      "message": "{count} item is low on stock in {inventory}"
+    },
+    "speech_count_low_stock_in_other": {
+      "message": "{count} items are low on stock in {inventory}"
+    },
+    "speech_count_low_stock_in_two": {
+      "message": "{count} items are low on stock in {inventory}"
+    },
+    "speech_count_low_stock_one": {
+      "message": "{count} item is low on stock"
+    },
+    "speech_count_low_stock_other": {
+      "message": "{count} items are low on stock"
+    },
+    "speech_count_low_stock_two": {
+      "message": "{count} items are low on stock"
+    },
+    "speech_find_match": {
+      "message": "{amount} {item} in {inventory}"
+    },
+    "speech_find_match_at": {
+      "message": "{amount} {item} in {inventory} ({locations})"
+    },
+    "speech_find_matches_other": {
+      "message": "I found {count} matches for {item}: {matches}."
+    },
+    "speech_item_missing": {
+      "message": "I couldn't find {item} in {inventory}."
+    },
+    "speech_item_missing_anywhere": {
+      "message": "I couldn't find {item} in any inventory."
+    },
+    "speech_item_quantity": {
+      "message": "{inventory} has {amount} {item}."
+    },
+    "speech_item_quantity_at": {
+      "message": "{inventory} has {amount} {item}, in {locations}."
+    },
+    "speech_item_quantity_breakdown": {
+      "message": "{inventory} has {amount} {item}: {breakdown}."
+    },
+    "speech_list_and_many": {
+      "message": "{first}, and {last}"
+    },
+    "speech_list_and_two": {
+      "message": "{first} and {last}"
+    },
+    "speech_list_or": {
+      "message": "{first} or {last}"
+    },
+    "speech_more_one": {
+      "message": "{count} more"
+    },
+    "speech_more_other": {
+      "message": "{count} more"
+    },
+    "speech_move_failed": {
+      "message": "Sorry, I couldn't move {item} in {inventory}."
+    },
+    "speech_moved": {
+      "message": "Moved {what} to {to_location}."
+    },
+    "speech_moved_from": {
+      "message": "Moved {what} from {from_location} to {to_location}."
+    },
+    "speech_not_at_locations": {
+      "message": "There is no {item} at {locations} in {inventory}."
+    },
+    "speech_out_of_stock_among_one": {
+      "message": "{count} of them out of stock"
+    },
+    "speech_out_of_stock_among_other": {
+      "message": "{count} of them out of stock"
+    },
+    "speech_out_of_stock_item": {
+      "message": "{item} (out of stock)"
+    },
+    "speech_remove_failed": {
+      "message": "Sorry, I couldn't remove {item} in {inventory}."
+    },
+    "speech_removed": {
+      "message": "Removed {amount} {item} from {inventory}."
+    },
+    "speech_removed_left": {
+      "message": "Removed {amount} {item} from {inventory}. {remaining} left."
+    },
+    "speech_removed_none_left": {
+      "message": "Removed {amount} {item} from {inventory}. None left."
+    },
+    "speech_set_quantity": {
+      "message": "Set {item} to {quantity} in {inventory}."
+    },
+    "speech_unknown_location": {
+      "message": "I don't know a location called {location} in {inventory}."
+    },
+    "speech_update_failed": {
+      "message": "Sorry, I couldn't update {item} in {inventory}."
+    },
+    "unsupported_media_source": {
+      "message": "\"{media_content_id}\" is not a file in Home Assistant's local media folders or image uploads."
+    },
+    "update_item_failed": {
+      "message": "Could not update item \"{name}\" in inventory \"{inventory}\""
+    }
+  },
+  "issues": {
+    "database_from_newer_version": {
+      "description": "The Simple Inventory database uses schema version {found_version}, but this version of the integration supports schema version {supported_version} at most. This happens after downgrading Simple Inventory. Your data has not been changed.\n\nInstall the Simple Inventory version that created the database (or a newer one) and restart Home Assistant.",
+      "title": "Simple Inventory database is from a newer version"
+    },
+    "missing_todo_list": {
+      "fix_flow": {
+        "abort": {
+          "inventory_not_loaded": "The inventory {inventory} is not loaded. Load it, then try again."
+        },
+        "error": {
+          "invalid_todo_list": "Choose an existing to-do list other than the missing one."
+        },
+        "step": {
+          "clear": {
+            "description": "Remove the to-do list from every item in {inventory} that uses {entity_id}, and turn off auto-add for them.",
+            "title": "Clear the to-do list"
+          },
+          "init": {
+            "description": "{count} item(s) in {inventory} add to the to-do list {entity_id}, which no longer exists. Choose a replacement list, or clear the list and turn off auto-add for these items.",
+            "menu_options": {
+              "clear": "Clear the to-do list and turn off auto-add",
+              "replace": "Choose a replacement to-do list"
+            },
+            "title": "To-do list {entity_id} no longer exists"
+          },
+          "replace": {
+            "data": {
+              "todo_list": "To-do list"
+            },
+            "description": "Items in {inventory} that used {entity_id} will use this to-do list instead.",
+            "title": "Choose a replacement to-do list"
+          }
+        }
       },
-      "all_expiring_items": {
-        "name": "All Items Expiring Soon"
+      "title": "To-do list {entity_id} used by {inventory} no longer exists"
+    },
+    "orphaned_inventory_data": {
+      "fix_flow": {
+        "abort": {
+          "not_loaded": "Simple Inventory is not loaded. Load an inventory, then try again."
+        },
+        "step": {
+          "confirm": {
+            "description": "The database still holds data for inventories that were removed from Home Assistant (inventory: number of items):\n\n{inventories}\n\nSubmit to permanently delete this data. This cannot be undone.",
+            "title": "Delete data of removed inventories"
+          }
+        }
       },
-      "expired_items": {
-        "name": "{inventory_name} Expired Items"
-      },
-      "expiring_items": {
-        "name": "{inventory_name} Items Expiring Soon"
-      },
-      "inventory": {
-        "name": "{inventory_name} Inventory"
-      }
+      "title": "Simple Inventory holds data for removed inventories"
+    },
+    "panel_bundle_missing": {
+      "description": "The sidebar panel is enabled, but its file was not found at \"{path}\". Install or update the Simple Inventory card through HACS (or copy its files into that folder), then restart Home Assistant or save the integration's options again.",
+      "title": "Inventory panel needs the Simple Inventory card"
     }
   },
   "options": {
     "error": {
+      "invalid_name": "Inventory name must contain at least one letter or number (the word \"inventory\" is removed)",
       "name_exists": "Inventory name already exists"
     },
     "step": {
+      "global_settings": {
+        "data": {
+          "install_voice_sentences": "Install example voice commands",
+          "panel_admin_only": "Only administrators can see the panel",
+          "show_panel": "Show the Inventory panel in the sidebar"
+        },
+        "data_description": {
+          "install_voice_sentences": "Copies an example sentence file for local Assist (Home Assistant Voice) into your config directory and reloads custom sentences. Never overwrites an existing file. Only shown when Home Assistant's language is English, Spanish, French or Slovenian.",
+          "panel_admin_only": "Hide the panel from users who are not administrators.",
+          "show_panel": "Adds an Inventory entry to the sidebar with one tab per inventory. Requires the Simple Inventory card (installed through HACS)."
+        },
+        "description": "Show a full-page Inventory panel in the sidebar and choose who can see it. The panel needs the Simple Inventory card installed.",
+        "title": "Simple Inventory settings"
+      },
       "init": {
         "data": {
           "description": "Description",
           "icon": "Icon",
-          "install_voice_sentences": "Install example voice commands",
           "name": "Inventory Name"
         },
         "data_description": {
           "description": "Optional description for this inventory",
-          "icon": "Click the icon field to browse all available icons",
-          "install_voice_sentences": "Copies an example sentence file for local Assist (Home Assistant Voice) into your config directory and reloads custom sentences. Never overwrites an existing file. Only shown for the global Simple Inventory device, and only when Home Assistant's language is English."
+          "icon": "Click the icon field to browse all available icons"
         },
         "description": "Update the settings for {current_name}",
         "title": "Configure Inventory"
@@ -70,7 +399,7 @@
       "description": "Add an item to an inventory",
       "fields": {
         "aliases": {
-          "description": "Alternate names for the item, usable anywhere the item name is accepted (comma-separated)",
+          "description": "Alternate names for the item, usable anywhere the item name is accepted (voice, LLM tools, services). Supports multiple aliases as a comma-separated list.",
           "name": "Aliases"
         },
         "auto_add_enabled": {
@@ -78,7 +407,7 @@
           "name": "Auto Add Enabled"
         },
         "auto_add_id_to_description_enabled": {
-          "description": "Enable automatic addition of inventory ID to description",
+          "description": "Appends the inventory ID to the description",
           "name": "Auto Add Inventory ID to Description Enabled"
         },
         "auto_add_to_list_quantity": {
@@ -86,11 +415,11 @@
           "name": "Auto Add Threshold"
         },
         "barcode": {
-          "description": "Barcode to associate with the item (UPC, EAN, etc.)",
+          "description": "Barcode to associate with the item (UPC, EAN, etc.). Must be quoted in YAML if it has leading zeros.",
           "name": "Barcode"
         },
         "category": {
-          "description": "Category of the item",
+          "description": "Category of the item. Supports multiple categories as a comma-separated list.",
           "name": "Category"
         },
         "description": {
@@ -98,7 +427,7 @@
           "name": "Description"
         },
         "desired_quantity": {
-          "description": "Desired stock level for restocking (0 = use auto-add threshold)",
+          "description": "Desired stock level for restocking. When set, the todo item shows this quantity itself (e.g. \"Eggs (x12)\") and is removed once stock reaches it. When 0, the quantity is based on the auto-add threshold instead.",
           "name": "Desired Quantity"
         },
         "expiry_alert_days": {
@@ -109,16 +438,20 @@
           "description": "Expiration date",
           "name": "Expiry Date"
         },
+        "icon": {
+          "description": "Icon for the item (e.g. mdi:apple). Leave empty for the default icon.",
+          "name": "Icon"
+        },
         "inventory_id": {
-          "description": "ID of the inventory to add to",
+          "description": "ID of the inventory to add to. Provide this or inventory_name (not both).",
           "name": "Inventory ID"
         },
         "inventory_name": {
-          "description": "Name of the inventory (case-insensitive)",
+          "description": "Name of the inventory (case-insensitive). Provide this or inventory_id (not both).",
           "name": "Inventory Name"
         },
         "location": {
-          "description": "Location of the item within the inventory",
+          "description": "Location of the item within the inventory. Supports multiple locations as a comma-separated list.",
           "name": "Location"
         },
         "name": {
@@ -138,7 +471,7 @@
           "name": "Todo List"
         },
         "todo_quantity_placement": {
-          "description": "Where to show the quantity in todo items (name, description, or none)",
+          "description": "Where to show the quantity in todo items. \"name\" puts it in the item name (e.g. \"Milk (x4)\"), \"description\" puts it in the description field, \"none\" omits it entirely.",
           "name": "Todo Quantity Placement"
         },
         "unit": {
@@ -148,6 +481,28 @@
       },
       "name": "Add Item"
     },
+    "clear_item_image": {
+      "description": "Remove the item's image.",
+      "fields": {
+        "barcode": {
+          "description": "Barcode of the item (alternative to name). Must be quoted in YAML if it has leading zeros.",
+          "name": "Barcode"
+        },
+        "inventory_id": {
+          "description": "ID of the inventory. Provide this or inventory_name (not both).",
+          "name": "Inventory ID"
+        },
+        "inventory_name": {
+          "description": "Name of the inventory (case-insensitive). Provide this or inventory_id (not both).",
+          "name": "Inventory Name"
+        },
+        "name": {
+          "description": "Name or alias of the item (required unless barcode is provided)",
+          "name": "Item Name"
+        }
+      },
+      "name": "Clear Item Image"
+    },
     "decrement_item": {
       "description": "Decrement the quantity of an item",
       "fields": {
@@ -156,19 +511,27 @@
           "name": "Amount"
         },
         "barcode": {
-          "description": "Barcode of the item (alternative to name)",
+          "description": "Barcode of the item (alternative to name). Must be quoted in YAML if it has leading zeros.",
           "name": "Barcode"
         },
+        "batch_id": {
+          "description": "Only take stock from this batch. Takes precedence over location.",
+          "name": "Batch ID"
+        },
         "inventory_id": {
-          "description": "ID of the inventory",
+          "description": "ID of the inventory. Provide this or inventory_name (not both).",
           "name": "Inventory ID"
         },
         "inventory_name": {
-          "description": "Name of the inventory (case-insensitive)",
+          "description": "Name of the inventory (case-insensitive). Provide this or inventory_id (not both).",
           "name": "Inventory Name"
         },
+        "location": {
+          "description": "Only take stock stored at this location",
+          "name": "Location"
+        },
         "name": {
-          "description": "Name of the item",
+          "description": "Name or alias of the item (required unless barcode is provided)",
           "name": "Item Name"
         },
         "price": {
@@ -179,21 +542,21 @@
       "name": "Decrement Item"
     },
     "get_inventory_consumption_rates": {
-      "description": "Get consumption analytics for all items in an inventory based on their decrement history",
+      "description": "Get consumption analytics for all items in an inventory based on their decrement history. Returns daily/weekly rates, days until depletion, and average restock interval per item.",
       "fields": {
         "inventory_id": {
           "description": "ID of the inventory",
           "name": "Inventory ID"
         },
         "window_days": {
-          "description": "Number of days to look back for consumption data (omit for all history)",
+          "description": "Number of days to look back for consumption data. Omit to use all history.",
           "name": "Window Days"
         }
       },
       "name": "Get Inventory Consumption Rates"
     },
     "get_item_consumption_rates": {
-      "description": "Get consumption analytics for a specific item based on its decrement history",
+      "description": "Get consumption analytics for a specific item based on its decrement history. Returns daily/weekly rates, days until depletion, and average restock interval.",
       "fields": {
         "inventory_id": {
           "description": "ID of the inventory",
@@ -204,14 +567,14 @@
           "name": "Item Name"
         },
         "window_days": {
-          "description": "Number of days to look back for consumption data (omit for all history)",
+          "description": "Number of days to look back for consumption data. Omit to use all history.",
           "name": "Window Days"
         }
       },
       "name": "Get Item Consumption Rates"
     },
     "get_items": {
-      "description": "Return the full list of items for an inventory. Can specify either inventory_id or inventory_name.",
+      "description": "Return the full list of items for an inventory. Can specify either inventory_id or inventory_name (but not both).",
       "fields": {
         "inventory_id": {
           "description": "ID of the inventory",
@@ -225,7 +588,7 @@
       "name": "Get Items"
     },
     "get_items_from_all_inventories": {
-      "description": "Return the full list of items grouped by inventory",
+      "description": "Return the full list of items grouped by inventory.",
       "fields": {},
       "name": "Get Items From All Inventories"
     },
@@ -237,101 +600,275 @@
           "name": "Amount"
         },
         "barcode": {
-          "description": "Barcode of the item (alternative to name)",
+          "description": "Barcode of the item (alternative to name). Must be quoted in YAML if it has leading zeros.",
           "name": "Barcode"
         },
+        "expiry_date": {
+          "description": "Expiry date of the stock being added. Restocking with the same expiry, location and unit price merges into the existing batch (keeping the earliest purchase date); otherwise a new batch is created.",
+          "name": "Expiry date"
+        },
         "inventory_id": {
-          "description": "ID of the inventory",
+          "description": "ID of the inventory. Provide this or inventory_name (not both).",
           "name": "Inventory ID"
         },
         "inventory_name": {
-          "description": "Name of the inventory (case-insensitive)",
+          "description": "Name of the inventory (case-insensitive). Provide this or inventory_id (not both).",
           "name": "Inventory Name"
         },
+        "location": {
+          "description": "Location where the added stock is stored",
+          "name": "Location"
+        },
         "name": {
-          "description": "Name of the item",
+          "description": "Name or alias of the item (required unless barcode is provided)",
           "name": "Item Name"
         },
         "price": {
           "description": "Unit price to record for this transaction",
           "name": "Price"
+        },
+        "purchased_at": {
+          "description": "Purchase date of the stock being added (defaults to today)",
+          "name": "Purchase date"
         }
       },
       "name": "Increment Item"
     },
     "lookup_barcode_product": {
-      "description": "Look up a barcode in an external product database and return product information",
+      "description": "Look up a barcode in an external product database (e.g. Open Food Facts) and return product information.",
       "fields": {
         "barcode": {
-          "description": "Barcode to look up (UPC, EAN, etc.)",
+          "description": "Barcode to look up (UPC, EAN, etc.). Must be quoted in YAML if it has leading zeros.",
           "name": "Barcode"
         }
       },
       "name": "Lookup Barcode Product"
     },
     "lookup_by_barcode": {
-      "description": "Look up an item by barcode across all inventories",
+      "description": "Look up an item by barcode across all inventories. Returns all matching items.",
       "fields": {
         "barcode": {
-          "description": "Barcode to search for (UPC, EAN, etc.)",
+          "description": "Barcode to search for (UPC, EAN, etc.). Must be quoted in YAML if it has leading zeros.",
           "name": "Barcode"
         }
       },
       "name": "Lookup by Barcode"
     },
+    "remove_batch": {
+      "description": "Delete one batch of an item, removing its stock.",
+      "fields": {
+        "batch_id": {
+          "description": "ID of the batch (from the item's batches list)",
+          "name": "Batch ID"
+        },
+        "inventory_id": {
+          "description": "ID of the inventory. Provide this or inventory_name (not both).",
+          "name": "Inventory ID"
+        },
+        "inventory_name": {
+          "description": "Name of the inventory (case-insensitive). Provide this or inventory_id (not both).",
+          "name": "Inventory Name"
+        }
+      },
+      "name": "Remove Batch"
+    },
     "remove_item": {
       "description": "Remove an item from an inventory",
       "fields": {
         "barcode": {
-          "description": "Barcode of the item to remove (alternative to name)",
+          "description": "Barcode of the item to remove (alternative to name). Must be quoted in YAML if it has leading zeros.",
           "name": "Barcode"
         },
         "inventory_id": {
-          "description": "ID of the inventory to remove from",
+          "description": "ID of the inventory to remove from. Provide this or inventory_name (not both).",
           "name": "Inventory ID"
         },
         "inventory_name": {
-          "description": "Name of the inventory (case-insensitive)",
+          "description": "Name of the inventory (case-insensitive). Provide this or inventory_id (not both).",
           "name": "Inventory Name"
         },
         "name": {
-          "description": "Name of the item to remove",
+          "description": "Name or alias of the item to remove (required unless barcode is provided)",
           "name": "Item Name"
         }
       },
       "name": "Remove Item"
     },
     "scan_barcode": {
-      "description": "Scan a barcode and perform an action (increment, decrement, or lookup)",
+      "description": "Scan a barcode and perform an action (increment, decrement, or lookup). Automatically resolves the item across inventories.",
       "fields": {
         "action": {
           "description": "Action to perform on the matched item",
           "name": "Action"
         },
         "amount": {
-          "description": "Amount to increment or decrement by",
+          "description": "Amount to increment or decrement by (ignored for lookup)",
           "name": "Amount"
         },
         "barcode": {
-          "description": "Barcode to scan (UPC, EAN, etc.)",
+          "description": "Barcode to scan (UPC, EAN, etc.). Must be quoted in YAML if it has leading zeros.",
           "name": "Barcode"
         },
+        "batch_id": {
+          "description": "Decrement only - take stock from this batch. Takes precedence over location.",
+          "name": "Batch ID"
+        },
+        "expiry_date": {
+          "description": "Increment only - expiry date of the stock being added",
+          "name": "Expiry date"
+        },
         "inventory_id": {
-          "description": "Optional inventory ID to scope the search",
+          "description": "Optional inventory ID to scope the search. Required if the barcode exists in multiple inventories.",
           "name": "Inventory ID"
+        },
+        "location": {
+          "description": "Increment - location where the added stock is stored. Decrement - only take stock stored at this location.",
+          "name": "Location"
         },
         "price": {
           "description": "Unit price to record for this transaction",
           "name": "Price"
+        },
+        "purchased_at": {
+          "description": "Increment only - purchase date of the stock being added (defaults to today)",
+          "name": "Purchase date"
         }
       },
       "name": "Scan Barcode"
+    },
+    "set_item_image_from_barcode": {
+      "description": "Use the product photo from the barcode lookup as the item's image. The photo is downloaded and stored by the integration.",
+      "fields": {
+        "barcode": {
+          "description": "Barcode of the item (alternative to name). Must be quoted in YAML if it has leading zeros.",
+          "name": "Barcode"
+        },
+        "inventory_id": {
+          "description": "ID of the inventory. Provide this or inventory_name (not both).",
+          "name": "Inventory ID"
+        },
+        "inventory_name": {
+          "description": "Name of the inventory (case-insensitive). Provide this or inventory_id (not both).",
+          "name": "Inventory Name"
+        },
+        "lookup_barcode": {
+          "description": "Barcode to look up. Must be one of the item's barcodes; defaults to its first barcode.",
+          "name": "Lookup Barcode"
+        },
+        "name": {
+          "description": "Name or alias of the item (required unless barcode is provided)",
+          "name": "Item Name"
+        }
+      },
+      "name": "Set Item Image from Barcode"
+    },
+    "set_item_image_from_media": {
+      "description": "Copy an image from Home Assistant's local media folders or image uploads as the item's image.",
+      "fields": {
+        "barcode": {
+          "description": "Barcode of the item (alternative to name). Must be quoted in YAML if it has leading zeros.",
+          "name": "Barcode"
+        },
+        "inventory_id": {
+          "description": "ID of the inventory. Provide this or inventory_name (not both).",
+          "name": "Inventory ID"
+        },
+        "inventory_name": {
+          "description": "Name of the inventory (case-insensitive). Provide this or inventory_id (not both).",
+          "name": "Inventory Name"
+        },
+        "media_content_id": {
+          "description": "Media source ID of a file in a local media folder or of an uploaded image.",
+          "name": "Media"
+        },
+        "name": {
+          "description": "Name or alias of the item (required unless barcode is provided)",
+          "name": "Item Name"
+        }
+      },
+      "name": "Set Item Image from Media"
+    },
+    "transfer_item": {
+      "description": "Move stock of an item to another location in the same inventory. Expiry date, unit price and purchase date move with the stock.",
+      "fields": {
+        "amount": {
+          "description": "How much to move. Omit to move everything at the source.",
+          "name": "Amount"
+        },
+        "barcode": {
+          "description": "Barcode of the item (alternative to name). Must be quoted in YAML if it has leading zeros.",
+          "name": "Barcode"
+        },
+        "batch_id": {
+          "description": "Only move stock from this batch. Takes precedence over from_location.",
+          "name": "Batch ID"
+        },
+        "from_location": {
+          "description": "Only move stock stored at this location. Without it (and without batch_id), the soonest-expiring stock not already at the destination is moved.",
+          "name": "From location"
+        },
+        "inventory_id": {
+          "description": "ID of the inventory. Provide this or inventory_name (not both).",
+          "name": "Inventory ID"
+        },
+        "inventory_name": {
+          "description": "Name of the inventory (case-insensitive). Provide this or inventory_id (not both).",
+          "name": "Inventory Name"
+        },
+        "name": {
+          "description": "Name or alias of the item (required unless barcode is provided)",
+          "name": "Item Name"
+        },
+        "to_location": {
+          "description": "Location to move the stock to (created if new)",
+          "name": "To location"
+        }
+      },
+      "name": "Transfer Item"
+    },
+    "update_batch": {
+      "description": "Edit one batch of an item. Only the fields provided are changed. Setting quantity to 0 deletes the batch.",
+      "fields": {
+        "batch_id": {
+          "description": "ID of the batch (from the item's batches list)",
+          "name": "Batch ID"
+        },
+        "expiry_date": {
+          "description": "New expiry date of the batch (empty for no expiry)",
+          "name": "Expiry date"
+        },
+        "inventory_id": {
+          "description": "ID of the inventory. Provide this or inventory_name (not both).",
+          "name": "Inventory ID"
+        },
+        "inventory_name": {
+          "description": "Name of the inventory (case-insensitive). Provide this or inventory_id (not both).",
+          "name": "Inventory Name"
+        },
+        "location": {
+          "description": "New location of the batch",
+          "name": "Location"
+        },
+        "purchased_at": {
+          "description": "New purchase date of the batch",
+          "name": "Purchase date"
+        },
+        "quantity": {
+          "description": "New quantity of the batch",
+          "name": "Quantity"
+        },
+        "unit_price": {
+          "description": "New unit price of the batch",
+          "name": "Unit price"
+        }
+      },
+      "name": "Update Batch"
     },
     "update_item": {
       "description": "Update an existing inventory item",
       "fields": {
         "aliases": {
-          "description": "Alternate names for the item, usable anywhere the item name is accepted (comma-separated)",
+          "description": "Alternate names for the item, usable anywhere the item name is accepted (voice, LLM tools, services). Supports multiple aliases as a comma-separated list.",
           "name": "Aliases"
         },
         "auto_add_enabled": {
@@ -339,7 +876,7 @@
           "name": "Auto Add Enabled"
         },
         "auto_add_id_to_description_enabled": {
-          "description": "Enable automatic addition of inventory ID to description",
+          "description": "Appends the inventory ID to the description",
           "name": "Auto Add Inventory ID to Description Enabled"
         },
         "auto_add_to_list_quantity": {
@@ -347,11 +884,11 @@
           "name": "Auto Add Threshold"
         },
         "barcode": {
-          "description": "Barcode to associate with the item (UPC, EAN, etc.)",
+          "description": "Barcode to associate with the item (UPC, EAN, etc.). Must be quoted in YAML if it has leading zeros.",
           "name": "Barcode"
         },
         "category": {
-          "description": "Category",
+          "description": "Category of the item. Supports multiple categories as a comma-separated list.",
           "name": "Category"
         },
         "description": {
@@ -359,7 +896,7 @@
           "name": "Description"
         },
         "desired_quantity": {
-          "description": "Desired stock level for restocking (0 = use auto-add threshold)",
+          "description": "Desired stock level for restocking. When set, the todo item shows this quantity itself (e.g. \"Eggs (x12)\") and is removed once stock reaches it. When 0, the quantity is based on the auto-add threshold instead.",
           "name": "Desired Quantity"
         },
         "expiry_alert_days": {
@@ -370,16 +907,20 @@
           "description": "Expiration date",
           "name": "Expiry Date"
         },
+        "icon": {
+          "description": "Icon for the item (e.g. mdi:apple). Empty string resets it to the default icon.",
+          "name": "Icon"
+        },
         "inventory_id": {
-          "description": "ID of the inventory",
+          "description": "ID of the inventory. Provide this or inventory_name (not both).",
           "name": "Inventory ID"
         },
         "inventory_name": {
-          "description": "Name of the inventory (case-insensitive)",
+          "description": "Name of the inventory (case-insensitive). Provide this or inventory_id (not both).",
           "name": "Inventory Name"
         },
         "location": {
-          "description": "Location within the inventory",
+          "description": "Location of the item within the inventory. Supports multiple locations as a comma-separated list.",
           "name": "Location"
         },
         "name": {
@@ -403,7 +944,7 @@
           "name": "Todo List"
         },
         "todo_quantity_placement": {
-          "description": "Where to show the quantity in todo items (name, description, or none)",
+          "description": "Where to show the quantity in todo items. \"name\" puts it in the item name (e.g. \"Milk (x4)\"), \"description\" puts it in the description field, \"none\" omits it entirely.",
           "name": "Todo Quantity Placement"
         },
         "unit": {

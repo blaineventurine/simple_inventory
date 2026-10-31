@@ -1,0 +1,80 @@
+# Example Slovenian custom sentences for Simple Inventory voice control.
+#
+# Installed by the "Install example voice commands" checkbox when Home Assistant's
+# language is Slovenian, or copy it by hand to
+# <config>/custom_sentences/sl/simple_inventory.yaml and call `conversation.reload`.
+# LLM-backed conversation agents don't need it: they get the intents as tools.
+language: "sl"
+intents:
+  SimpleInventoryRemoveItem:
+    data:
+      - sentences:
+          - "(odstrani|vzemi) {quantity} {item} iz [inventarja] {inventory}"
+          - "(odstrani|vzemi) {item} iz [inventarja] {inventory}"
+          - "porabili smo {quantity} {item} iz [inventarja] {inventory}"
+  SimpleInventoryAddItem:
+    data:
+      - sentences:
+          - "dodaj {quantity} {item} v [inventar] {inventory}"
+          - "dodaj {item} v [inventar] {inventory}"
+  SimpleInventoryQueryItem:
+    data:
+      - sentences:
+          - "koliko {item} (imamo|je) v [inventarju] {inventory}"
+          - "ali nam je zmanjkalo {item} v [inventarju] {inventory}"
+  SimpleInventoryFindItem:
+    data:
+      - sentences:
+          - "koliko {item} imamo"
+          - "ali imamo [še] {item}"
+          - "kje (je|so) {item}"
+          - "kje najdem {item}"
+  SimpleInventoryExpiryCountQuery:
+    data:
+      - sentences:
+          - "koliko artiklov (je|bo) {status} [v [inventarju] {inventory}]"
+  SimpleInventoryLowStockCountQuery:
+    data:
+      - sentences:
+          - "koliko artiklov (ima nizko zalogo|nam zmanjkuje) [v [inventarju] {inventory}]"
+  SimpleInventoryLowStockListQuery:
+    data:
+      - sentences:
+          - "kaj [nam] zmanjkuje [v [inventarju] {inventory}]"
+          - "kateri artikli imajo nizko zalogo [v [inventarju] {inventory}]"
+  SimpleInventoryExpiryListQuery:
+    data:
+      - sentences:
+          - "kateri artikli (so|bodo) {status} [v [inventarju] {inventory}]"
+  SimpleInventorySetItemQuantity:
+    data:
+      - sentences:
+          - "nastavi {item} na {quantity} v [inventarju] {inventory}"
+  SimpleInventoryTransferItem:
+    data:
+      - sentences:
+          - "premakni {quantity} {item} iz {from_location} (na|v) {to_location} v [inventarju] {inventory}"
+          - "premakni {item} iz {from_location} (na|v) {to_location} v [inventarju] {inventory}"
+lists:
+  item:
+    wildcard: true
+  inventory:
+    wildcard: true
+  from_location:
+    wildcard: true
+  to_location:
+    wildcard: true
+  quantity:
+    range:
+      from: 1
+      to: 100
+  status:
+    values:
+      - in: "poteklo"
+        out: "expired"
+      - in: "potekli"
+        out: "expired"
+      - in: "kmalu poteklo"
+        out: "expiring_soon"
+      - in: "kmalu potekli"
+        out: "expiring_soon"

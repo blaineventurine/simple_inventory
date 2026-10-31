@@ -1,0 +1,78 @@
+# Example Spanish custom sentences for Simple Inventory voice control.
+#
+# Installed by the "Install example voice commands" checkbox when Home Assistant's
+# language is Spanish, or copy it by hand to
+# <config>/custom_sentences/es/simple_inventory.yaml and call `conversation.reload`.
+# LLM-backed conversation agents don't need it: they get the intents as tools.
+language: "es"
+intents:
+  SimpleInventoryRemoveItem:
+    data:
+      - sentences:
+          - "(quita|saca) {quantity} {item} (de|del) [la|las|los] {inventory}"
+          - "(quita|saca) {item} (de|del) [la|las|los] {inventory}"
+          - "hemos gastado {quantity} {item} (de|del) [la|las|los] {inventory}"
+  SimpleInventoryAddItem:
+    data:
+      - sentences:
+          - "(añade|agrega) {quantity} {item} (a|al) [la|las|los] {inventory}"
+          - "(añade|agrega) {item} (a|al) [la|las|los] {inventory}"
+  SimpleInventoryQueryItem:
+    data:
+      - sentences:
+          - "(cuántos|cuantos|cuántas|cuantas|cuánto|cuanto|cuánta|cuanta) {item} (hay|tenemos|quedan) en [el|la|las|los] {inventory}"
+          - "nos hemos quedado sin {item} en [el|la|las|los] {inventory}"
+  SimpleInventoryFindItem:
+    data:
+      - sentences:
+          - "(cuántos|cuantos|cuántas|cuantas|cuánto|cuanto|cuánta|cuanta) {item} (hay|tenemos|quedan)"
+          - "(tenemos|nos queda|nos quedan) {item}"
+          - "(dónde|donde) (está|esta|están|estan) [el|la|los|las] {item}"
+  SimpleInventoryExpiryCountQuery:
+    data:
+      - sentences:
+          - "(cuántos|cuantos) (artículos|articulos|productos) (están|estan) {status} [en [el|la|las|los] {inventory}]"
+          - "(cuántos|cuantos) (artículos|articulos|productos) {status} hay [en [el|la|las|los] {inventory}]"
+  SimpleInventoryLowStockCountQuery:
+    data:
+      - sentences:
+          - "(cuántos|cuantos) (artículos|articulos|productos) (tienen poco stock|se están acabando|se estan acabando) [en [el|la|las|los] {inventory}]"
+  SimpleInventoryLowStockListQuery:
+    data:
+      - sentences:
+          - "(qué|que) se [nos] (está|esta) acabando [en [el|la|las|los] {inventory}]"
+          - "(qué|que|cuáles|cuales) (artículos|articulos|productos) (tienen poco stock|se están acabando|se estan acabando) [en [el|la|las|los] {inventory}]"
+  SimpleInventoryExpiryListQuery:
+    data:
+      - sentences:
+          - "(qué|que|cuáles|cuales) (artículos|articulos|productos) (están|estan) {status} [en [el|la|las|los] {inventory}]"
+  SimpleInventorySetItemQuantity:
+    data:
+      - sentences:
+          - "pon {item} a {quantity} en [el|la|las|los] {inventory}"
+  SimpleInventoryTransferItem:
+    data:
+      - sentences:
+          - "(mueve|pasa) {quantity} {item} (de|del) [la|las|los] {from_location} (a|al) [la|las|los] {to_location} en [el|la|las|los] {inventory}"
+          - "(mueve|pasa) {item} (de|del) [la|las|los] {from_location} (a|al) [la|las|los] {to_location} en [el|la|las|los] {inventory}"
+lists:
+  item:
+    wildcard: true
+  inventory:
+    wildcard: true
+  from_location:
+    wildcard: true
+  to_location:
+    wildcard: true
+  quantity:
+    range:
+      from: 1
+      to: 100
+  status:
+    values:
+      - in: "caducados"
+        out: "expired"
+      - in: "a punto de caducar"
+        out: "expiring_soon"
+      - in: "por caducar"
+        out: "expiring_soon"

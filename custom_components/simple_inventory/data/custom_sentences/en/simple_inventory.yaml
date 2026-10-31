@@ -33,8 +33,15 @@ intents:
   SimpleInventoryQueryItem:
     data:
       - sentences:
-          - "how many {item} [do we have] [are there] in [the] {inventory} [inventory]"
+          - "how many {item} [do we have] [are [there]] in [the] {inventory} [inventory]"
           - "are we out of {item} in [the] {inventory} [inventory]"
+  SimpleInventoryFindItem:
+    data:
+      - sentences:
+          - "how (many|much) {item} do we have"
+          - "do we have [any] {item}"
+          - "where (is|are) [the] {item}"
+          - "where can I find [the] {item}"
   SimpleInventoryExpiryCountQuery:
     data:
       - sentences:
@@ -45,6 +52,13 @@ intents:
       - sentences:
           - "how many items are low on stock [in [the] {inventory} [inventory]]"
           - "how many items are running low [in [the] {inventory} [inventory]]"
+  SimpleInventoryLowStockListQuery:
+    data:
+      - sentences:
+          - "(what's|what is) running low [in [the] {inventory} [inventory]]"
+          - "what are we [running] low on [in [the] {inventory} [inventory]]"
+          - "which items are (low on stock|running low) [in [the] {inventory} [inventory]]"
+          - "list [the] low stock items [in [the] {inventory} [inventory]]"
   SimpleInventoryExpiryListQuery:
     data:
       - sentences:
@@ -55,10 +69,19 @@ intents:
     data:
       - sentences:
           - "set {item} to {quantity} in [the] {inventory} [inventory]"
+  SimpleInventoryTransferItem:
+    data:
+      - sentences:
+          - "move {quantity} {item} from [the] {from_location} to [the] {to_location} in [the] {inventory} [inventory]"
+          - "move {item} from [the] {from_location} to [the] {to_location} in [the] {inventory} [inventory]"
 lists:
   item:
     wildcard: true
   inventory:
+    wildcard: true
+  from_location:
+    wildcard: true
+  to_location:
     wildcard: true
   quantity:
     range:

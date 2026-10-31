@@ -8,8 +8,9 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from .const import DOMAIN
-from .coordinator import SimpleInventoryCoordinator
+from .const import CONF_ICON, CONF_NAME, DEFAULT_INVENTORY_ICON
+from .data import get_domain_data
+from .entries import is_global_entry
 from .sensors import (
     ExpiredItemsSensor,
     GlobalExpiredItemsSensor,
@@ -27,10 +28,7 @@ async def async_setup_entry(
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Set up sensors based on config entry type."""
-    domain_data = hass.data[DOMAIN]
-    coordinators: dict[str, SimpleInventoryCoordinator] = domain_data["coordinators"]
-
-    coordinator = coordinators.get(config_entry.entry_id)
+    coordinator = get_domain_data(hass).coordinators.get(config_entry.entry_id)
     if coordinator is None:
         _LOGGER.error(
             "No coordinator found for entry %s; skipping sensor setup",
@@ -38,24 +36,23 @@ async def async_setup_entry(
         )
         return
 
-    entry_type = config_entry.data.get("entry_type", "inventory")
-
-    if entry_type == "global":
+    hub = coordinator.hub
+    if is_global_entry(config_entry):
         async_add_entities(
             [
-                GlobalItemsExpiringSoonSensor(hass, coordinator),
-                GlobalExpiredItemsSensor(hass, coordinator),
+                GlobalItemsExpiringSoonSensor(hass, hub),
+                GlobalExpiredItemsSensor(hass, hub),
             ]
         )
         return
 
-    inventory_name = config_entry.data.get("name", "Inventory")
-    icon = config_entry.data.get("icon", "mdi:package-variant")
+    inventory_name = config_entry.data.get(CONF_NAME, "Inventory")
+    icon = config_entry.data.get(CONF_ICON, DEFAULT_INVENTORY_ICON)
     entry_id = config_entry.entry_id
 
     sensors = [
-        InventorySensor(hass, coordinator, inventory_name, icon, entry_id),
-        ItemsExpiringSoonSensor(hass, coordinator, entry_id, inventory_name),
-        ExpiredItemsSensor(hass, coordinator, entry_id, inventory_name),
+        InventorySensor(hass, hub, coordinator, inventory_name, icon, entry_id),
+        ItemsExpiringSoonSensor(hass, hub, entry_id, inventory_name),
+        ExpiredItemsSensor(hass, hub, entry_id, inventory_name),
     ]
     async_add_entities(sensors)
