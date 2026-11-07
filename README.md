@@ -1490,9 +1490,10 @@ If your Home Assistant language is English, Spanish, French or Slovenian, check
 later via the global Simple Inventory entry's **Configure** button (the same dialog
 holds the [sidebar panel](#sidebar-panel) settings). This
 copies the bundled example sentence file for that language into your config
-directory and reloads custom sentences automatically — no restart needed. It never
-overwrites a file that's already there, so it's safe to check even if
-you've already installed it or created your own.
+directory, writes the inventory names file next to it (below) and reloads custom
+sentences automatically — no restart needed. It never overwrites a file that's
+already there, so it's safe to check even if you've already installed it or
+created your own.
 
 If you'd rather do it by hand — to review the content first, or because you
 skipped the checkbox — copy the file for your language (`en`, `es`, `fr` or
@@ -1503,10 +1504,19 @@ cp custom_components/simple_inventory/data/custom_sentences/en/simple_inventory.
    <config>/custom_sentences/en/simple_inventory.yaml
 ```
 
-Then reload custom sentences: **Developer Tools → Actions**, call the
-`conversation.reload` action (the same one the checkbox above triggers
-automatically), or just restart Home Assistant. Edit the sentence
-templates in that file to add your own phrasing.
+Then reload any Simple Inventory entry (or restart Home Assistant) so it writes the
+names file and reloads custom sentences. Edit the sentence templates in that file to
+add your own phrasing.
+
+The sentences only accept the names of your inventories
+(`{simple_inventory_name:inventory}`). Simple Inventory keeps them in
+`<config>/custom_sentences/<language>/simple_inventory_names.yaml` and rewrites that
+file whenever an inventory is added, renamed, enabled, disabled or removed; don't edit
+it. Home Assistant prefers custom sentences over its own, so a slot that matched any
+words would take over commands such as "add milk to my shopping list" or "add 5
+minutes to my timer". For Slovenian the file also lists common case forms of each
+name's last word ("v kuhinji", "v shrambo"); a name whose forms don't follow those
+endings works in the form it is stored in.
 
 Answers are spoken in the conversation's language (the Assist pipeline's
 language) when it is English, Spanish, French or Slovenian, regional variants
@@ -1516,20 +1526,13 @@ and Slovenian sentence files cover the same commands as the English one, except
 naming a location inside an add/remove command (LLM-backed agents can still
 fill it).
 
-The installer never overwrites an existing file, so if you installed the
-example sentences before 0.9.0, delete
-`<config>/custom_sentences/en/simple_inventory.yaml` and install them again
-(or copy the new `SimpleInventoryTransferItem` block and the
-`from_location`/`to_location` lists by hand) to get the "move" command.
-
-The bundled "move" sentences can mis-parse location names that contain the
-words "from", "to" or "in"; LLM-backed assistants are unaffected. Locations
-in add/remove commands work with the existing sentences, so an
-already-installed sentence file needs no update for them. The "how many …
-are in …" phrasing, the "how many … do we have" / "where are …" find
-commands and the "what's running low" list need the current file: an older
-one hears "apples are" as the item name and has neither of the newer
-commands, so reinstall it as described above.
+**Upgrading an installed sentence file.** An installed English file that is still the
+unedited copy of an earlier release is replaced with the current one automatically.
+An edited one is left alone and a repair (Settings → Repairs) lists it: in that
+format any words can name an inventory, so delete it and install the example
+sentences again, or bring your edits over to the current file. The "move" sentences
+can mis-parse location names that contain the words "from", "to" or "in";
+LLM-backed assistants are unaffected.
 
 ## Automation Examples
 

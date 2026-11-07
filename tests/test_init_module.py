@@ -109,6 +109,15 @@ def sweep_images() -> Generator[AsyncMock, None, None]:
         yield sweep
 
 
+@pytest.fixture(autouse=True)
+def sync_voice_sentences() -> Generator[AsyncMock, None, None]:
+    """The voice-sentence files need a real hass (test_voice_sentences.py covers them)."""
+    with patch(
+        "custom_components.simple_inventory.async_sync_voice_sentences", new=AsyncMock()
+    ) as sync:
+        yield sync
+
+
 @pytest.mark.asyncio
 async def test_async_setup_entry_first_creates_repo_and_registers_services(
     hass_mock: MagicMock, entry1: MagicMock

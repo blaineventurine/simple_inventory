@@ -7,6 +7,8 @@ Issues:
   Not fixable from here; setup fails with ``ConfigEntryError``.
 - ``orphaned_inventory_data``: inventories whose config entry no longer exists.
   Fixable: delete their data.
+- ``voice_sentences_outdated``: an edited custom_sentences file still lets any words name
+  an inventory (raised by voice_sentences.py). Not fixable from here.
 
 Issues are re-evaluated at every entry setup; a resolved condition deletes its issue.
 """
@@ -43,6 +45,7 @@ ISSUE_DATABASE_FROM_NEWER_VERSION = "database_from_newer_version"
 ISSUE_ORPHANED_INVENTORY_DATA = "orphaned_inventory_data"
 ISSUE_MISSING_TODO_LIST = "missing_todo_list"
 ISSUE_PANEL_BUNDLE_MISSING = "panel_bundle_missing"
+ISSUE_VOICE_SENTENCES_OUTDATED = "voice_sentences_outdated"
 
 _TODO_PREFIX = "todo."
 CONF_TODO_LIST = "todo_list"
@@ -108,6 +111,27 @@ def async_create_panel_bundle_missing_issue(hass: HomeAssistant, path: str) -> N
 @callback
 def async_delete_panel_bundle_missing_issue(hass: HomeAssistant) -> None:
     ir.async_delete_issue(hass, DOMAIN, ISSUE_PANEL_BUNDLE_MISSING)
+
+
+# --- edited custom sentences in the old (wildcard inventory) format -----------------
+
+
+@callback
+def async_create_voice_sentences_outdated_issue(hass: HomeAssistant, paths: list[str]) -> None:
+    ir.async_create_issue(
+        hass,
+        DOMAIN,
+        ISSUE_VOICE_SENTENCES_OUTDATED,
+        is_fixable=False,
+        severity=ir.IssueSeverity.WARNING,
+        translation_key=ISSUE_VOICE_SENTENCES_OUTDATED,
+        translation_placeholders={"paths": ", ".join(paths)},
+    )
+
+
+@callback
+def async_delete_voice_sentences_outdated_issue(hass: HomeAssistant) -> None:
+    ir.async_delete_issue(hass, DOMAIN, ISSUE_VOICE_SENTENCES_OUTDATED)
 
 
 # --- detection at setup and on entity registry changes -------------------------------

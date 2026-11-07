@@ -357,6 +357,10 @@
     "panel_bundle_missing": {
       "description": "El panel de la barra lateral está activado, pero su archivo no se encontró en \"{path}\". Instala o actualiza la tarjeta Simple Inventory mediante HACS (o copia sus archivos en esa carpeta) y luego reinicia Home Assistant o vuelve a guardar las opciones de la integración.",
       "title": "El panel de Inventario necesita la tarjeta Simple Inventory"
+    },
+    "voice_sentences_outdated": {
+      "description": "Estos archivos de frases personalizadas tienen el formato de una versión anterior de Simple Inventory: \"{paths}\". En ellos cualquier palabra puede nombrar un inventario, así que se apropian de los comandos de voz propios de Home Assistant, por ejemplo «añade leche a mi lista de la compra». Se editaron, por lo que no se actualizaron automáticamente. Elimínalos y vuelve a instalar los comandos de voz de ejemplo desde las opciones de la integración, o traslada tus cambios al archivo de ejemplo actual (consulta el README, Local/offline Assist), y luego recarga conversation.",
+      "title": "Las frases de voz de Simple Inventory necesitan actualizarse"
     }
   },
   "options": {

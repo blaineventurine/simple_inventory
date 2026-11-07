@@ -357,6 +357,10 @@
     "panel_bundle_missing": {
       "description": "Le panneau de la barre latérale est activé, mais son fichier est introuvable à l'emplacement \"{path}\". Installez ou mettez à jour la carte Simple Inventory via HACS (ou copiez ses fichiers dans ce dossier), puis redémarrez Home Assistant ou enregistrez à nouveau les options de l'intégration.",
       "title": "Le panneau Inventaire nécessite la carte Simple Inventory"
+    },
+    "voice_sentences_outdated": {
+      "description": "Ces fichiers de phrases personnalisées sont au format d'une version antérieure de Simple Inventory : \"{paths}\". N'importe quels mots peuvent y nommer un inventaire, ils prennent donc le pas sur les commandes vocales de Home Assistant, par exemple « ajoute du lait à ma liste de courses ». Ils ont été modifiés et n'ont donc pas été mis à jour automatiquement. Supprimez-les et réinstallez les commandes vocales d'exemple depuis les options de l'intégration, ou reportez vos modifications dans le fichier d'exemple actuel (voir le README, Local/offline Assist), puis rechargez conversation.",
+      "title": "Les phrases vocales de Simple Inventory doivent être mises à jour"
     }
   },
   "options": {

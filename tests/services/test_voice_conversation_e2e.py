@@ -18,6 +18,7 @@ from homeassistant.setup import async_setup_component
 
 from custom_components.simple_inventory.const import DOMAIN
 from custom_components.simple_inventory.intents import async_register_intents
+from custom_components.simple_inventory.voice_sentences import names_yaml
 
 from ..harness import TodoStack
 
@@ -39,6 +40,8 @@ async def voice(todo_stack: TodoStack, enable_custom_integrations: None) -> Todo
     target = Path(hass.config.path("custom_sentences", "en"))
     target.mkdir(parents=True)
     shutil.copy(_BUNDLED_SENTENCES, target / "simple_inventory.yaml")
+    # What the integration writes next to the template; HA merges the two files.
+    (target / "simple_inventory_names.yaml").write_text(names_yaml("en", ["Kitchen"]))
 
     # Translated ServiceValidationErrors render from the cache of set-up components.
     await translation.async_load_integrations(hass, {DOMAIN})
@@ -73,7 +76,7 @@ async def test_success_is_spoken(voice: TodoStack) -> None:
     response = await _say(voice, "remove 1 milk from the kitchen")
 
     assert response.response_type is intent.IntentResponseType.ACTION_DONE
-    assert response.speech["plain"]["speech"] == "Removed 1 milk from kitchen. 1 left."
+    assert response.speech["plain"]["speech"] == "Removed 1 milk from Kitchen. 1 left."
     assert await _milk(voice) == 1
 
 
@@ -101,7 +104,7 @@ async def test_quantity_question_speaks_the_stored_names(voice: TodoStack) -> No
     [
         (
             "add 1 milk to the fridge in the kitchen",
-            "Which location in kitchen did you mean: Fridge Door, Fridge Drawer?",
+            "Which location in Kitchen did you mean: Fridge Door, Fridge Drawer?",
         ),
         (
             "remove 1 bananas from the kitchen",

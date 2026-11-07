@@ -7,6 +7,10 @@ from pathlib import Path
 import pytest
 from hassil.intents import Intents
 from hassil.recognize import RecognizeResult, recognize_best
+from hassil.util import merge_dict
+from homeassistant.util.yaml import parse_yaml
+
+from custom_components.simple_inventory.voice_sentences import names_yaml
 
 _YAML_PATH = (
     Path(__file__).parent.parent
@@ -18,11 +22,23 @@ _YAML_PATH = (
     / "simple_inventory.yaml"
 )
 
+# The inventories these tests talk to, as the generated names file would list them.
+_INVENTORIES = ["kitchen", "freezer", "dry goods", "disposable goods", "pantry", "garage"]
+
+
+def _load(*documents: str) -> Intents:
+    """Merge sentence files the way Home Assistant does (dicts merged, lists concatenated)."""
+    merged: dict = {}
+    for document in documents:
+        parsed = parse_yaml(document)
+        assert isinstance(parsed, dict)
+        merge_dict(merged, parsed)
+    return Intents.from_dict(merged)
+
 
 @pytest.fixture(scope="module")
 def intents_obj() -> Intents:
-    with _YAML_PATH.open(encoding="utf-8") as yaml_file:
-        return Intents.from_yaml(yaml_file)
+    return _load(_YAML_PATH.read_text(encoding="utf-8"), names_yaml("en", _INVENTORIES))
 
 
 def _recognize(intents_obj: Intents, text: str) -> RecognizeResult | None:
@@ -32,6 +48,41 @@ def _recognize(intents_obj: Intents, text: str) -> RecognizeResult | None:
         best_metadata_key="hass_custom_sentence",
         best_slot_name="name",
     )
+
+
+@pytest.mark.parametrize(
+    "utterance",
+    [
+        "add drill to my bring list",
+        "add milk to the shopping list",
+        "remove eggs from my shopping list",
+        "add 5 minutes to my timer",
+        "set the living room fan to 50 percent",
+        "how many people are in the kitchen zone",
+    ],
+)
+def test_sentences_naming_no_inventory_are_left_to_home_assistant(
+    intents_obj: Intents, utterance: str
+) -> None:
+    """Custom sentences win over HA's built-in ones, so they must not claim these."""
+    assert _recognize(intents_obj, utterance) is None
+
+
+def test_names_file_merges_in_either_order() -> None:
+    """HA reads custom sentence files in directory order, which is unspecified."""
+    template = _YAML_PATH.read_text(encoding="utf-8")
+    names = names_yaml("en", ["freezer"])
+    for intents in (_load(template, names), _load(names, template)):
+        result = _recognize(intents, "add 2 peas to the freezer")
+        assert result is not None
+        assert result.entities["inventory"].value == "freezer"
+
+
+def test_without_a_names_file_no_inventory_sentence_matches() -> None:
+    """A template left behind (integration removed) matches nothing instead of erroring."""
+    intents = _load(_YAML_PATH.read_text(encoding="utf-8"))
+    assert _recognize(intents, "add 2 peas to the freezer") is None
+    assert _recognize(intents, "do we have peas") is not None
 
 
 @pytest.mark.parametrize(
@@ -224,38 +275,40 @@ def test_move_without_inventory_does_not_match(intents_obj: Intents) -> None:
         (
             "remove 2 milk from the fridge in the kitchen",
             "SimpleInventoryRemoveItem",
-            {"quantity": 2, "item": "milk", "inventory": "fridge in the kitchen"},
+            {"quantity": 2, "item": "milk", "location": "fridge", "inventory": "kitchen"},
         ),
         (
             "remove aluminum foil from top shelf in disposable goods inventory",
             "SimpleInventoryRemoveItem",
-            {"item": "aluminum foil", "inventory": "top shelf in disposable goods"},
+            {"item": "aluminum foil", "location": "top shelf", "inventory": "disposable goods"},
         ),
         (
             "take 3 eggs out of the garage fridge in the kitchen",
             "SimpleInventoryRemoveItem",
-            {"quantity": 3, "item": "eggs", "inventory": "garage fridge in the kitchen"},
+            {"quantity": 3, "item": "eggs", "location": "garage fridge", "inventory": "kitchen"},
+        ),
+        (
+            "we used up 2 milk from the fridge in the kitchen",
+            "SimpleInventoryRemoveItem",
+            {"quantity": 2, "item": "milk", "location": "fridge", "inventory": "kitchen"},
         ),
         (
             "add 2 milk to the fridge in the kitchen",
             "SimpleInventoryAddItem",
-            {"quantity": 2, "item": "milk", "inventory": "fridge in the kitchen"},
+            {"quantity": 2, "item": "milk", "location": "fridge", "inventory": "kitchen"},
         ),
         (
             "add aluminum foil to the top shelf in the disposable goods inventory",
             "SimpleInventoryAddItem",
-            {"item": "aluminum foil", "inventory": "top shelf in the disposable goods"},
+            {"item": "aluminum foil", "location": "top shelf", "inventory": "disposable goods"},
         ),
     ],
 )
-def test_location_phrases_capture_location_in_inventory_slot(
+def test_location_phrases_fill_the_location_slot(
     intents_obj: Intents, utterance: str, intent_name: str, expected: dict[str, object]
 ) -> None:
-    """hassil ranks fewer wildcards first, so a dedicated `{location} in {inventory}`
-    sentence could never win over the location-less one. The location stays inside the
-    inventory slot ("<location> in [the] <inventory>") and the add/remove handlers split
-    it out (see test_intents.py::test_quantity_intents_split_location_out_of_inventory_text).
-    """
+    """With only real inventory names in the inventory slot, "<location> in [the]
+    <inventory>" needs its own sentences; the add/remove handlers take a `location` slot."""
     result = _recognize(intents_obj, utterance)
     assert result is not None
     assert result.intent.name == intent_name

@@ -41,6 +41,7 @@ from .services import ServiceHandler
 from .storage.images import async_delete_inventory_with_images, async_sweep_orphan_images
 from .storage.repository import DatabaseFromNewerVersionError, InventoryRepository
 from .todo_manager import TodoManager
+from .voice_sentences import async_sync_voice_sentences
 from .websocket_api import async_register_websocket_commands
 
 _LOGGER = logging.getLogger(__name__)
@@ -100,6 +101,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         entry.async_on_unload(lambda: async_unload_panel(hass))
         await async_sync_panel(hass, entry)
     async_setup_issue_detection(hass, entry, repository)
+    # Setup is where an entry's (new) name first takes effect, after an add or a rename.
+    await async_sync_voice_sentences(hass)
     return True
 
 
@@ -211,6 +214,8 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         await coordinator.async_unload()
 
     await _async_release_domain_if_idle(hass, domain_data)
+    # A disabled entry is unloaded and leaves the enabled inventories.
+    await async_sync_voice_sentences(hass)
     return True
 
 
@@ -256,6 +261,7 @@ async def async_remove_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
     if (hub := get_hub(hass)) is not None:
         hub.invalidate(None)
     hass.bus.async_fire(EVENT_UPDATED)
+    await async_sync_voice_sentences(hass)
 
 
 def _remove_service(hass: HomeAssistant, name: str) -> None:

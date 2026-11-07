@@ -357,6 +357,10 @@
     "panel_bundle_missing": {
       "description": "Plošča v stranski vrstici je omogočena, vendar njene datoteke ni bilo mogoče najti na \"{path}\". Namestite ali posodobite kartico Simple Inventory prek HACS (ali kopirajte njene datoteke v to mapo), nato znova zaženite Home Assistant ali ponovno shranite možnosti integracije.",
       "title": "Plošča Inventar potrebuje kartico Simple Inventory"
+    },
+    "voice_sentences_outdated": {
+      "description": "Te datoteke s stavki po meri so v obliki starejše različice Simple Inventory: \"{paths}\". V njih lahko katere koli besede poimenujejo zalogo, zato prevzamejo glasovne ukaze samega Home Assistanta, na primer »dodaj mleko na nakupovalni seznam«. Bile so urejene, zato niso bile samodejno posodobljene. Izbrišite jih in znova namestite primere glasovnih ukazov v možnostih integracije ali svoje spremembe prenesite v trenutno datoteko s primeri (glejte README, Local/offline Assist), nato znova naložite conversation.",
+      "title": "Glasovne stavke Simple Inventory je treba posodobiti"
     }
   },
   "options": {

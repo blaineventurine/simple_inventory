@@ -2,26 +2,30 @@
 #
 # Installed by the "Install example voice commands" checkbox when Home Assistant's
 # language is Slovenian, or copy it by hand to
-# <config>/custom_sentences/sl/simple_inventory.yaml and call `conversation.reload`.
+# <config>/custom_sentences/sl/simple_inventory.yaml and reload the integration.
 # LLM-backed conversation agents don't need it: they get the intents as tools.
+#
+# {simple_inventory_name:inventory} only matches your inventories' names, which Simple
+# Inventory keeps in simple_inventory_names.yaml next to this file (see the English file),
+# with common case endings of the last word ("kuhinja": kuhinje, kuhinji, kuhinjo, ...).
 language: "sl"
 intents:
   SimpleInventoryRemoveItem:
     data:
       - sentences:
-          - "(odstrani|vzemi) {quantity} {item} iz [inventarja] {inventory}"
-          - "(odstrani|vzemi) {item} iz [inventarja] {inventory}"
-          - "porabili smo {quantity} {item} iz [inventarja] {inventory}"
+          - "(odstrani|vzemi) {quantity} {item} iz [inventarja] {simple_inventory_name:inventory}"
+          - "(odstrani|vzemi) {item} iz [inventarja] {simple_inventory_name:inventory}"
+          - "porabili smo {quantity} {item} iz [inventarja] {simple_inventory_name:inventory}"
   SimpleInventoryAddItem:
     data:
       - sentences:
-          - "dodaj {quantity} {item} v [inventar] {inventory}"
-          - "dodaj {item} v [inventar] {inventory}"
+          - "dodaj {quantity} {item} v [inventar] {simple_inventory_name:inventory}"
+          - "dodaj {item} v [inventar] {simple_inventory_name:inventory}"
   SimpleInventoryQueryItem:
     data:
       - sentences:
-          - "koliko {item} (imamo|je) v [inventarju] {inventory}"
-          - "ali nam je zmanjkalo {item} v [inventarju] {inventory}"
+          - "koliko {item} (imamo|je) v [inventarju] {simple_inventory_name:inventory}"
+          - "ali nam je zmanjkalo {item} v [inventarju] {simple_inventory_name:inventory}"
   SimpleInventoryFindItem:
     data:
       - sentences:
@@ -32,33 +36,34 @@ intents:
   SimpleInventoryExpiryCountQuery:
     data:
       - sentences:
-          - "koliko artiklov (je|bo) {status} [v [inventarju] {inventory}]"
+          - "koliko artiklov (je|bo) {status} [v [inventarju] {simple_inventory_name:inventory}]"
   SimpleInventoryLowStockCountQuery:
     data:
       - sentences:
-          - "koliko artiklov (ima nizko zalogo|nam zmanjkuje) [v [inventarju] {inventory}]"
+          - "koliko artiklov (ima nizko zalogo|nam zmanjkuje) [v [inventarju] {simple_inventory_name:inventory}]"
   SimpleInventoryLowStockListQuery:
     data:
       - sentences:
-          - "kaj [nam] zmanjkuje [v [inventarju] {inventory}]"
-          - "kateri artikli imajo nizko zalogo [v [inventarju] {inventory}]"
+          - "kaj [nam] zmanjkuje [v [inventarju] {simple_inventory_name:inventory}]"
+          - "kateri artikli imajo nizko zalogo [v [inventarju] {simple_inventory_name:inventory}]"
   SimpleInventoryExpiryListQuery:
     data:
       - sentences:
-          - "kateri artikli (so|bodo) {status} [v [inventarju] {inventory}]"
+          - "kateri artikli (so|bodo) {status} [v [inventarju] {simple_inventory_name:inventory}]"
   SimpleInventorySetItemQuantity:
     data:
       - sentences:
-          - "nastavi {item} na {quantity} v [inventarju] {inventory}"
+          - "nastavi {item} na {quantity} v [inventarju] {simple_inventory_name:inventory}"
   SimpleInventoryTransferItem:
     data:
       - sentences:
-          - "premakni {quantity} {item} iz {from_location} (na|v) {to_location} v [inventarju] {inventory}"
-          - "premakni {item} iz {from_location} (na|v) {to_location} v [inventarju] {inventory}"
+          - "premakni {quantity} {item} iz {from_location} (na|v) {to_location} v [inventarju] {simple_inventory_name:inventory}"
+          - "premakni {item} iz {from_location} (na|v) {to_location} v [inventarju] {simple_inventory_name:inventory}"
 lists:
+  # Filled by simple_inventory_names.yaml (Home Assistant concatenates the lists).
+  simple_inventory_name:
+    values: []
   item:
-    wildcard: true
-  inventory:
     wildcard: true
   from_location:
     wildcard: true

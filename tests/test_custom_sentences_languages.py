@@ -8,16 +8,33 @@ from pathlib import Path
 import pytest
 from hassil.intents import Intents
 from hassil.recognize import recognize_best
+from hassil.util import merge_dict
+from homeassistant.util.yaml import parse_yaml
+
+from custom_components.simple_inventory.voice_sentences import names_yaml
 
 _SENTENCES = (
     Path(__file__).parents[1] / "custom_components" / "simple_inventory" / "data"
 ) / "custom_sentences"
 
+# Stored inventory names per language, as the generated names file would list them.
+_INVENTORIES = {
+    "en": ["kitchen"],
+    "es": ["cocina", "congelador", "despensa", "garaje"],
+    "fr": ["cuisine", "frigo", "garage"],
+    "sl": ["kuhinja", "shramba", "garaža", "hladilnik"],
+}
+
 
 @cache
 def _intents(language: str) -> Intents:
-    with (_SENTENCES / language / "simple_inventory.yaml").open(encoding="utf-8") as file:
-        return Intents.from_yaml(file)
+    merged: dict = {}
+    template = (_SENTENCES / language / "simple_inventory.yaml").read_text(encoding="utf-8")
+    for document in (template, names_yaml(language, _INVENTORIES[language])):
+        parsed = parse_yaml(document)
+        assert isinstance(parsed, dict)
+        merge_dict(merged, parsed)
+    return Intents.from_dict(merged)
 
 
 _CASES: list[tuple[str, str, str, dict[str, object]]] = [
@@ -157,13 +174,19 @@ _CASES: list[tuple[str, str, str, dict[str, object]]] = [
         "sl",
         "dodaj riž v shrambo",
         "SimpleInventoryAddItem",
-        {"item": "riž", "inventory": "shrambo"},
+        {"item": "riž", "inventory": "shramba"},
     ),
     (
         "sl",
         "koliko baterij imamo v garaži",
         "SimpleInventoryQueryItem",
-        {"item": "baterij", "inventory": "garaži"},
+        {"item": "baterij", "inventory": "garaža"},
+    ),
+    (
+        "sl",
+        "koliko baterij imamo v hladilniku",
+        "SimpleInventoryQueryItem",
+        {"item": "baterij", "inventory": "hladilnik"},
     ),
     ("sl", "koliko baterij imamo", "SimpleInventoryFindItem", {"item": "baterij"}),
     ("sl", "kje so baterije", "SimpleInventoryFindItem", {"item": "baterije"}),
@@ -172,7 +195,7 @@ _CASES: list[tuple[str, str, str, dict[str, object]]] = [
         "sl",
         "koliko artiklov bo kmalu poteklo v shrambi",
         "SimpleInventoryExpiryCountQuery",
-        {"status": "expiring_soon", "inventory": "shrambi"},
+        {"status": "expiring_soon", "inventory": "shramba"},
     ),
     ("sl", "koliko artiklov ima nizko zalogo", "SimpleInventoryLowStockCountQuery", {}),
     ("sl", "kaj nam zmanjkuje", "SimpleInventoryLowStockListQuery", {}),
@@ -181,7 +204,7 @@ _CASES: list[tuple[str, str, str, dict[str, object]]] = [
         "sl",
         "nastavi mleko na 3 v kuhinji",
         "SimpleInventorySetItemQuantity",
-        {"item": "mleko", "quantity": 3, "inventory": "kuhinji"},
+        {"item": "mleko", "quantity": 3, "inventory": "kuhinja"},
     ),
     (
         "sl",
@@ -191,7 +214,7 @@ _CASES: list[tuple[str, str, str, dict[str, object]]] = [
             "item": "mleko",
             "from_location": "hladilnika",
             "to_location": "klet",
-            "inventory": "kuhinji",
+            "inventory": "kuhinja",
         },
     ),
 ]

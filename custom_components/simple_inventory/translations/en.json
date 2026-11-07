@@ -357,6 +357,10 @@
     "panel_bundle_missing": {
       "description": "The sidebar panel is enabled, but its file was not found at \"{path}\". Install or update the Simple Inventory card through HACS (or copy its files into that folder), then restart Home Assistant or save the integration's options again.",
       "title": "Inventory panel needs the Simple Inventory card"
+    },
+    "voice_sentences_outdated": {
+      "description": "These custom sentence files are in the format of an earlier Simple Inventory release: \"{paths}\". Any words can name an inventory there, so they take over Home Assistant's own voice commands, for example \"add milk to my shopping list\". They were edited, so they were not updated automatically. Delete them and install the example voice commands again from the integration's options, or bring your edits over to the current example file (see the README, Local/offline Assist), then reload conversation.",
+      "title": "Simple Inventory voice sentences need updating"
     }
   },
   "options": {
