@@ -34,6 +34,7 @@ from .const import (
     FIELD_UNIT_PRICE,
     compute_quantity_needed,
     is_below_threshold,
+    is_out_of_stock,
     partition_expiry,
     round_quantity,
 )
@@ -148,7 +149,7 @@ def _attention(
         days = min(entry["days_until_expiry"] for entry in expiring_soon)
         return "expiring_soon", {"days_until_expiry": days, **_batch_totals(expiring_soon)}, (days,)
     quantity = float(item.get(FIELD_QUANTITY, 0))
-    if quantity <= 0:
+    if is_out_of_stock(item):
         return "out_of_stock", {}, ()
     if is_below_threshold(item):
         threshold = float(item.get(FIELD_AUTO_ADD_TO_LIST_QUANTITY, 0))

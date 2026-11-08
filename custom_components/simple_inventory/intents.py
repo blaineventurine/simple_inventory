@@ -44,6 +44,7 @@ from .const import (
     SERVICE_INCREMENT_ITEM,
     SERVICE_TRANSFER_ITEM,
     SERVICE_UPDATE_ITEM,
+    is_out_of_stock,
     match_key,
     partition_expiry,
 )
@@ -659,14 +660,10 @@ class LowStockCountIntent(_ScopedQueryIntent):
     ) -> str:
         low_stock = await hub.async_low_stock_items(inventory_id)
         sentence = _count_sentence(speech, "speech_count_low_stock", len(low_stock), inventory)
-        out_of_stock = sum(1 for item in low_stock if _is_out_of_stock(item))
+        out_of_stock = sum(1 for item in low_stock if is_out_of_stock(item))
         if out_of_stock:
             sentence += ", " + speech.count("speech_out_of_stock_among", out_of_stock)
         return sentence + "."
-
-
-def _is_out_of_stock(item: dict[str, Any]) -> bool:
-    return float(item.get(FIELD_QUANTITY, 0)) <= 0
 
 
 class LowStockListIntent(_ScopedQueryIntent):
@@ -706,7 +703,7 @@ class LowStockListIntent(_ScopedQueryIntent):
             names = [
                 (
                     speech("speech_out_of_stock_item", item=item[FIELD_NAME])
-                    if _is_out_of_stock(item)
+                    if is_out_of_stock(item)
                     else str(item[FIELD_NAME])
                 )
                 for item in low_stock

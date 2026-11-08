@@ -165,6 +165,11 @@ def split_unique(value: str | None, *, case_sensitive: bool = False) -> list[str
     return result
 
 
+def is_out_of_stock(item: Mapping[str, Any]) -> bool:
+    """True if `item`'s quantity is at or below zero."""
+    return float(item.get(FIELD_QUANTITY, 0)) <= 0
+
+
 def is_below_threshold(item: Mapping[str, Any]) -> bool:
     """True if `item`'s quantity is at or below its auto-add threshold.
 
