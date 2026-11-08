@@ -176,3 +176,6 @@ mutants/
 # Uv lock file
 uv.lock
 pytest-of-*/
+
+# Git worktrees (superpowers:using-git-worktrees)
+.worktrees/
