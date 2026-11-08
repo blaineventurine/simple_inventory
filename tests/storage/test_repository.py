@@ -30,6 +30,7 @@ from custom_components.simple_inventory.storage.repository import (
     SCHEMA_VERSION,
     DatabaseFromNewerVersionError,
     InventoryRepository,
+    SchemaMigrationError,
 )
 
 
@@ -1537,3 +1538,60 @@ async def test_async_restore_raises_for_a_snapshot_from_a_newer_schema(
 
     with pytest.raises(DatabaseFromNewerVersionError):
         await repo.async_restore(snapshot.name)
+
+
+async def test_migration_takes_a_pre_migration_snapshot(
+    hass_with_tmp_config: HomeAssistant,
+) -> None:
+    # Open once at an old schema version, close, then reopen (triggering migration).
+    repository = InventoryRepository(hass_with_tmp_config, db_filename="test_migration.db")
+    await repository.async_initialize()
+    async with repository._lock:
+        await repository._connection().execute(
+            "UPDATE metadata SET value = '2' WHERE key = 'schema_version'"
+        )
+        await repository._connection().commit()
+    await repository.async_close()
+
+    repository = InventoryRepository(hass_with_tmp_config, db_filename="test_migration.db")
+    await repository.async_initialize()
+
+    backups_dir = repository._backups_dir()
+    snapshots = list(backups_dir.glob("pre_migration_v2_to_v*.db"))
+    assert len(snapshots) == 1
+    await repository.async_close()
+
+
+async def test_migration_failure_raises_schema_migration_error_and_leaves_a_snapshot(
+    hass_with_tmp_config: HomeAssistant,
+) -> None:
+    repository = InventoryRepository(hass_with_tmp_config, db_filename="test_migration_fail.db")
+    await repository.async_initialize()
+    async with repository._lock:
+        await repository._connection().execute(
+            "UPDATE metadata SET value = '2' WHERE key = 'schema_version'"
+        )
+        await repository._connection().commit()
+    await repository.async_close()
+
+    repository = InventoryRepository(hass_with_tmp_config, db_filename="test_migration_fail.db")
+    with (
+        patch.object(InventoryRepository, "_migrate_to_v3", side_effect=RuntimeError("boom")),
+        pytest.raises(SchemaMigrationError) as exc_info,
+    ):
+        await repository.async_initialize()
+
+    assert exc_info.value.found == 2
+    assert exc_info.value.expected == SCHEMA_VERSION
+
+    backups_dir = repository._backups_dir()
+    snapshots = list(backups_dir.glob("pre_migration_v2_to_v*.db"))
+    assert len(snapshots) == 1
+    # The snapshot is a clean, fully-queryable pre-migration copy.
+    async with aiosqlite.connect(snapshots[0]) as conn:
+        cursor = await conn.execute("SELECT value FROM metadata WHERE key = 'schema_version'")
+        row = await cursor.fetchone()
+        await cursor.close()
+    assert row is not None
+    assert row[0] == "2"
+    await repository.async_close()

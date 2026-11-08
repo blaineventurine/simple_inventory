@@ -546,16 +546,21 @@ class InventoryRepository(_BatchRepositoryMixin):
 
         current_version = int(row["value"])
         if current_version < SCHEMA_VERSION:
-            if current_version < 2:
-                await self._migrate_to_v2()
-            if current_version < 3:
-                await self._migrate_to_v3()
-            if current_version < 4:
-                await self._migrate_to_v4()
-            if current_version < 5:
-                await self._migrate_to_v5()
-            if current_version < 6:
-                await self._migrate_to_v6()
+            await self._conn.commit()
+            await self._snapshot_locked(f"pre_migration_v{current_version}_to_v{SCHEMA_VERSION}")
+            try:
+                if current_version < 2:
+                    await self._migrate_to_v2()
+                if current_version < 3:
+                    await self._migrate_to_v3()
+                if current_version < 4:
+                    await self._migrate_to_v4()
+                if current_version < 5:
+                    await self._migrate_to_v5()
+                if current_version < 6:
+                    await self._migrate_to_v6()
+            except Exception as err:
+                raise SchemaMigrationError(current_version, SCHEMA_VERSION, err) from err
             await self._conn.execute(
                 "UPDATE metadata SET value = ? WHERE key = 'schema_version'",
                 (str(SCHEMA_VERSION),),
