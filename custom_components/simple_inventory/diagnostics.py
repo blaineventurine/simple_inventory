@@ -16,7 +16,7 @@ from homeassistant.loader import async_get_integration
 from .const import API_VERSION, CONF_DESCRIPTION, CONF_ICON, CONF_NAME, DOMAIN
 from .data import get_repository
 from .entries import entry_type, is_global_entry
-from .storage.repository import LEGACY_MIGRATION_FLAG, InventoryRepository, _snapshots
+from .storage.repository import LEGACY_MIGRATION_FLAG, InventoryRepository
 from .todo_manager import supports_description
 
 
@@ -73,12 +73,10 @@ async def _async_database_diagnostics(
     references = await repository.get_todo_list_references(entry.entry_id)
     provider = (await repository.get_barcode_provider_config()).get("provider")
 
-    backups_dir = await hass.async_add_executor_job(repository._backups_dir)
-    snapshots = await hass.async_add_executor_job(_snapshots, backups_dir)
-    newest_backup_age_seconds: float | None = None
-    if snapshots:
-        newest_ns = int(snapshots[-1].stem.rpartition("_")[2])
-        newest_backup_age_seconds = (time.time_ns() - newest_ns) / 1e9
+    snapshots = await hass.async_add_executor_job(repository.all_snapshots)
+    newest_backup_age_seconds = (
+        (time.time_ns() - int(snapshots[-1].stem.rpartition("_")[2])) / 1e9 if snapshots else None
+    )
 
     return {
         "schema_version": int(schema_version) if schema_version is not None else None,

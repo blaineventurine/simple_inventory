@@ -794,6 +794,12 @@ class InventoryRepository(_BatchRepositoryMixin):
         """
         return [p for p in _snapshots(self._backups_dir()) if p.name.startswith("pre_migration_v")]
 
+    def all_snapshots(self) -> list[Path]:
+        """All snapshots in backups/, oldest first. Blocking (filesystem only, no DB
+        connection) — callers should run this via an executor job.
+        """
+        return _snapshots(self._backups_dir())
+
     def _resolve_restore_source(self, filename: str | None) -> Path:
         """Blocking half of a restore: locate and validate the snapshot. Runs in the executor."""
         backups_dir = self._backups_dir()
