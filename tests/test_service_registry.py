@@ -18,7 +18,7 @@ from custom_components.simple_inventory.schemas.service_schemas import (
 from custom_components.simple_inventory.services import ServiceHandler
 
 COMPONENT = Path(__file__).parents[1] / "custom_components" / "simple_inventory"
-LOCALES = ("en", "es", "fr", "sl")
+LOCALES = ("en", "es", "fr", "sl", "en-GB")
 
 
 def _services_yaml() -> dict[str, Any]:

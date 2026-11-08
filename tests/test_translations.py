@@ -11,7 +11,7 @@ from typing import Any
 import pytest
 
 TRANSLATIONS = Path(__file__).parents[1] / "custom_components" / "simple_inventory" / "translations"
-LOCALES = ("en", "es", "fr", "sl")
+LOCALES = ("en", "es", "fr", "sl", "en-GB")
 
 # HA's frontend formats translations as ICU MessageFormat: an apostrophe right before a
 # brace starts a quoted literal (so "'{name}'" shows the raw "{name}") and "''" becomes

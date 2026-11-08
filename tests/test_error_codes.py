@@ -25,7 +25,7 @@ from custom_components.simple_inventory.websocket_api import async_register_webs
 
 PACKAGE_DIR = Path(__file__).parent.parent / "custom_components" / DOMAIN
 TRANSLATIONS_DIR = PACKAGE_DIR / "translations"
-LOCALES = ("en", "es", "fr", "sl")
+LOCALES = ("en", "es", "fr", "sl", "en-GB")
 
 
 def _exception_messages(locale: str) -> dict[str, str]:
