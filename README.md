@@ -17,6 +17,7 @@ A Home Assistant custom integration for managing household inventories. Track it
 - [Service Calls](#service-calls)
 - [WebSocket API](#websocket-api)
 - [Diagnostics & Repairs](#diagnostics--repairs)
+- [Backups & Restore](#backups--restore)
 - [Voice & AI Assistants](#voice--ai-assistants)
 - [Automation Examples](#automation-examples)
 
@@ -280,7 +281,7 @@ The integration fires Home Assistant events on key inventory transitions, enabli
 
 ### Import and Export
 
-Export your inventory to JSON or CSV, and import data back with configurable merge strategies (`skip`, `overwrite`, or `merge_quantities`). Available via the WebSocket API. Exports include every field, including all locations, categories, barcodes, aliases, and [batches](#batches), so an export can be re-imported without loss. Photos are the exception: `image` is exported as `true`/`false` (CSV: `1`/`0`) and ignored on import. Older exports without batches still import: their scalar quantity becomes one batch. See [`simple_inventory/import`](#simple_inventoryimport) for validation and merge details.
+Export your inventory to JSON or CSV, and import data back with configurable merge strategies (`skip`, `overwrite`, or `merge_quantities`). Available via the WebSocket API, or the [`export`](#simple_inventoryexport) service for automation-triggered exports. Exports include every field, including all locations, categories, barcodes, aliases, and [batches](#batches), so an export can be re-imported without loss. Photos are the exception: `image` is exported as `true`/`false` (CSV: `1`/`0`) and ignored on import. Older exports without batches still import: their scalar quantity becomes one batch. See [`simple_inventory/import`](#simple_inventoryimport) for validation and merge details. Pass `dry_run: true` to the WebSocket `import` command to preview a file's effect (added/updated/skipped counts and any errors) without writing anything.
 
 ## Sensors
 
@@ -888,6 +889,68 @@ Example response (lookup):
 - Barcode not found in any inventory: raises an error
 - Barcode found in multiple inventories without `inventory_id`: raises an error listing the inventories
 
+### `simple_inventory.backup_database`
+
+Take an on-demand snapshot of the shared database, in addition to the automatic pre-migration one. Snapshots live in `<config>/simple_inventory/backups/`; only the 3 most recent (automatic or manual) are kept.
+
+```yaml
+service: simple_inventory.backup_database
+response_variable: result
+```
+
+Example response:
+
+```json
+{
+  "snapshot": "manual_1731082013456789012.db"
+}
+```
+
+### `simple_inventory.restore_database`
+
+Restore the database from a snapshot, replacing all current data, then reload every Simple Inventory config entry. Omit `snapshot` to restore the most recent one (automatic or manual).
+
+```yaml
+service: simple_inventory.restore_database
+data:
+  snapshot: "manual_1731082013456789012.db"
+response_variable: result
+```
+
+| Field | Required | Description |
+|---|---|---|
+| `snapshot` | No | A filename as returned by `backup_database` (default: the most recent snapshot) |
+
+Example response:
+
+```json
+{
+  "restored_from": "manual_1731082013456789012.db"
+}
+```
+
+**Error cases:**
+- `snapshot` does not match any snapshot file: raises an error
+
+### `simple_inventory.export`
+
+Export one inventory's data as JSON or CSV — a service-call equivalent of the WebSocket `simple_inventory/export` command, for automation-triggered exports (e.g. writing the result to a file on a schedule). Supports `response_variable` for use in automations and scripts.
+
+```yaml
+service: simple_inventory.export
+data:
+  inventory_id: "01JYFPCDMBRBRK4MB3C26S2FKH"
+  format: "csv"
+response_variable: result
+```
+
+| Field | Required | Description |
+|---|---|---|
+| `inventory_id` | Yes | The inventory to export |
+| `format` | No | `"json"` or `"csv"` (default: `"json"`) |
+
+The response shape matches the WebSocket `simple_inventory/export` command: `{"data": ..., "format": ...}`.
+
 ## WebSocket API
 
 The integration provides WebSocket commands for real-time communication. These are used by the companion card and can also be used by custom panels or scripts.
@@ -1405,6 +1468,17 @@ Problems the integration detects show up under **Settings -> System -> Repairs**
 | **Inventory panel needs the Simple Inventory card** (warning) | The [sidebar panel](#sidebar-panel) is enabled but `<config>/www/community/simple-inventory-card/simple-inventory-panel.js` is missing. The panel is still registered, but cannot load. | Install or update the Simple Inventory card through HACS (or copy its files into that folder), then restart or save the global entry's options again. |
 
 Issues are re-checked every time an inventory is set up; an issue whose condition no longer applies is removed automatically.
+
+## Backups & Restore
+
+The database (`<config>/simple_inventory.db`) and item photos (`<config>/simple_inventory/images/`) already live under Home Assistant's config directory, so a full HA backup (Settings -> System -> Backups) captures and restores them automatically. Simple Inventory checkpoints its write-ahead log before every HA backup runs, so that capture is always consistent.
+
+On top of that, Simple Inventory keeps its own lightweight snapshots in `<config>/simple_inventory/backups/` (the 3 most recent are kept):
+
+- **Automatic**: right before a database schema upgrade runs (on update to a release with a newer schema), a snapshot of the pre-upgrade database is taken. If the upgrade fails partway through, a **Database upgrade failed** repair issue appears in Settings -> Repairs (see [Repairs](#repairs) above); confirming it restores that snapshot and reloads every Simple Inventory entry.
+- **On demand**: call [`backup_database`](#simple_inventorybackup_database) before a risky change (e.g. a large import), and [`restore_database`](#simple_inventoryrestore_database) to roll back to it or any other recent snapshot.
+
+Restoring, automatic or manual, replaces the live database with the snapshot's contents and reloads every Simple Inventory config entry, since they all share one database.
 
 ## Voice & AI Assistants
 
