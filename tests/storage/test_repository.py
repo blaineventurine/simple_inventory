@@ -1606,3 +1606,19 @@ async def test_no_migration_snapshot_when_already_at_current_schema_version(
     """Normal startup at the current schema version must never copy the DB."""
     backups_dir = repo._backups_dir()
     assert list(backups_dir.glob("pre_migration_*.db")) == []
+
+
+@pytest.mark.asyncio
+async def test_snapshot_locked_without_connection_raises_runtime_error_not_assertion(
+    repo: InventoryRepository,
+) -> None:
+    """A concurrent ``_snapshot_locked`` call during the brief window ``async_restore``
+
+    sets ``self._conn = None`` must raise a catchable ``RuntimeError``, not crash with a
+    raw ``AssertionError``.
+    """
+    repo._conn = None
+
+    async with repo._lock:
+        with pytest.raises(RuntimeError, match="InventoryRepository not initialized"):
+            await repo._snapshot_locked("manual")

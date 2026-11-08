@@ -122,6 +122,9 @@
     "no_stock_for_expiry": {
       "message": "{name} nima zaloge; namesto tega ga dopolnite z datumom izteka roka"
     },
+    "restore_reopen_failed": {
+      "message": "Datoteka baze podatkov je bila obnovljena, vendar njeno ponovno odpiranje ni uspelo: {error}. Vse zaloge se ponovno nalagajo; če se težava nadaljuje, preverite Nastavitve > Popravila."
+    },
     "same_location": {
       "message": "Zaloga je že na lokaciji \"{location}\""
     },

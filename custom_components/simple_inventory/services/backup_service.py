@@ -37,7 +37,7 @@ class BackupService:
             raise ServiceValidationError(
                 translation_domain=DOMAIN, translation_key="no_inventories_configured"
             )
-        filename = call.data.get("snapshot")
+        filename = call.data.get("snapshot") or None
         try:
             restored = await repository.async_restore(filename)
         except FileNotFoundError as err:
@@ -45,6 +45,18 @@ class BackupService:
                 translation_domain=DOMAIN,
                 translation_key="snapshot_not_found",
                 translation_placeholders={"snapshot": filename or ""},
+            ) from err
+        except Exception as err:
+            # The live file may already be replaced at this point (async_restore copies
+            # before reopening) - reload every entry so the new repair issue (raised by
+            # setup, e.g. migration_failed) actually reaches the user instead of leaving
+            # coordinators silently stuck on a half-restored database.
+            for entry in self.hass.config_entries.async_entries(DOMAIN):
+                self.hass.config_entries.async_schedule_reload(entry.entry_id)
+            raise ServiceValidationError(
+                translation_domain=DOMAIN,
+                translation_key="restore_reopen_failed",
+                translation_placeholders={"error": str(err)},
             ) from err
 
         for entry in self.hass.config_entries.async_entries(DOMAIN):

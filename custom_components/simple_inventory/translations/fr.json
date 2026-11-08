@@ -122,6 +122,9 @@
     "no_stock_for_expiry": {
       "message": "{name} n'a pas de stock ; réapprovisionnez-le plutôt avec une date de péremption"
     },
+    "restore_reopen_failed": {
+      "message": "Le fichier de base de données a été restauré, mais sa réouverture a échoué : {error}. Tous les inventaires se rechargent ; consultez Paramètres > Réparations si le problème persiste."
+    },
     "same_location": {
       "message": "Le stock est déjà à \"{location}\""
     },

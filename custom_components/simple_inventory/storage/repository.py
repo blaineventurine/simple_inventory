@@ -335,8 +335,8 @@ class InventoryRepository(_BatchRepositoryMixin):
         """Serialize a unit of work under the write lock; commit on success, roll back
         (and re-raise) on any error so no partial write can be flushed by a later commit.
         """
-        conn = self._connection()
         async with self._lock:
+            conn = self._connection()
             try:
                 yield conn
             except BaseException:
@@ -747,7 +747,8 @@ class InventoryRepository(_BatchRepositoryMixin):
     async def _snapshot_locked(self, label: str) -> Path:
         """``async_snapshot``'s body, for callers that already hold ``self._lock``."""
         assert self._lock.locked()
-        assert self._conn is not None
+        if self._conn is None:
+            raise RuntimeError("InventoryRepository not initialized")
         await self._checkpoint_locked()
         return await self._hass.async_add_executor_job(self._do_snapshot, label)
 

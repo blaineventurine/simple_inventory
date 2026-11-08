@@ -122,6 +122,9 @@
     "no_stock_for_expiry": {
       "message": "{name} has no stock; restock it with an expiry date instead"
     },
+    "restore_reopen_failed": {
+      "message": "The database file was restored, but reopening it failed: {error}. Every inventory is reloading; check Settings > Repairs if the problem persists."
+    },
     "same_location": {
       "message": "The stock is already at \"{location}\""
     },

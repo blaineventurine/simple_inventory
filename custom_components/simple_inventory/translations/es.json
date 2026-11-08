@@ -122,6 +122,9 @@
     "no_stock_for_expiry": {
       "message": "{name} no tiene existencias; repónlo con una fecha de caducidad en su lugar"
     },
+    "restore_reopen_failed": {
+      "message": "El archivo de la base de datos se restauró, pero no se pudo volver a abrir: {error}. Todos los inventarios se están recargando; revisa Ajustes > Reparaciones si el problema persiste."
+    },
     "same_location": {
       "message": "Las existencias ya están en \"{location}\""
     },
