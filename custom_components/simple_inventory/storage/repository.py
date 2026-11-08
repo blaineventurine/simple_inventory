@@ -546,8 +546,18 @@ class InventoryRepository(_BatchRepositoryMixin):
 
         current_version = int(row["value"])
         if current_version < SCHEMA_VERSION:
+            # Make sure the WAL checkpoint/copy below sees everything, even if a future
+            # change adds pending writes here.
             await self._conn.commit()
-            await self._snapshot_locked(f"pre_migration_v{current_version}_to_v{SCHEMA_VERSION}")
+            snapshot_path = await self._snapshot_locked(
+                f"pre_migration_v{current_version}_to_v{SCHEMA_VERSION}"
+            )
+            _LOGGER.info(
+                "Saved pre-migration snapshot %s before migrating schema v%s -> v%s",
+                snapshot_path,
+                current_version,
+                SCHEMA_VERSION,
+            )
             try:
                 if current_version < 2:
                     await self._migrate_to_v2()
@@ -559,12 +569,16 @@ class InventoryRepository(_BatchRepositoryMixin):
                     await self._migrate_to_v5()
                 if current_version < 6:
                     await self._migrate_to_v6()
+                await self._conn.execute(
+                    "UPDATE metadata SET value = ? WHERE key = 'schema_version'",
+                    (str(SCHEMA_VERSION),),
+                )
             except Exception as err:
+                await self._conn.rollback()
+                _LOGGER.exception(
+                    "Migration from schema v%s to v%s failed", current_version, SCHEMA_VERSION
+                )
                 raise SchemaMigrationError(current_version, SCHEMA_VERSION, err) from err
-            await self._conn.execute(
-                "UPDATE metadata SET value = ? WHERE key = 'schema_version'",
-                (str(SCHEMA_VERSION),),
-            )
 
     async def _raise_if_newer_schema(self) -> None:
         """Refuse a database written by a newer release before touching its schema."""

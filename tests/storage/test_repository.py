@@ -1575,11 +1575,14 @@ async def test_migration_failure_raises_schema_migration_error_and_leaves_a_snap
     await repository.async_close()
 
     repository = InventoryRepository(hass_with_tmp_config, db_filename="test_migration_fail.db")
+    injected_error = RuntimeError("boom")
     with (
-        patch.object(InventoryRepository, "_migrate_to_v3", side_effect=RuntimeError("boom")),
+        patch.object(InventoryRepository, "_migrate_to_v3", side_effect=injected_error),
         pytest.raises(SchemaMigrationError) as exc_info,
     ):
         await repository.async_initialize()
+
+    assert exc_info.value.__cause__ is injected_error
 
     assert exc_info.value.found == 2
     assert exc_info.value.expected == SCHEMA_VERSION
@@ -1595,3 +1598,11 @@ async def test_migration_failure_raises_schema_migration_error_and_leaves_a_snap
     assert row is not None
     assert row[0] == "2"
     await repository.async_close()
+
+
+async def test_no_migration_snapshot_when_already_at_current_schema_version(
+    repo: InventoryRepository,
+) -> None:
+    """Normal startup at the current schema version must never copy the DB."""
+    backups_dir = repo._backups_dir()
+    assert list(backups_dir.glob("pre_migration_*.db")) == []
