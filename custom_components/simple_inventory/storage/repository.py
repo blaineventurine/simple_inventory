@@ -3,6 +3,8 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import logging
+import shutil
+import time
 import uuid
 from collections.abc import AsyncIterator, Collection
 from datetime import date, datetime, timedelta
@@ -167,6 +169,15 @@ class DatabaseFromNewerVersionError(RuntimeError):
         super().__init__(
             f"Database schema version {found} is newer than the supported version {expected}"
         )
+        self.found = found
+        self.expected = expected
+
+
+class SchemaMigrationError(RuntimeError):
+    """A schema migration (v{found} -> v{expected}) failed partway through."""
+
+    def __init__(self, found: int, expected: int, cause: Exception) -> None:
+        super().__init__(f"Migration from schema v{found} to v{expected} failed: {cause}")
         self.found = found
         self.expected = expected
 
@@ -672,6 +683,75 @@ class InventoryRepository(_BatchRepositoryMixin):
         if self._conn is None:
             raise RuntimeError("InventoryRepository not initialized")
         return self._conn
+
+    async def _backups_dir(self) -> Path:
+        """`<config>/simple_inventory/backups/`, created on first use."""
+        path = self._db_path.parent / "simple_inventory" / "backups"
+        path.mkdir(parents=True, exist_ok=True)
+        return path
+
+    async def async_checkpoint(self) -> None:
+        """Fold the WAL into the main DB file without copying anything."""
+        async with self._lock:
+            if self._conn is not None:
+                await self._conn.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+
+    async def async_snapshot(self, label: str) -> Path:
+        """Checkpoint the WAL, copy the DB file into backups/, prune to the 3 newest.
+
+        *label* is the filename's distinguishing prefix, e.g. ``"manual"`` or
+        ``"pre_migration_v5_to_v6"``. The timestamp makes each call's filename unique.
+        """
+        async with self._lock:
+            return await self._snapshot_locked(label)
+
+    async def _snapshot_locked(self, label: str) -> Path:
+        """``async_snapshot``'s body, for callers that already hold ``self._lock``."""
+        assert self._conn is not None
+        await self._conn.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+
+        backups_dir = await self._backups_dir()
+        target = backups_dir / f"{label}_{time.time_ns()}.db"
+        await self._hass.async_add_executor_job(shutil.copy2, self._db_path, target)
+
+        snapshots = sorted(backups_dir.glob("*.db"), key=lambda p: p.name)
+        for stale in snapshots[:-3]:
+            await self._hass.async_add_executor_job(stale.unlink)
+
+        return target
+
+    async def async_restore(self, filename: str | None) -> Path:
+        """Replace the live DB with a snapshot from backups/; reopens the connection.
+
+        *filename* is a name as returned by ``async_snapshot`` (no path components
+        accepted, to rule out traversal); ``None`` restores the most recently taken
+        snapshot (automatic or manual). Raises ``FileNotFoundError`` if nothing matches.
+        """
+        backups_dir = await self._backups_dir()
+        if filename is None:
+            candidates = sorted(backups_dir.glob("*.db"), key=lambda p: p.name)
+            if not candidates:
+                raise FileNotFoundError("No snapshots available to restore")
+            source = candidates[-1]
+        else:
+            if "/" in filename or "\\" in filename or filename in (".", ".."):
+                raise FileNotFoundError(filename)
+            source = backups_dir / filename
+            if not source.is_file():
+                raise FileNotFoundError(filename)
+
+        async with self._lock:
+            if self._conn is not None:
+                await self._conn.close()
+                self._conn = None
+            await self._hass.async_add_executor_job(shutil.copy2, source, self._db_path)
+            for suffix in ("-wal", "-shm"):
+                stray = self._db_path.with_name(self._db_path.name + suffix)
+                if stray.exists():
+                    await self._hass.async_add_executor_job(stray.unlink)
+
+        await self.async_initialize()
+        return source
 
     async def fetch_inventory(self, inventory_id: str) -> dict[str, Any] | None:
         conn = self._connection()

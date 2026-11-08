@@ -1360,3 +1360,79 @@ async def test_list_item_identifiers(repo: InventoryRepository) -> None:
         (oats, "Oatmeal", "oats"),
     ]
     assert await repo.list_item_identifiers("missing") == []
+
+
+async def test_snapshot_creates_a_file_under_backups(repo: InventoryRepository) -> None:
+    path = await repo.async_snapshot("manual")
+
+    assert path.exists()
+    assert path.parent.name == "backups"
+    assert path.name.startswith("manual_")
+    assert path.suffix == ".db"
+
+
+async def test_snapshot_checkpoints_the_wal_before_copying(repo: InventoryRepository) -> None:
+    await repo.upsert_inventory("inv1", "Kitchen", "", "", "inventory", None)
+
+    path = await repo.async_snapshot("manual")
+
+    # Open the snapshot file directly (a second, independent connection) and confirm
+    # the write landed in it — proving the WAL was folded in before the copy, not left
+    # behind in a sibling -wal file the copy didn't capture.
+    async with aiosqlite.connect(path) as conn:
+        conn.row_factory = aiosqlite.Row
+        cursor = await conn.execute("SELECT name FROM inventories WHERE id = 'inv1'")
+        row = await cursor.fetchone()
+        await cursor.close()
+    assert row is not None
+    assert row["name"] == "Kitchen"
+
+
+async def test_snapshot_retention_keeps_only_three(repo: InventoryRepository) -> None:
+    paths = [await repo.async_snapshot("manual") for _ in range(5)]
+
+    remaining = set((await repo._backups_dir()).iterdir())
+    assert len(remaining) == 3
+    # The 3 most recent survive; the first 2 were pruned.
+    assert set(paths[-3:]) == remaining
+
+
+async def test_restore_round_trips_to_the_snapshot_point(repo: InventoryRepository) -> None:
+    await repo.upsert_inventory("inv1", "Kitchen", "", "", "inventory", None)
+    snapshot = await repo.async_snapshot("manual")
+    await repo.upsert_inventory("inv2", "Garage", "", "", "inventory", None)
+
+    await repo.async_restore(snapshot.name)
+
+    assert await repo.fetch_inventory("inv1") is not None
+    assert await repo.fetch_inventory("inv2") is None
+
+
+async def test_restore_defaults_to_the_newest_snapshot(repo: InventoryRepository) -> None:
+    await repo.upsert_inventory("inv1", "Kitchen", "", "", "inventory", None)
+    await repo.async_snapshot("manual")
+    await repo.upsert_inventory("inv2", "Garage", "", "", "inventory", None)
+    newest = await repo.async_snapshot("manual")
+    await repo.upsert_inventory("inv3", "Shed", "", "", "inventory", None)
+
+    await repo.async_restore(None)
+
+    assert await repo.fetch_inventory("inv1") is not None
+    assert await repo.fetch_inventory("inv2") is not None
+    assert await repo.fetch_inventory("inv3") is None
+    assert (await repo._backups_dir() / newest.name).exists()
+
+
+async def test_restore_raises_file_not_found_for_unknown_name(repo: InventoryRepository) -> None:
+    with pytest.raises(FileNotFoundError):
+        await repo.async_restore("no_such_snapshot.db")
+
+
+async def test_restore_rejects_path_traversal(repo: InventoryRepository) -> None:
+    with pytest.raises(FileNotFoundError):
+        await repo.async_restore("../simple_inventory.db")
+
+
+async def test_restore_with_no_snapshots_raises_file_not_found(repo: InventoryRepository) -> None:
+    with pytest.raises(FileNotFoundError):
+        await repo.async_restore(None)
