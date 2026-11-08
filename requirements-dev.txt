@@ -21,8 +21,8 @@ pytest-cov
 pytest-homeassistant-custom-component==0.13.375
 # Default conversation agent in the voice end-to-end tests
 hassil==3.12.1
-home-assistant-intents==2026.10.6
-gazetteer-matcher==1.1.0
+home-assistant-intents==2026.10.27
+gazetteer-matcher==1.2.0
 
 safety
 pre-commit
