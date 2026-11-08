@@ -931,6 +931,7 @@ Example response:
 
 **Error cases:**
 - `snapshot` does not match any snapshot file: raises an error
+- The snapshot copies in but the database fails to reopen (e.g. a corrupt or incompatible file): raises an error and reloads every entry anyway
 
 ### `simple_inventory.export`
 
@@ -1056,7 +1057,9 @@ Service calls report `code: "service_validation_error"`; the `scan_barcode` WebS
 | `no_inventories_configured` | — | No inventory is set up |
 | `no_stock_at_location` | `name`, `location` | A decrement's `location` (or a transfer's `from_location`) holds no batch of the item; nothing is changed |
 | `no_stock_for_expiry` | `name` | `update_item` changes `expiry_date` on an item with no stock (no batches); restock it with an expiry date instead |
+| `restore_reopen_failed` | `error` | `restore_database` copied in the snapshot, but reopening the database failed; every entry reloads anyway |
 | `same_location` | `location` | `transfer_item`'s source is already the destination (same `from_location`, a `batch_id` already there, or all stock already there); nothing is moved |
+| `snapshot_not_found` | `snapshot` | `restore_database`'s `snapshot` does not match any snapshot file |
 | `unsupported_media_source` | `media_content_id` | `set_item_image_from_media` got an id that is not a file in a local media folder or an uploaded image |
 | `update_item_failed` | `name`, `inventory` | `update_item` could not apply the change (e.g. auto-add enabled without a todo list) |
 
