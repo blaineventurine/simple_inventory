@@ -12,6 +12,7 @@ import voluptuous as vol
 from homeassistant.components import websocket_api
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.exceptions import HomeAssistantError
+from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers import entity_registry as er
 from homeassistant.loader import async_get_integration
 
@@ -371,6 +372,7 @@ async def ws_export(msg: dict[str, Any], coordinator: SimpleInventoryCoordinator
                 vol.Optional("merge_strategy", default="skip"): vol.In(
                     ["skip", "overwrite", "merge_quantities"]
                 ),
+                vol.Optional("dry_run", default=False): cv.boolean,
             }
         ),
         _validate_import_data,
@@ -385,6 +387,7 @@ async def ws_import(msg: dict[str, Any], coordinator: SimpleInventoryCoordinator
         msg["data"],
         msg.get("format", "json"),
         msg.get("merge_strategy", "skip"),
+        dry_run=msg.get("dry_run", False),
     )
 
 

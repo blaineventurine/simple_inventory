@@ -1230,8 +1230,22 @@ class TestImportSchema:
         msg = self._validate(data='{"items": []}')
         await _run(ws_import, hass_mock, mock_connection, msg)
         mock_coordinator_ws.async_import_inventory.assert_awaited_once_with(
-            "inv1", {"items": []}, "json", "skip"
+            "inv1", {"items": []}, "json", "skip", dry_run=False
         )
+
+    async def test_dry_run_true_reaches_coordinator(
+        self, hass_mock: MagicMock, mock_connection: MagicMock, mock_coordinator_ws: MagicMock
+    ) -> None:
+        hass_mock.data[DOMAIN].coordinators = {"inv1": mock_coordinator_ws}
+        msg = self._validate(data='{"items": []}', dry_run=True)
+        await _run(ws_import, hass_mock, mock_connection, msg)
+        mock_coordinator_ws.async_import_inventory.assert_awaited_once_with(
+            "inv1", {"items": []}, "json", "skip", dry_run=True
+        )
+
+    def test_dry_run_defaults_to_false(self) -> None:
+        result = self._validate(data="{}")
+        assert result["dry_run"] is False
 
 
 class TestSetBarcodeProviderConfigCommand:

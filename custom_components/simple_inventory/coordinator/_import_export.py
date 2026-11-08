@@ -213,6 +213,7 @@ class _ImportExportMixin(_CoordinatorProtocol):
         data: Any,
         fmt: str = "json",
         merge_strategy: str = "skip",
+        dry_run: bool = False,
     ) -> dict[str, Any]:
         """Import items into an inventory.
 
@@ -224,6 +225,10 @@ class _ImportExportMixin(_CoordinatorProtocol):
           overwrite        - replace only the fields present in the record (stock is
                              replaced when ``batches`` or ``quantity`` is present)
           merge_quantities - add the record's stock as new/merged batches
+
+        dry_run: when True, runs the identical validation and merge-strategy decisions
+        but skips every actual write and the post-import todo-list sync, so the summary
+        previews exactly what a real import would do without changing anything.
         Returns summary: {added, updated, skipped, errors}
         """
         await self.async_initialize()
@@ -260,7 +265,9 @@ class _ImportExportMixin(_CoordinatorProtocol):
         # overwrite fails part-way. Loaded lazily; an item's entry is dropped once it changes.
         details: dict[str, dict[str, Any]] | None = None
         # Names and aliases for matching and the clash checks, read once and kept current
-        # as records are written so a later record sees the earlier ones.
+        # as records are written so a later record sees the earlier ones. In a dry run,
+        # this is still kept current from each *parsed* record (not a written row), so a
+        # later record in the same preview still sees earlier ones for clash detection.
         identifiers = ItemIdentifiers(await self.repository.list_item_identifiers(inventory_id))
 
         for label, raw in entries:
@@ -275,10 +282,17 @@ class _ImportExportMixin(_CoordinatorProtocol):
                 existing = await self._find_import_target(inventory_id, record.name, identifiers)
 
                 if existing is None:
-                    wrote = True
-                    item_id = await self._import_new_item(inventory_id, record, identifiers)
-                    identifiers.set_item(item_id, record.name, self._import_aliases(record) or [])
-                    written.append((record.name, None))
+                    if not dry_run:
+                        wrote = True
+                        item_id = await self._import_new_item(inventory_id, record, identifiers)
+                        identifiers.set_item(
+                            item_id, record.name, self._import_aliases(record) or []
+                        )
+                        written.append((record.name, None))
+                    else:
+                        identifiers.set_item(
+                            record.name, record.name, self._import_aliases(record) or []
+                        )
                     added += 1
                 elif merge_strategy == "skip":
                     skipped += 1
@@ -287,9 +301,10 @@ class _ImportExportMixin(_CoordinatorProtocol):
                     if not delta:
                         skipped += 1
                         continue
-                    wrote = True
-                    await self._import_merge_quantity(inventory_id, existing, record)
-                    written.append((existing[FIELD_NAME], existing))
+                    if not dry_run:
+                        wrote = True
+                        await self._import_merge_quantity(inventory_id, existing, record)
+                        written.append((existing[FIELD_NAME], existing))
                     updated += 1
                 else:
                     if (
@@ -300,24 +315,26 @@ class _ImportExportMixin(_CoordinatorProtocol):
                     ):
                         skipped += 1
                         continue
-                    if record.relations and (details is None or existing["id"] not in details):
-                        details = {
-                            item["id"]: item for item in await self.async_list_items(inventory_id)
-                        }
-                    snapshot = details.pop(existing["id"], {}) if details is not None else {}
-                    wrote = True
-                    await self._import_overwrite_item(
-                        inventory_id, existing, snapshot, record, identifiers
-                    )
-                    identifiers.set_item(
-                        existing["id"], existing[FIELD_NAME], self._import_aliases(record)
-                    )
-                    written.append((existing[FIELD_NAME], existing))
+                    if not dry_run:
+                        if record.relations and (details is None or existing["id"] not in details):
+                            details = {
+                                item["id"]: item
+                                for item in await self.async_list_items(inventory_id)
+                            }
+                        snapshot = details.pop(existing["id"], {}) if details is not None else {}
+                        wrote = True
+                        await self._import_overwrite_item(
+                            inventory_id, existing, snapshot, record, identifiers
+                        )
+                        identifiers.set_item(
+                            existing["id"], existing[FIELD_NAME], self._import_aliases(record)
+                        )
+                        written.append((existing[FIELD_NAME], existing))
                     updated += 1
             except Exception as exc:  # noqa: BLE001 - every failure is reported per record
                 errors.append(f"{prefix}: {exc}")
 
-        if wrote:
+        if wrote and not dry_run:
             await self._after_change(inventory_id)
             await self._sync_imported_todo_entries(inventory_id, written)
 
@@ -331,12 +348,19 @@ class _ImportExportMixin(_CoordinatorProtocol):
         The exact ``NOCASE`` lookup comes first, so an item named exactly so wins over a
         non-ASCII case variant left by data stored before the duplicate checks; it folds
         ASCII only, so "čokolada" for "Čokolada" is found through *identifiers*.
+
+        In a dry run, ``identifiers`` may hold a synthetic id (the record's own name)
+        for an item that was never actually written; such an id has no database row, so
+        a minimal stand-in dict is returned instead.
         """
         existing = await self.repository.get_item_by_name(inventory_id, name)
         if existing is not None:
             return existing
         item_id = identifiers.item_named(name)
-        return None if item_id is None else await self.repository.get_item_by_id(item_id)
+        if item_id is None:
+            return None
+        item = await self.repository.get_item_by_id(item_id)
+        return item if item is not None else {"id": item_id, FIELD_NAME: name}
 
     @staticmethod
     def _import_aliases(record: _ImportRecord) -> list[str] | None:

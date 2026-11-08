@@ -1080,3 +1080,61 @@ async def test_priced_merge_quantities_updates_item_price(
     item = await _item(coordinator, SOURCE, "Milk")
     assert item is not None and item[FIELD_PRICE] == 4
     assert sorted((b[0], b[3]) for b in _batches(item)) == [(1, 2), (1, 4)]
+
+
+async def test_dry_run_reports_the_same_summary_as_a_real_import(
+    coordinator: SimpleInventoryCoordinator,
+) -> None:
+    data = {"items": [{"name": "Milk", "quantity": 2}, {"name": ""}]}
+
+    preview = await coordinator.async_import_inventory(TARGET, data, "json", dry_run=True)
+    real = await coordinator.async_import_inventory(TARGET, data, "json", dry_run=False)
+
+    assert preview["added"] == real["added"] == 1
+    assert preview["skipped"] == real["skipped"]
+    assert len(preview["errors"]) == len(real["errors"]) == 1
+
+
+async def test_dry_run_writes_nothing(coordinator: SimpleInventoryCoordinator) -> None:
+    data = {"items": [{"name": "Milk", "quantity": 2}]}
+
+    await coordinator.async_import_inventory(TARGET, data, "json", dry_run=True)
+
+    items = await coordinator.async_list_items(TARGET)
+    assert items == []
+
+
+async def test_dry_run_detects_duplicate_names_within_the_same_batch(
+    coordinator: SimpleInventoryCoordinator,
+) -> None:
+    data = {"items": [{"name": "Milk", "quantity": 1}, {"name": "Milk", "quantity": 2}]}
+
+    preview = await coordinator.async_import_inventory(
+        TARGET, data, "json", merge_strategy="skip", dry_run=True
+    )
+
+    assert preview["added"] == 1
+    assert preview["skipped"] == 1
+
+
+async def test_dry_run_does_not_sync_todo_lists(
+    coordinator: SimpleInventoryCoordinator, hass_with_tmp_config: HomeAssistant
+) -> None:
+    data = {
+        "items": [
+            {
+                "name": "Milk",
+                "quantity": 1,
+                "auto_add_enabled": True,
+                "auto_add_to_list_quantity": 5,
+                "todo_list": "todo.shopping",
+            }
+        ]
+    }
+    calls: list[Event] = []
+    hass_with_tmp_config.bus.async_listen("simple_inventory_item_added_to_list", calls.append)
+
+    await coordinator.async_import_inventory(TARGET, data, "json", dry_run=True)
+    await hass_with_tmp_config.async_block_till_done()
+
+    assert calls == []
