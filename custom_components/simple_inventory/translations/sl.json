@@ -125,6 +125,9 @@
     "same_location": {
       "message": "Zaloga je že na lokaciji \"{location}\""
     },
+    "snapshot_not_found": {
+      "message": "Posnetek z imenom »{snapshot}« ni bil najden."
+    },
     "speech_add_failed": {
       "message": "Žal mi ni uspelo dodati {item} v inventar {inventory}."
     },
@@ -500,6 +503,11 @@
       },
       "name": "Dodaj predmet"
     },
+    "backup_database": {
+      "description": "Ustvari posnetek baze podatkov Simple Inventory na zahtevo.",
+      "fields": {},
+      "name": "Varnostno kopiraj bazo podatkov"
+    },
     "clear_item_image": {
       "description": "Odstrani sliko predmeta.",
       "fields": {
@@ -712,6 +720,16 @@
         }
       },
       "name": "Odstrani predmet"
+    },
+    "restore_database": {
+      "description": "Obnovi bazo podatkov Simple Inventory iz posnetka in zamenja vse trenutne podatke.",
+      "fields": {
+        "snapshot": {
+          "description": "Ime datoteke posnetka, kot ga vrne backup_database. Pustite prazno za obnovitev najnovejšega posnetka (samodejnega ali ročnega).",
+          "name": "Posnetek"
+        }
+      },
+      "name": "Obnovi bazo podatkov"
     },
     "scan_barcode": {
       "description": "Skeniraj črtno kodo in izvedi dejanje (povečaj, zmanjšaj ali poišči). Predmet se samodejno poišče v vseh zalogah.",

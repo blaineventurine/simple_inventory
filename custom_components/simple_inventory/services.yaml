@@ -692,3 +692,14 @@ get_item_consumption_rates:
         number:
           min: 1
           step: 1
+
+backup_database:
+  fields: {}
+
+restore_database:
+  fields:
+    snapshot:
+      example: "manual_1731000000.db"
+      required: false
+      selector:
+        text:

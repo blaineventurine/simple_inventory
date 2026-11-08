@@ -56,6 +56,8 @@ SERVICE_TRANSFER_ITEM: Final = "transfer_item"
 SERVICE_SET_ITEM_IMAGE_FROM_BARCODE: Final = "set_item_image_from_barcode"
 SERVICE_SET_ITEM_IMAGE_FROM_MEDIA: Final = "set_item_image_from_media"
 SERVICE_CLEAR_ITEM_IMAGE: Final = "clear_item_image"
+SERVICE_BACKUP_DATABASE: Final = "backup_database"
+SERVICE_RESTORE_DATABASE: Final = "restore_database"
 
 # Item Fields (for data structure), needs to match params constants in frontend
 FIELD_AUTO_ADD_ENABLED: Final = "auto_add_enabled"

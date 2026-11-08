@@ -125,6 +125,9 @@
     "same_location": {
       "message": "Las existencias ya están en \"{location}\""
     },
+    "snapshot_not_found": {
+      "message": "No se encontró ninguna instantánea llamada «{snapshot}»."
+    },
     "speech_add_failed": {
       "message": "Lo siento, no he podido añadir {item} a {inventory}."
     },
@@ -500,6 +503,11 @@
       },
       "name": "Agregar Artículo"
     },
+    "backup_database": {
+      "description": "Toma una instantánea de la base de datos de Simple Inventory a petición.",
+      "fields": {},
+      "name": "Copia de seguridad de la base de datos"
+    },
     "clear_item_image": {
       "description": "Elimina la imagen del artículo.",
       "fields": {
@@ -712,6 +720,16 @@
         }
       },
       "name": "Quitar Artículo"
+    },
+    "restore_database": {
+      "description": "Restaura la base de datos de Simple Inventory desde una instantánea, reemplazando todos los datos actuales.",
+      "fields": {
+        "snapshot": {
+          "description": "El nombre del archivo de la instantánea, devuelto por backup_database. Déjalo vacío para restaurar la instantánea más reciente (automática o manual).",
+          "name": "Instantánea"
+        }
+      },
+      "name": "Restaurar base de datos"
     },
     "scan_barcode": {
       "description": "Escanear un código de barras y realizar una acción (incrementar, decrementar o buscar). Resuelve automáticamente el artículo entre inventarios.",

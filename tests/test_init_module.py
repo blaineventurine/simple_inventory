@@ -19,6 +19,7 @@ from custom_components.simple_inventory import (
 from custom_components.simple_inventory.const import (
     DOMAIN,
     SERVICE_ADD_ITEM,
+    SERVICE_BACKUP_DATABASE,
     SERVICE_CLEAR_ITEM_IMAGE,
     SERVICE_DECREMENT_ITEM,
     SERVICE_GET_ALL_ITEMS,
@@ -30,6 +31,7 @@ from custom_components.simple_inventory.const import (
     SERVICE_LOOKUP_BY_BARCODE,
     SERVICE_REMOVE_BATCH,
     SERVICE_REMOVE_ITEM,
+    SERVICE_RESTORE_DATABASE,
     SERVICE_SCAN_BARCODE,
     SERVICE_SET_ITEM_IMAGE_FROM_BARCODE,
     SERVICE_SET_ITEM_IMAGE_FROM_MEDIA,
@@ -188,6 +190,8 @@ async def test_async_setup_entry_first_creates_repo_and_registers_services(
             SERVICE_SET_ITEM_IMAGE_FROM_BARCODE,
             SERVICE_SET_ITEM_IMAGE_FROM_MEDIA,
             SERVICE_CLEAR_ITEM_IMAGE,
+            SERVICE_BACKUP_DATABASE,
+            SERVICE_RESTORE_DATABASE,
         }
 
         # Intents registered
@@ -331,6 +335,8 @@ async def test_async_unload_entry_last_removes_services_and_closes_repo(
             SERVICE_SET_ITEM_IMAGE_FROM_BARCODE,
             SERVICE_SET_ITEM_IMAGE_FROM_MEDIA,
             SERVICE_CLEAR_ITEM_IMAGE,
+            SERVICE_BACKUP_DATABASE,
+            SERVICE_RESTORE_DATABASE,
         }
 
         repo.async_close.assert_awaited_once()

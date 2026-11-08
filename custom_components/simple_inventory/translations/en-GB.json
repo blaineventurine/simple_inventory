@@ -125,6 +125,9 @@
     "same_location": {
       "message": "The stock is already at \"{location}\""
     },
+    "snapshot_not_found": {
+      "message": "No snapshot named \"{snapshot}\" was found."
+    },
     "speech_add_failed": {
       "message": "Sorry, I couldn't add {item} in {inventory}."
     },
@@ -500,6 +503,11 @@
       },
       "name": "Add Item"
     },
+    "backup_database": {
+      "description": "Take an on-demand snapshot of the Simple Inventory database.",
+      "fields": {},
+      "name": "Backup database"
+    },
     "clear_item_image": {
       "description": "Remove the item's image.",
       "fields": {
@@ -712,6 +720,16 @@
         }
       },
       "name": "Remove Item"
+    },
+    "restore_database": {
+      "description": "Restore the Simple Inventory database from a snapshot, replacing all current data.",
+      "fields": {
+        "snapshot": {
+          "description": "The snapshot's filename, as returned by backup_database. Leave empty to restore the most recent snapshot (automatic or manual).",
+          "name": "Snapshot"
+        }
+      },
+      "name": "Restore database"
     },
     "scan_barcode": {
       "description": "Scan a barcode and perform an action (increment, decrement, or lookup). Automatically resolves the item across inventories.",

@@ -23,6 +23,7 @@ from ..entries import inventory_display_name
 from ..providers.base import ProductInfo, ProviderResult
 from ..providers.lookup import async_lookup_barcode_all_providers
 from ..todo_manager import TodoManager
+from .backup_service import BackupService
 from .image_service import ImageService
 from .inventory_service import InventoryService
 from .quantity_service import SCAN_BATCH_KEYS, QuantityService
@@ -45,6 +46,7 @@ class ServiceHandler:
         self.inventory_service = InventoryService(hass, todo_manager)
         self.quantity_service = QuantityService(hass, todo_manager)
         self.image_service = ImageService(hass)
+        self.backup_service = BackupService(hass)
 
     async def async_add_item(self, call: ServiceCall) -> None:
         """Add an item to the inventory."""
@@ -89,6 +91,14 @@ class ServiceHandler:
     async def async_clear_item_image(self, call: ServiceCall) -> None:
         """Remove the item's photo."""
         await self.image_service.async_clear_item_image(call)
+
+    async def async_backup_database(self, call: ServiceCall) -> JsonObjectType:
+        """Snapshot the shared database on demand."""
+        return await self.backup_service.async_backup_database(call)
+
+    async def async_restore_database(self, call: ServiceCall) -> JsonObjectType:
+        """Restore a database snapshot on demand."""
+        return await self.backup_service.async_restore_database(call)
 
     async def async_get_items(self, call: ServiceCall) -> JsonObjectType:
         """Fetch items, fire an event, and return the result."""
