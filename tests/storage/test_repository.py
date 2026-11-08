@@ -1391,7 +1391,7 @@ async def test_snapshot_checkpoints_the_wal_before_copying(repo: InventoryReposi
 async def test_snapshot_retention_keeps_only_three(repo: InventoryRepository) -> None:
     paths = [await repo.async_snapshot("manual") for _ in range(5)]
 
-    remaining = set((await repo._backups_dir()).iterdir())
+    remaining = set(repo._backups_dir().iterdir())
     assert len(remaining) == 3
     # The 3 most recent survive; the first 2 were pruned.
     assert set(paths[-3:]) == remaining
@@ -1420,7 +1420,7 @@ async def test_restore_defaults_to_the_newest_snapshot(repo: InventoryRepository
     assert await repo.fetch_inventory("inv1") is not None
     assert await repo.fetch_inventory("inv2") is not None
     assert await repo.fetch_inventory("inv3") is None
-    assert (await repo._backups_dir() / newest.name).exists()
+    assert (repo._backups_dir() / newest.name).exists()
 
 
 async def test_restore_raises_file_not_found_for_unknown_name(repo: InventoryRepository) -> None:
@@ -1436,3 +1436,84 @@ async def test_restore_rejects_path_traversal(repo: InventoryRepository) -> None
 async def test_restore_with_no_snapshots_raises_file_not_found(repo: InventoryRepository) -> None:
     with pytest.raises(FileNotFoundError):
         await repo.async_restore(None)
+
+
+async def test_snapshot_retention_and_restore_order_by_time_not_filename(
+    repo: InventoryRepository,
+) -> None:
+    """String sort would put "manual_*" before "pre_migration_*" regardless of time.
+
+    Taking the migration snapshot first and three manual snapshots after must still
+    prune the oldest (the migration one) and restore the LAST manual one, not whichever
+    sorts first/last alphabetically.
+    """
+    await repo.upsert_inventory("inv1", "Kitchen", "", "", "inventory", None)
+    migration_snapshot = await repo.async_snapshot("pre_migration_v5_to_v6")
+    await repo.upsert_inventory("inv2", "Garage", "", "", "inventory", None)
+    first_manual = await repo.async_snapshot("manual")
+    await repo.upsert_inventory("inv3", "Shed", "", "", "inventory", None)
+    await repo.async_snapshot("manual")
+    await repo.upsert_inventory("inv4", "Attic", "", "", "inventory", None)
+    last_manual = await repo.async_snapshot("manual")
+
+    remaining = set(repo._backups_dir().iterdir())
+    assert len(remaining) == 3
+    # "manual_*" sorts before "pre_migration_*" lexicographically despite being newer;
+    # pruning must drop the migration snapshot, not a manual one.
+    assert migration_snapshot not in remaining
+    assert {first_manual, last_manual} <= remaining
+
+    await repo.async_restore(None)
+
+    # The newest snapshot by time is the last manual one, even though
+    # "pre_migration_v5_to_v6_<ns>" would sort after "manual_<ns>" as a string.
+    assert await repo.fetch_inventory("inv1") is not None
+    assert await repo.fetch_inventory("inv2") is not None
+    assert await repo.fetch_inventory("inv3") is not None
+    assert await repo.fetch_inventory("inv4") is not None
+
+
+async def test_async_checkpoint_is_a_no_op_with_an_open_connection(
+    repo: InventoryRepository,
+) -> None:
+    await repo.upsert_inventory("inv1", "Kitchen", "", "", "inventory", None)
+
+    await repo.async_checkpoint()
+
+    assert await repo.fetch_inventory("inv1") is not None
+
+
+async def test_async_checkpoint_is_a_no_op_with_no_connection(
+    hass_with_tmp_config: HomeAssistant,
+) -> None:
+    repository = InventoryRepository(hass_with_tmp_config, db_filename="never_opened.db")
+
+    await repository.async_checkpoint()
+
+
+async def test_async_restore_reopens_after_the_connection_was_already_closed(
+    repo: InventoryRepository,
+) -> None:
+    await repo.upsert_inventory("inv1", "Kitchen", "", "", "inventory", None)
+    snapshot = await repo.async_snapshot("manual")
+    await repo.async_close()
+
+    await repo.async_restore(snapshot.name)
+
+    assert await repo.fetch_inventory("inv1") is not None
+
+
+async def test_async_restore_raises_for_a_snapshot_from_a_newer_schema(
+    repo: InventoryRepository,
+) -> None:
+    snapshot = await repo.async_snapshot("manual")
+
+    async with aiosqlite.connect(snapshot) as conn:
+        await conn.execute(
+            "UPDATE metadata SET value = ? WHERE key = 'schema_version'",
+            (str(SCHEMA_VERSION + 1),),
+        )
+        await conn.commit()
+
+    with pytest.raises(DatabaseFromNewerVersionError):
+        await repo.async_restore(snapshot.name)

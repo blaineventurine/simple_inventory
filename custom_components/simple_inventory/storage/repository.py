@@ -67,6 +67,11 @@ def _casefold(value: object) -> str:
     return value.casefold() if isinstance(value, str) else ""
 
 
+def _snapshot_sort_key(path: Path) -> int:
+    """Chronological sort key for a ``{label}_{time_ns}.db`` snapshot filename."""
+    return int(path.stem.rpartition("_")[2])
+
+
 # Ranks: 0 exact name, 1 name prefix, 2 name contains, 3 alias, 4 barcode, 5 category,
 # 6 item or batch location, 7 description, 8 unit. ``instr`` keeps ``%``/``_`` literal.
 _SEARCH_SQL = """
@@ -684,8 +689,8 @@ class InventoryRepository(_BatchRepositoryMixin):
             raise RuntimeError("InventoryRepository not initialized")
         return self._conn
 
-    async def _backups_dir(self) -> Path:
-        """`<config>/simple_inventory/backups/`, created on first use."""
+    def _backups_dir(self) -> Path:
+        """`<config>/simple_inventory/backups/`, created on first use. Blocking; run in the executor."""
         path = self._db_path.parent / "simple_inventory" / "backups"
         path.mkdir(parents=True, exist_ok=True)
         return path
@@ -693,8 +698,20 @@ class InventoryRepository(_BatchRepositoryMixin):
     async def async_checkpoint(self) -> None:
         """Fold the WAL into the main DB file without copying anything."""
         async with self._lock:
-            if self._conn is not None:
-                await self._conn.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+            await self._checkpoint_locked()
+
+    async def _checkpoint_locked(self) -> None:
+        """``async_checkpoint``'s body, for callers that already hold ``self._lock``."""
+        if self._conn is None:
+            return
+        cursor = await self._conn.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+        row = await cursor.fetchone()
+        await cursor.close()
+        if row is not None and row[0]:
+            _LOGGER.warning(
+                "WAL checkpoint did not fully complete (database busy); the copied "
+                "snapshot may be missing recently committed data"
+            )
 
     async def async_snapshot(self, label: str) -> Path:
         """Checkpoint the WAL, copy the DB file into backups/, prune to the 3 newest.
@@ -707,16 +724,20 @@ class InventoryRepository(_BatchRepositoryMixin):
 
     async def _snapshot_locked(self, label: str) -> Path:
         """``async_snapshot``'s body, for callers that already hold ``self._lock``."""
+        assert self._lock.locked()
         assert self._conn is not None
-        await self._conn.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+        await self._checkpoint_locked()
+        return await self._hass.async_add_executor_job(self._do_snapshot, label)
 
-        backups_dir = await self._backups_dir()
+    def _do_snapshot(self, label: str) -> Path:
+        """Blocking half of a snapshot: mkdir, copy, prune to the 3 newest. Runs in the executor."""
+        backups_dir = self._backups_dir()
         target = backups_dir / f"{label}_{time.time_ns()}.db"
-        await self._hass.async_add_executor_job(shutil.copy2, self._db_path, target)
+        shutil.copy2(self._db_path, target)
 
-        snapshots = sorted(backups_dir.glob("*.db"), key=lambda p: p.name)
+        snapshots = sorted(backups_dir.glob("*.db"), key=_snapshot_sort_key)
         for stale in snapshots[:-3]:
-            await self._hass.async_add_executor_job(stale.unlink)
+            stale.unlink()
 
         return target
 
@@ -726,32 +747,56 @@ class InventoryRepository(_BatchRepositoryMixin):
         *filename* is a name as returned by ``async_snapshot`` (no path components
         accepted, to rule out traversal); ``None`` restores the most recently taken
         snapshot (automatic or manual). Raises ``FileNotFoundError`` if nothing matches.
-        """
-        backups_dir = await self._backups_dir()
-        if filename is None:
-            candidates = sorted(backups_dir.glob("*.db"), key=lambda p: p.name)
-            if not candidates:
-                raise FileNotFoundError("No snapshots available to restore")
-            source = candidates[-1]
-        else:
-            if "/" in filename or "\\" in filename or filename in (".", ".."):
-                raise FileNotFoundError(filename)
-            source = backups_dir / filename
-            if not source.is_file():
-                raise FileNotFoundError(filename)
 
+        Reopening runs the full ``async_initialize()`` path: a snapshot older than the
+        current code's ``SCHEMA_VERSION`` is migrated forward immediately, and a newer
+        one raises ``DatabaseFromNewerVersionError`` before any schema statement runs.
+        On a failed reopen the connection is left open on the restored file without
+        being migrated or schema-checked further; callers should treat the repository
+        as unusable until a later ``async_initialize``/``async_restore`` call succeeds.
+        """
         async with self._lock:
+            source = await self._hass.async_add_executor_job(self._resolve_restore_source, filename)
             if self._conn is not None:
                 await self._conn.close()
                 self._conn = None
-            await self._hass.async_add_executor_job(shutil.copy2, source, self._db_path)
-            for suffix in ("-wal", "-shm"):
-                stray = self._db_path.with_name(self._db_path.name + suffix)
-                if stray.exists():
-                    await self._hass.async_add_executor_job(stray.unlink)
+            await self._hass.async_add_executor_job(self._do_restore, source)
 
         await self.async_initialize()
         return source
+
+    def _resolve_restore_source(self, filename: str | None) -> Path:
+        """Blocking half of a restore: locate and validate the snapshot. Runs in the executor."""
+        backups_dir = self._backups_dir()
+        if filename is None:
+            candidates = sorted(backups_dir.glob("*.db"), key=_snapshot_sort_key)
+            if not candidates:
+                raise FileNotFoundError("No snapshots available to restore")
+            return candidates[-1]
+
+        if "/" in filename or "\\" in filename or filename in (".", ".."):
+            raise FileNotFoundError(filename)
+        source = backups_dir / filename
+        if not source.is_file():
+            raise FileNotFoundError(filename)
+        return source
+
+    def _do_restore(self, source: Path) -> None:
+        """Blocking half of a restore: drop stray WAL/SHM, then copy. Runs in the executor.
+
+        Stray ``-wal``/``-shm`` siblings are removed BEFORE the main file is replaced,
+        never after: SQLite validates WAL frames against the WAL header's own salt
+        values, not against the main file's contents, so a window where a new main file
+        coexists with an old WAL/SHM pair risks replaying the old database's frames onto
+        the restored file on next open. Removing them first means a crash before the
+        copy just leaves the old (still consistent) database in place, and a crash after
+        the copy leaves the new database with no stale WAL to conflict with it.
+        """
+        for suffix in ("-wal", "-shm"):
+            stray = self._db_path.with_name(self._db_path.name + suffix)
+            if stray.exists():
+                stray.unlink()
+        shutil.copy2(source, self._db_path)
 
     async def fetch_inventory(self, inventory_id: str) -> dict[str, Any] | None:
         conn = self._connection()
