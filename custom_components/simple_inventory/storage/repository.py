@@ -67,9 +67,12 @@ def _casefold(value: object) -> str:
     return value.casefold() if isinstance(value, str) else ""
 
 
-def _snapshot_sort_key(path: Path) -> int:
-    """Chronological sort key for a ``{label}_{time_ns}.db`` snapshot filename."""
-    return int(path.stem.rpartition("_")[2])
+def _snapshots(backups_dir: Path) -> list[Path]:
+    """``{label}_{time_ns}.db`` snapshots in *backups_dir*, oldest first; other files are ignored."""
+    return sorted(
+        (p for p in backups_dir.glob("*.db") if p.stem.rpartition("_")[2].isdigit()),
+        key=lambda p: int(p.stem.rpartition("_")[2]),
+    )
 
 
 # Ranks: 0 exact name, 1 name prefix, 2 name contains, 3 alias, 4 barcode, 5 category,
@@ -709,8 +712,8 @@ class InventoryRepository(_BatchRepositoryMixin):
         await cursor.close()
         if row is not None and row[0]:
             _LOGGER.warning(
-                "WAL checkpoint did not fully complete (database busy); the copied "
-                "snapshot may be missing recently committed data"
+                "WAL checkpoint did not fully complete (database busy); the main DB "
+                "file may be missing recently committed data"
             )
 
     async def async_snapshot(self, label: str) -> Path:
@@ -735,7 +738,7 @@ class InventoryRepository(_BatchRepositoryMixin):
         target = backups_dir / f"{label}_{time.time_ns()}.db"
         shutil.copy2(self._db_path, target)
 
-        snapshots = sorted(backups_dir.glob("*.db"), key=_snapshot_sort_key)
+        snapshots = _snapshots(backups_dir)
         for stale in snapshots[:-3]:
             stale.unlink()
 
@@ -769,7 +772,7 @@ class InventoryRepository(_BatchRepositoryMixin):
         """Blocking half of a restore: locate and validate the snapshot. Runs in the executor."""
         backups_dir = self._backups_dir()
         if filename is None:
-            candidates = sorted(backups_dir.glob("*.db"), key=_snapshot_sort_key)
+            candidates = _snapshots(backups_dir)
             if not candidates:
                 raise FileNotFoundError("No snapshots available to restore")
             return candidates[-1]

@@ -1473,6 +1473,26 @@ async def test_snapshot_retention_and_restore_order_by_time_not_filename(
     assert await repo.fetch_inventory("inv4") is not None
 
 
+async def test_snapshot_and_restore_ignore_foreign_files_in_backups_dir(
+    repo: InventoryRepository,
+) -> None:
+    """A non-conforming .db file in backups/ (hand-placed, or from elsewhere) must not
+    break _snapshots' sort key or crash subsequent snapshot/restore calls.
+    """
+    await repo.upsert_inventory("inv1", "Kitchen", "", "", "inventory", None)
+    backups_dir = repo._backups_dir()
+    foreign = backups_dir / "my_offsite_copy.db"
+    foreign.write_bytes(b"not a real snapshot, just a stray file")
+
+    path = await repo.async_snapshot("manual")
+
+    assert path.exists()
+    assert foreign.exists()  # untouched: not recognized as one of ours, so not pruned
+
+    restored = await repo.async_restore(None)
+    assert restored == path
+
+
 async def test_async_checkpoint_is_a_no_op_with_an_open_connection(
     repo: InventoryRepository,
 ) -> None:
