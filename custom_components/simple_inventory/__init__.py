@@ -34,6 +34,7 @@ from .repairs import (
     async_create_migration_failed_issue,
     async_create_newer_database_issue,
     async_delete_entry_issues,
+    async_delete_migration_failed_issue,
     async_delete_newer_database_issue,
     async_setup_issue_detection,
 )
@@ -116,9 +117,9 @@ async def _async_get_hub(hass: HomeAssistant, domain_data: SimpleInventoryData) 
 
     The hub and the repository are created, and dropped, together. A failed open is
     not cached: the repository is closed and discarded so the next setup attempt
-    (ConfigEntryNotReady retry) opens it again. A database from a newer release raises
-    ConfigEntryError instead (retrying cannot help) and opens a repair issue, deleted
-    again once the database opens.
+    (ConfigEntryNotReady retry) opens it again. A database from a newer release, or a
+    failed schema migration, raises ConfigEntryError instead (retrying cannot help) and
+    opens a repair issue; both issues are deleted again once the database opens.
     """
     hub = domain_data.hub
     repo_task = domain_data.repository_task
@@ -155,6 +156,7 @@ async def _async_get_hub(hass: HomeAssistant, domain_data: SimpleInventoryData) 
             domain_data.repository_task = None
 
     async_delete_newer_database_issue(hass)
+    async_delete_migration_failed_issue(hass)
     return opened
 
 

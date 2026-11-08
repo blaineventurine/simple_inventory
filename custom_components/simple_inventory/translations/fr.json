@@ -311,7 +311,8 @@
     "migration_failed": {
       "fix_flow": {
         "abort": {
-          "no_snapshot_available": "Aucun instantané antérieur à la migration n'est disponible pour la restauration. Restaurez plutôt une sauvegarde Home Assistant antérieure à cette mise à jour."
+          "no_snapshot_available": "Aucun instantané antérieur à la migration n'est disponible pour la restauration. Restaurez plutôt une sauvegarde Home Assistant antérieure à cette mise à jour.",
+          "restore_failed": "La restauration de l'instantané a échoué : {error}"
         },
         "step": {
           "confirm": {

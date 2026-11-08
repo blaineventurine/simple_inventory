@@ -409,9 +409,7 @@ async def test_newer_database_fails_setup_with_issue_then_clears(env: HomeAssist
 
 async def test_migration_failure_fails_setup_with_issue(env: HomeAssistant) -> None:
     await seed_items(env, KITCHEN, "Kitchen", [_item("Milk", todo_list="")])
-    async with aiosqlite.connect(env.config.path("simple_inventory.db")) as conn:
-        await conn.execute("UPDATE metadata SET value = '2' WHERE key = 'schema_version'")
-        await conn.commit()
+    await _set_schema_version(env, 2)
     entry = add_entry(env, KITCHEN, "Kitchen")
 
     with patch(
@@ -424,13 +422,18 @@ async def test_migration_failure_fails_setup_with_issue(env: HomeAssistant) -> N
     assert _state(entry) is ConfigEntryState.SETUP_ERROR
     issue = _issue(env, "migration_failed")
     assert issue is not None
+    assert issue.is_fixable is True
+    assert issue.severity is ir.IssueSeverity.ERROR
+    assert issue.translation_key == "migration_failed"
+    assert issue.translation_placeholders == {
+        "found_version": "2",
+        "supported_version": str(SCHEMA_VERSION),
+    }
 
 
 async def test_migration_failed_repair_flow_restores_and_reloads(env: HomeAssistant) -> None:
     await seed_items(env, KITCHEN, "Kitchen", [_item("Milk", todo_list="")])
-    async with aiosqlite.connect(env.config.path("simple_inventory.db")) as conn:
-        await conn.execute("UPDATE metadata SET value = '2' WHERE key = 'schema_version'")
-        await conn.commit()
+    await _set_schema_version(env, 2)
     entry = add_entry(env, KITCHEN, "Kitchen")
 
     with patch(
@@ -446,6 +449,44 @@ async def test_migration_failed_repair_flow_restores_and_reloads(env: HomeAssist
 
     assert result["type"] is FlowResultType.CREATE_ENTRY
     assert _issue(env, "migration_failed") is None
+
+    await env.async_block_till_done()
+    assert _state(entry) is ConfigEntryState.LOADED
+    assert "Milk" in await _items(env)
+
+
+async def test_migration_failed_repair_flow_handles_a_repeat_failure(env: HomeAssistant) -> None:
+    """A still-failing migration must not crash the flow before the confirm form is shown.
+
+    Regression test: ``async_step_confirm`` used to reopen the repository via
+    ``async_initialize()`` (which re-runs the migration) just to list snapshots. With a
+    deterministic migration failure, that raised ``SchemaMigrationError`` again, crashing
+    the repair flow before the user ever saw the confirm form. The patch stays active
+    through both setup AND the flow calls below to pin that it no longer does: the first
+    call must show the confirm form (not crash), and confirming - where the restore's
+    reopen hits the still-failing migration again - must abort with a translated reason
+    instead of crashing.
+    """
+    await seed_items(env, KITCHEN, "Kitchen", [_item("Milk", todo_list="")])
+    await _set_schema_version(env, 2)
+    entry = add_entry(env, KITCHEN, "Kitchen")
+
+    with patch(
+        "custom_components.simple_inventory.storage.repository."
+        "InventoryRepository._migrate_to_v3",
+        side_effect=RuntimeError("boom"),
+    ):
+        await setup_entry(env, entry)
+        assert _state(entry) is ConfigEntryState.SETUP_ERROR
+
+        flow = await _start_fix(env, "migration_failed")
+        assert flow["type"] is FlowResultType.FORM
+        assert flow["step_id"] == "confirm"
+
+        result = await _configure(env, flow["flow_id"], {})
+
+    assert result["type"] is FlowResultType.ABORT
+    assert result["reason"] == "restore_failed"
 
 
 async def test_migration_failed_repair_flow_aborts_with_no_snapshot(env: HomeAssistant) -> None:

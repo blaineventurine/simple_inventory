@@ -311,7 +311,8 @@
     "migration_failed": {
       "fix_flow": {
         "abort": {
-          "no_snapshot_available": "No hay ninguna instantánea previa a la migración disponible para restaurar. En su lugar, restaura una copia de seguridad de Home Assistant anterior a esta actualización."
+          "no_snapshot_available": "No hay ninguna instantánea previa a la migración disponible para restaurar. En su lugar, restaura una copia de seguridad de Home Assistant anterior a esta actualización.",
+          "restore_failed": "La restauración de la instantánea falló: {error}"
         },
         "step": {
           "confirm": {

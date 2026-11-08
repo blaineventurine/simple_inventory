@@ -311,7 +311,8 @@
     "migration_failed": {
       "fix_flow": {
         "abort": {
-          "no_snapshot_available": "Posnetek pred migracijo ni na voljo za obnovitev. Namesto tega obnovite varnostno kopijo Home Assistant, narejeno pred to posodobitvijo."
+          "no_snapshot_available": "Posnetek pred migracijo ni na voljo za obnovitev. Namesto tega obnovite varnostno kopijo Home Assistant, narejeno pred to posodobitvijo.",
+          "restore_failed": "Obnovitev posnetka ni uspela: {error}"
         },
         "step": {
           "confirm": {

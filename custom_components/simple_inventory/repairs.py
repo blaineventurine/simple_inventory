@@ -421,18 +421,19 @@ class MigrationFailedRepairFlow(ConfirmRepairFlow):
         self, user_input: dict[str, str] | None = None
     ) -> RepairsFlowResult:
         repository = InventoryRepository(self.hass)
-        await repository.async_initialize()
-        try:
-            snapshots = sorted(
-                repository._backups_dir().glob("pre_migration_v*.db"),
-                key=lambda p: int(p.stem.rpartition("_")[2]),
-            )
-            if not snapshots:
-                return self.async_abort(reason="no_snapshot_available")
-            if user_input is None:
-                return await super().async_step_confirm()
+        snapshots = await self.hass.async_add_executor_job(repository.pre_migration_snapshots)
+        if not snapshots:
+            return self.async_abort(reason="no_snapshot_available")
+        if user_input is None:
+            return await super().async_step_confirm()
 
+        try:
             await repository.async_restore(snapshots[-1].name)
+        except Exception as err:
+            _LOGGER.exception("Restoring snapshot %s failed", snapshots[-1].name)
+            return self.async_abort(
+                reason="restore_failed", description_placeholders={"error": str(err)}
+            )
         finally:
             await repository.async_close()
 

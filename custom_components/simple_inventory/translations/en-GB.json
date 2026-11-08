@@ -311,7 +311,8 @@
     "migration_failed": {
       "fix_flow": {
         "abort": {
-          "no_snapshot_available": "No pre-migration snapshot is available to restore. Restore a Home Assistant backup taken before this update instead."
+          "no_snapshot_available": "No pre-migration snapshot is available to restore. Restore a Home Assistant backup taken before this update instead.",
+          "restore_failed": "Restoring the snapshot failed: {error}"
         },
         "step": {
           "confirm": {
