@@ -205,17 +205,28 @@ class InventoryRepository(_BatchRepositoryMixin):
         """Open DB, ensure schema, migrate if needed."""
         async with self._lock:
             if self._conn is None:
-                self._conn = await aiosqlite.connect(self._db_path)
-                self._conn.row_factory = aiosqlite.Row
-                _LOGGER.debug("Opened Simple Inventory database at %s", self._db_path)
-                await self._conn.execute("PRAGMA foreign_keys = ON")
-                await self._conn.create_function("casefold", 1, _casefold, deterministic=True)
-                await self._conn.execute("PRAGMA journal_mode = WAL")
-                await self._conn.execute("PRAGMA synchronous = NORMAL")
-                await self._conn.execute("PRAGMA busy_timeout = 5000")
+                await self._open_connection_locked()
 
         await self._ensure_schema()
         await self._maybe_migrate_legacy_store()
+
+    async def _open_connection_locked(self) -> None:
+        """Open ``self._conn`` and set its pragmas. Caller must hold ``self._lock``.
+
+        Split out of ``async_initialize`` so ``async_restore`` can reopen the connection
+        inside its own lock hold — leaving ``self._conn`` set to a fresh, open connection
+        before the lock is released, rather than briefly unlocked with no connection at
+        all, which a queued coordinator write could otherwise observe.
+        """
+        assert self._lock.locked()
+        self._conn = await aiosqlite.connect(self._db_path)
+        self._conn.row_factory = aiosqlite.Row
+        _LOGGER.debug("Opened Simple Inventory database at %s", self._db_path)
+        await self._conn.execute("PRAGMA foreign_keys = ON")
+        await self._conn.create_function("casefold", 1, _casefold, deterministic=True)
+        await self._conn.execute("PRAGMA journal_mode = WAL")
+        await self._conn.execute("PRAGMA synchronous = NORMAL")
+        await self._conn.execute("PRAGMA busy_timeout = 5000")
 
     async def _maybe_migrate_legacy_store(self) -> None:
         async with InventoryRepository._migration_lock:
@@ -771,12 +782,16 @@ class InventoryRepository(_BatchRepositoryMixin):
         accepted, to rule out traversal); ``None`` restores the most recently taken
         snapshot (automatic or manual). Raises ``FileNotFoundError`` if nothing matches.
 
-        Reopening runs the full ``async_initialize()`` path: a snapshot older than the
-        current code's ``SCHEMA_VERSION`` is migrated forward immediately, and a newer
-        one raises ``DatabaseFromNewerVersionError`` before any schema statement runs.
-        On a failed reopen the connection is left open on the restored file without
-        being migrated or schema-checked further; callers should treat the repository
-        as unusable until a later ``async_initialize``/``async_restore`` call succeeds.
+        The reopen happens inside the same lock hold as the file swap, so ``self._conn``
+        is never ``None`` while unlocked — a coordinator write queued behind this call
+        sees either the pre-restore or the post-restore connection, never a gap. Schema
+        checking and migration still run after the lock is released (matching a normal
+        ``async_initialize()``): a snapshot older than the current code's
+        ``SCHEMA_VERSION`` is migrated forward immediately, and a newer one raises
+        ``DatabaseFromNewerVersionError`` before any schema statement runs. On a failed
+        reopen the connection is left open on the restored file without being migrated
+        or schema-checked further; callers should treat the repository as unusable until
+        a later ``async_initialize``/``async_restore`` call succeeds.
         """
         async with self._lock:
             source = await self._hass.async_add_executor_job(self._resolve_restore_source, filename)
@@ -784,6 +799,7 @@ class InventoryRepository(_BatchRepositoryMixin):
                 await self._conn.close()
                 self._conn = None
             await self._hass.async_add_executor_job(self._do_restore, source)
+            await self._open_connection_locked()
 
         await self.async_initialize()
         return source

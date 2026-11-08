@@ -1439,6 +1439,30 @@ async def test_restore_with_no_snapshots_raises_file_not_found(repo: InventoryRe
         await repo.async_restore(None)
 
 
+async def test_restore_never_leaves_a_connectionless_window_for_a_queued_write(
+    repo: InventoryRepository,
+) -> None:
+    """A write queued on the lock during a restore must see the reopened connection once
+    it gets its turn, never a ``None`` one. ``async_restore`` used to release the lock
+    after closing the old connection and before reopening the new one; a write already
+    queued on the lock would win that reacquisition race (locks are FIFO) and call
+    ``self._connection()`` while ``self._conn`` was ``None``, raising
+    ``RuntimeError: InventoryRepository not initialized`` instead of simply waiting.
+    """
+    await repo.upsert_inventory("inv1", "Kitchen", "", "", "inventory", None)
+    snapshot = await repo.async_snapshot("manual")
+
+    restore_task = asyncio.create_task(repo.async_restore(snapshot.name))
+    await asyncio.sleep(0)  # let the restore acquire the lock before the write queues on it
+    write_task = asyncio.create_task(
+        repo.upsert_inventory("inv2", "Garage", "", "", "inventory", None)
+    )
+
+    await restore_task
+    await write_task  # must not raise RuntimeError: InventoryRepository not initialized
+    assert await repo.fetch_inventory("inv2") is not None
+
+
 async def test_snapshot_retention_and_restore_order_by_time_not_filename(
     repo: InventoryRepository,
 ) -> None:
