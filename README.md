@@ -2,7 +2,9 @@
 
 # Simple Inventory
 
-A Home Assistant custom integration for managing household inventories. Track items across multiple inventories with per-batch stock (expiry, location, purchase date, price), automatic todo list integration, barcode support, item aliases, locations, categories, and change history.
+A Home Assistant custom integration for managing household inventories. Track items across multiple inventories with per-batch stock (expiry, location, purchase date, price), photos, barcode scanning, item aliases, locations and categories, automatic todo-list integration, consumption and spend analytics, voice and LLM control, and automatic backup/restore safety around every database upgrade.
+
+> 🖼️ *Screenshot: the main inventory card view, showing a few items with photos, quantities, and low-stock highlighting* — replace this line with `![Simple Inventory card](images/card-overview.png)` once you have one.
 
 ## Table of Contents
 
@@ -66,6 +68,8 @@ This integration works best with the companion Lovelace card:
 
 An optional full-page **Inventory** panel in the Home Assistant sidebar, with one tab per inventory (sorted by name). Each tab shows the same list as the Simple Inventory card.
 
+> 🖼️ *Screenshot: the sidebar panel open on one inventory tab* — replace with `![Inventory sidebar panel](images/sidebar-panel.png)`.
+
 - **Enable it:** Settings -> Devices & Services -> Simple Inventory -> the **All Items Expiring Soon** (global) entry -> **Configure** -> check **Show the Inventory panel in the sidebar**. Saving the options adds or removes the sidebar entry right away.
 - **Admins only:** in the same dialog, check **Only administrators can see the panel** to hide it from non-admin users (default: every user sees it).
 - **Requirements:** the panel's code ships with the [Simple Inventory Card](https://github.com/blaineventurine/simple-inventory-card) (`simple-inventory-panel.js`). Install the card through HACS, or copy its release files into `<config>/www/community/simple-inventory-card/` by hand. The panel loads `/api/simple_inventory/panel-loader.js` (no login needed, never cached), which imports `/local/community/simple-inventory-card/simple-inventory-panel.js` stamped with the file's modification time, so a card update reaches the browser on the next page load without restarting Home Assistant.
@@ -103,7 +107,9 @@ Each item has a **name** (required) and these optional fields:
 
 ### Item Images
 
-Each item can have one photo. Every source is copied into the integration: the photo is decoded, turned upright (EXIF orientation), stripped of metadata and stored as WebP in `<config>/simple_inventory/images/` — `<item_id>.webp` (long edge at most 1024 px), `<item_id>_tile.webp` (at most 384 px, for tile layouts) and `<item_id>_thumb.webp` (at most 128 px). JPEG, PNG, WebP and GIF (first frame) up to 10 MB are accepted; HEIC/AVIF only when the Home Assistant installation's Pillow can open them. Ways to set a photo:
+Each item can have one photo. Every source is copied into the integration: the photo is decoded, turned upright (EXIF orientation), stripped of metadata and stored as WebP in `<config>/simple_inventory/images/` — `<item_id>.webp` (long edge at most 1024 px), `<item_id>_tile.webp` (at most 384 px, for tile layouts) and `<item_id>_thumb.webp` (at most 128 px). JPEG, PNG, WebP and GIF (first frame) up to 10 MB are accepted (and rejected above 64 megapixels, to guard against decompression-bomb files); HEIC/AVIF only when the Home Assistant installation's Pillow can open them. Ways to set a photo:
+
+> 🖼️ *Screenshot: an item card/row showing a photo thumbnail* — replace with `![Item photo](images/item-photo.png)`.
 
 - **Upload** — `POST /api/simple_inventory/image/<item_id>` (below); the card uses it for "Take or choose photo".
 - **Product photo** — [`set_item_image_from_barcode`](#simple_inventoryset_item_image_from_barcode) downloads the photo the barcode lookup returns.
@@ -116,12 +122,14 @@ The item's `image` field is a version stamp, so clients can cache photos forever
 | Request | Result |
 |---|---|
 | `GET /api/simple_inventory/image/<item_id>` | The photo (`image/webp`). `?tile=1` returns the tile size (built from the full photo on first request for photos saved before tiles existed). `?thumb=1` returns the thumbnail and wins over `tile`. Any `v` parameter is ignored (use `v=<image stamp>` to bust caches). Sent with `Cache-Control: private, max-age=31536000, immutable`. `404 {"code": "image_not_found"}` when the item has no photo |
-| `POST /api/simple_inventory/image/<item_id>` | Multipart form with the file in field `file`. `200 {"image": "<stamp>"}`; `400 {"code": "image_invalid"}` (not a supported image, or no `file` field); `413 {"code": "image_too_large"}` (over 10 MB); `404 {"code": "item_not_found"}` |
+| `POST /api/simple_inventory/image/<item_id>` | Multipart form with the file in field `file`. `200 {"image": "<stamp>"}`; `400 {"code": "image_invalid"}` (not a supported image, or no `file` field); `413 {"code": "image_too_large"}` (over 10 MB, or over 64 megapixels); `404 {"code": "item_not_found"}` |
 | `DELETE /api/simple_inventory/image/<item_id>` | `200 {"image": ""}`, also when there was no photo; `404 {"code": "item_not_found"}` for an unknown item |
 
 ### Batches
 
 An item's stock is held in **batches**. A batch is one lot of the item with its own **quantity**, **expiry date**, **location**, **purchase date** (`purchased_at`), and **unit price** — e.g. two cartons of milk bought last week that expire on the 3rd sitting in the Fridge, and one bought today that expires on the 10th in the Garage fridge. The item's `quantity` is the sum of its batches and its `expiry_date` is the earliest batch expiry; both remain in the API for compatibility.
+
+> 🖼️ *Screenshot: the batch editor, showing an item with two or three batches at different expiry dates/locations* — replace with `![Batch editor](images/batch-editor.png)`.
 
 - **Restocking** (`add_item`, `increment_item`, `scan_barcode` increment, voice "add") adds stock as a batch. It **merges** into an existing batch when the expiry date, location, and unit price all match (the merged batch keeps the earliest purchase date); otherwise a new batch is created. Unspecified values default to: location = the given `location`, else the item's first usual location; expiry = none; unit price = the item's last known price (a positive `price` updates it).
 - **Consuming** (`decrement_item`, `scan_barcode` decrement, voice "remove") takes from the batch expiring **soonest first**; ties go to the oldest purchase date, and batches without an expiry date are used last. A larger amount continues into the next batch in the same order.
@@ -165,7 +173,7 @@ Automatically add items to a Home Assistant todo list when stock drops below a t
 
 **How it works:**
 
-- When `quantity` (the total across all batches) drops to or below `auto_add_to_list_quantity`, the item is added to your todo list. A threshold of `0` means "add when empty".
+- When `quantity` (the total across all batches) drops to or below `auto_add_to_list_quantity`, the item is added to your todo list. A threshold of `0` is every item's default, so it only counts as "below threshold" — here, in the inventory sensor's `below_threshold` stat, and in low-stock voice/LLM queries — when `auto_add_enabled` is also on ("add when empty"); otherwise every out-of-stock item would match everywhere.
 - When `desired_quantity > 0` (fixed mode): the todo shows the desired quantity, and the item is removed from the list when `quantity >= desired_quantity`. Changing `desired_quantity` refreshes the existing entry.
 - When `desired_quantity = 0` (threshold mode): the todo shows `threshold - quantity + 1`, updates live on each change, and the item is removed when `quantity > threshold`
 - Every change re-checks the item against its current stock, whichever way it went: an item still at or below its threshold after a restock goes back on the list if its entry was deleted, and a stocked item's leftover entry is removed on its next change
@@ -186,6 +194,8 @@ Items can have multiple barcodes associated with them (comma-separated in the AP
 
 - **`lookup_by_barcode`** — Search for an item by barcode across all inventories
 - **`scan_barcode`** — Scan a barcode and perform an action (increment, decrement, or lookup) with automatic cross-inventory resolution
+
+A third service, [`lookup_barcode_product`](#simple_inventorylookup_barcode_product), queries external product databases (Open Food Facts, Open Beauty Facts, Open Pet Food Facts, UPC Item DB) for a barcode's name/photo/category when it isn't in any inventory yet — useful for prefilling `add_item`, or for [setting an item's photo from the product lookup](#item-images).
 
 > **Important:** Barcodes with leading zeros (e.g. `0123456`) **must be quoted** in YAML automations and scripts. Unquoted values like `barcode: 0123456` are interpreted as integers by YAML, stripping the leading zero and matching the wrong item. Always use `barcode: "0123456"`. This does not affect the HA service call UI or the WebSocket API, which handle strings correctly.
 
@@ -236,7 +246,11 @@ Track how fast you consume items. The integration calculates consumption rates b
 - **Average restock interval** — How often you typically restock the item
 - **Total consumed / events tracked** — Lifetime consumption totals. Events are counted per history row, and history is recorded per batch, so one decrement that consumes from two batches counts as two events (`decrement_count: 2`)
 
+Consumption rates need at least 2 decrement events to mean anything; below that, `daily_rate`, `weekly_rate` and `days_until_depletion` come back `null` and the response's `has_sufficient_data` is `false` — check that field before trusting them. `avg_restock_days` is computed separately from restock events, so it can still be populated even when `has_sufficient_data` is `false`.
+
 Rates can be calculated over a configurable time window (e.g. last 30, 60, or 90 days) or across all history. With a window, rates are divided by the shorter of the window and the time since the first decrement inside it (minimum one day), so a short history isn't diluted by an empty window. Spend rates are measured from the first priced restock. The companion card shows this data in a "Consumption" tab in the item history modal. You can also query rates via the service call or WebSocket API for use in automations.
+
+> 🖼️ *Screenshot: the consumption tab in the item history modal* — replace with `![Consumption analytics tab](images/consumption-tab.png)`.
 
 ### Pricing
 
@@ -340,7 +354,52 @@ Each inventory creates three sensors:
 
 ## Service Calls
 
-All services are under the `simple_inventory` domain. You can find your inventory ID by going to **Developer Tools -> States** and filtering for "inventory" — the ID is shown in the sensor attributes.
+All services are under the `simple_inventory` domain. You can find your inventory ID by going to **Developer Tools -> States** and filtering for "inventory" — the ID is shown in the sensor attributes. Unless a service says otherwise, identify the inventory with either `inventory_id` or `inventory_name` (not both); errors use a stable `translation_key` — see [Error codes](#error-codes) for the full list.
+
+**Item CRUD**
+| Service | Purpose |
+|---|---|
+| [`add_item`](#simple_inventoryadd_item) | Add a new item |
+| [`remove_item`](#simple_inventoryremove_item) | Remove an item |
+| [`increment_item`](#simple_inventoryincrement_item) | Add stock (a new or merged [batch](#batches)) |
+| [`decrement_item`](#simple_inventorydecrement_item) | Consume stock, soonest-expiring batch first |
+| [`update_item`](#simple_inventoryupdate_item) | Edit any field on an existing item |
+
+**Batches & Transfers**
+| Service | Purpose |
+|---|---|
+| [`update_batch`](#simple_inventoryupdate_batch) | Edit one batch's quantity, expiry, location, price or purchase date |
+| [`remove_batch`](#simple_inventoryremove_batch) | Delete one batch |
+| [`transfer_item`](#simple_inventorytransfer_item) | Move stock between locations of the same inventory |
+
+**Photos**
+| Service | Purpose |
+|---|---|
+| [`set_item_image_from_barcode`](#simple_inventoryset_item_image_from_barcode) | Set an item's photo from its barcode's product lookup |
+| [`set_item_image_from_media`](#simple_inventoryset_item_image_from_media) | Set an item's photo from a Home Assistant media source |
+| [`clear_item_image`](#simple_inventoryclear_item_image) | Remove an item's photo |
+
+**Listing & Analytics**
+| Service | Purpose |
+|---|---|
+| [`get_items`](#simple_inventoryget_items) | List every item in one inventory |
+| [`get_items_from_all_inventories`](#simple_inventoryget_items_from_all_inventories) | List every item, grouped by inventory |
+| [`get_inventory_consumption_rates`](#simple_inventoryget_inventory_consumption_rates) | Consumption rates for every item in an inventory, plus a summary |
+| [`get_item_consumption_rates`](#simple_inventoryget_item_consumption_rates) | Consumption rates for one item |
+
+**Barcode**
+| Service | Purpose |
+|---|---|
+| [`lookup_by_barcode`](#simple_inventorylookup_by_barcode) | Find which inventory/inventories have an item with this barcode |
+| [`lookup_barcode_product`](#simple_inventorylookup_barcode_product) | Look up a barcode in external product databases |
+| [`scan_barcode`](#simple_inventoryscan_barcode) | Scan a barcode and increment/decrement/look up the matched item |
+
+**Backups & Export**
+| Service | Purpose |
+|---|---|
+| [`backup_database`](#simple_inventorybackup_database) | Take an on-demand database snapshot |
+| [`restore_database`](#simple_inventoryrestore_database) | Restore the database from a snapshot |
+| [`export`](#simple_inventoryexport) | Export one inventory as JSON or CSV |
 
 ### `simple_inventory.add_item`
 
@@ -369,7 +428,7 @@ data:
   description: "Family size pepperoni"
 ```
 
-Only `inventory_id` and `name` are required. All other fields are optional. A non-zero `quantity` becomes the item's first [batch](#batches), using `expiry_date`, the first `location`, and `price`.
+`name` is required (plus `inventory_id` or `inventory_name`, per the rule above); every other field is optional. A non-zero `quantity` becomes the item's first [batch](#batches), using `expiry_date`, the first `location`, and `price`.
 
 ### `simple_inventory.remove_item`
 
@@ -401,7 +460,7 @@ data:
 | Field | Description |
 |---|---|
 | `amount` | Amount to add (default 1) |
-| `price` | Unit price of this stock; also becomes the item's price |
+| `price` | Unit price of this stock; also becomes the item's price. `0` (the default) means "don't update the price," not "set it to zero" |
 | `expiry_date` | Expiry of the new stock (default: none) |
 | `location` | Where the new stock is stored (default: the item's first usual location) |
 | `purchased_at` | Purchase date `YYYY-MM-DD` (default: today) |
@@ -457,6 +516,8 @@ data:
 
 - `quantity` — an increase adds a batch (with the requested `expiry_date`, the item's price, and the item's first usual location); a decrease consumes batches in soonest-expiry order. Recorded as `update` events.
 - `expiry_date` / `price` — applied to the batch when the item has exactly one. A value equal to the current one is ignored, so re-saving an unchanged form is a no-op. Changing them on an item with several batches is rejected with `batch_required` — edit the batch with `update_batch` instead. Changing `expiry_date` on an item with no stock is rejected with `no_stock_for_expiry` — restock it with an expiry date instead (a `price` change there only sets the item's price).
+
+**Batches & Transfers**
 
 ### `simple_inventory.update_batch`
 
@@ -518,6 +579,8 @@ Nothing is changed when the move can't be made:
 - `same_location` — the source is already the destination
 - `batch_not_found`, `no_stock_at_location`, `item_not_found` — as for `decrement_item`
 
+**Photos**
+
 ### `simple_inventory.set_item_image_from_barcode`
 
 Use the product photo of a barcode lookup as the item's [photo](#item-images) (0.11.0+). Identify the item by `name` (or alias, exact match) or `barcode`, and the inventory by `inventory_id` or `inventory_name`. `lookup_barcode` picks the barcode to look up; it must be one of the item's barcodes and defaults to its first one (sorted). The lookup uses the [configured provider](#simple_inventoryset_barcode_provider_config) (or all of them); the first result with a photo wins. Only that photo URL is fetched (`http`/`https`, at most 10 MB within 10 seconds) — the service never takes a URL from the caller.
@@ -553,6 +616,8 @@ data:
   inventory_id: "01JYFPCDMBRBRK4MB3C26S2FKH"
   barcode: "012345678901"
 ```
+
+**Listing & Analytics**
 
 ### `simple_inventory.get_items`
 
@@ -766,6 +831,8 @@ Example response:
 | `daily_spend_rate` | Average daily purchasing cost (null if no priced restock events) |
 | `weekly_spend_rate` | Average weekly purchasing cost (null if no priced restock events) |
 
+**Barcode**
+
 ### `simple_inventory.lookup_by_barcode`
 
 Search for an item by barcode across all inventories. Useful for finding which inventory contains a scanned item. Supports `response_variable` for use in automations and scripts.
@@ -805,7 +872,7 @@ data:
 response_variable: product
 ```
 
-If an item in any inventory already has the barcode, only that item is reported (as provider `inventory`, with its `name` and, when set, `description`, `category` and `unit`) and no external database is queried. Otherwise the external providers are queried in parallel: only the one selected with [`simple_inventory/set_barcode_provider_config`](#simple_inventoryset_barcode_provider_config), or all of `openfoodfacts`, `openbeautyfacts`, `openpetfoodfacts` and `upcitemdb` when none is selected.
+If an item in any inventory already has the barcode, only that item is reported (as provider `inventory`, with its `name` and, when set, `description`, `category` and `unit`) and no external database is queried. Otherwise the external providers are queried in parallel: only the one selected with [`simple_inventory/set_barcode_provider_config`](#simple_inventoryset_barcode_provider_config), or all of `openfoodfacts`, `openbeautyfacts`, `openpetfoodfacts` and `upcitemdb` when none is selected. Each provider gets a 10-second timeout; a slow or unreachable one just reports `"found": false` rather than delaying the others.
 
 Example response:
 
@@ -849,7 +916,7 @@ response_variable: result
 | `barcode` | Yes | The barcode to scan |
 | `action` | Yes | `"increment"`, `"decrement"`, or `"lookup"` |
 | `amount` | No | Amount to increment/decrement (default: 1, ignored for lookup) |
-| `price` | No | Unit price to record for this transaction (updates the item's stored price) |
+| `price` | No | Unit price to record for this transaction (updates the item's stored price). `0` means "don't update" |
 | `inventory_id` | No | Scope the search to a specific inventory. Required if the barcode exists in multiple inventories. |
 | `expiry_date` | No | Increment only: expiry of the new stock |
 | `location` | No | Increment: where the new stock is stored. Decrement: only consume batches there |
@@ -886,8 +953,10 @@ Example response (lookup):
 ```
 
 **Error cases:**
-- Barcode not found in any inventory: raises an error
-- Barcode found in multiple inventories without `inventory_id`: raises an error listing the inventories
+- Barcode not found in any inventory: raises an error (`barcode_not_found`)
+- Barcode found in multiple inventories without `inventory_id`: raises an error listing the inventories (`ambiguous_barcode`)
+
+**Backups & Export**
 
 ### `simple_inventory.backup_database`
 
@@ -956,6 +1025,42 @@ The response shape matches the WebSocket `simple_inventory/export` command: `{"d
 
 The integration provides WebSocket commands for real-time communication. These are used by the companion card and can also be used by custom panels or scripts.
 
+**Conventions:** most errors carry a stable `translation_key` (see [Error codes](#error-codes)) the same way service errors do. A command scoped to one `inventory_id` rejects an unknown one with `inventory_not_found` before your handler-specific logic ever runs. Schema validation failures (wrong type, out-of-range value) report `code: "invalid_format"`. A handful of setup-level failures — no inventories configured at all (`no_inventories`), the shared database not open (`no_repository`) — are plain WS-only codes with a message but no `translation_key`/placeholders, since there's nothing to localize. Date fields accept `YYYY-MM-DD` or a full ISO 8601 timestamp.
+
+**Handshake & Listing**
+| Command | Purpose |
+|---|---|
+| [`get_info`](#simple_inventoryget_info) | Version handshake |
+| [`list_inventories`](#simple_inventorylist_inventories) | Every inventory, sorted by name |
+| [`list_items`](#simple_inventorylist_items) | Every item in one inventory |
+| [`get_item`](#simple_inventoryget_item) | One item by name |
+| [`search`](#simple_inventorysearch) | Full-text search across one or more inventories |
+| [`overview`](#simple_inventoryoverview) | Per-inventory summary counts |
+| [`subscribe`](#simple_inventorysubscribe) | Live updates for one or every inventory |
+
+**History & Analytics**
+| Command | Purpose |
+|---|---|
+| [`get_history`](#simple_inventoryget_history) | Change history for one item or inventory |
+| [`get_item_consumption_rates`](#simple_inventoryget_item_consumption_rates-1) | Consumption rates for one item |
+| [`get_inventory_consumption_rates`](#simple_inventoryget_inventory_consumption_rates-1) | Consumption rates for every item in an inventory |
+| [`get_inventory_statistics`](#simple_inventoryget_inventory_statistics) | The stats the inventory sensor reads |
+
+**Barcode**
+| Command | Purpose |
+|---|---|
+| [`lookup_by_barcode`](#simple_inventorylookup_by_barcode-1) | Find which inventory/inventories have an item with this barcode |
+| [`lookup_barcode_product`](#simple_inventorylookup_barcode_product-1) | Look up a barcode in external product databases |
+| [`scan_barcode`](#simple_inventoryscan_barcode-1) | Scan a barcode and increment/decrement/look up the matched item |
+| [`get_barcode_provider_config`](#simple_inventoryget_barcode_provider_config) | Read the selected product-lookup provider |
+| [`set_barcode_provider_config`](#simple_inventoryset_barcode_provider_config) | Select a product-lookup provider (admin only) |
+
+**Import & Export**
+| Command | Purpose |
+|---|---|
+| [`export`](#simple_inventoryexport-1) | Export one inventory as JSON or CSV |
+| [`import`](#simple_inventoryimport) | Import items, with a merge strategy and optional `dry_run` preview |
+
 ### `simple_inventory/get_info`
 
 Version handshake. No arguments, available to every authenticated user.
@@ -1023,6 +1128,9 @@ User-facing errors raised by services (and forwarded by `simple_inventory/scan_b
 
 Service calls report `code: "service_validation_error"`; the `scan_barcode` WebSocket command reports `code: "scan_failed"` with the same translation fields.
 
+<details>
+<summary><strong>Full error code reference</strong> (37 keys)</summary>
+
 | `translation_key` | Placeholders | Raised when |
 |---|---|---|
 | `alias_conflict` | `aliases` | An alias already belongs to another item in the inventory (case-insensitive) |
@@ -1062,6 +1170,8 @@ Service calls report `code: "service_validation_error"`; the `scan_barcode` WebS
 | `snapshot_not_found` | `snapshot` | `restore_database`'s `snapshot` does not match any snapshot file |
 | `unsupported_media_source` | `media_content_id` | `set_item_image_from_media` got an id that is not a file in a local media folder or an uploaded image |
 | `update_item_failed` | `name`, `inventory` | `update_item` could not apply the change (e.g. auto-add enabled without a todo list) |
+
+</details>
 
 ### `simple_inventory/list_items`
 
@@ -1207,6 +1317,8 @@ Omit `inventory_id` to subscribe to updates from all inventories:
 
 When subscribed to a specific inventory, each event delivers `{ "items": [...] }` with the full item list. When subscribed globally, events deliver `{ "event": "updated" }`.
 
+**History & Analytics**
+
 ### `simple_inventory/get_history`
 
 Query change history for an inventory or a specific item.
@@ -1224,7 +1336,7 @@ Query change history for an inventory or a specific item.
 }
 ```
 
-All fields except `inventory_id` are optional. Supported `event_type` values: `add`, `increment`, `decrement`, `update`, `import`. An `end_date` given as `YYYY-MM-DD` includes that whole day; a full ISO timestamp is an inclusive upper bound. `limit` and `offset` must be ≥ 0.
+All fields except `inventory_id` are optional. `event_type` values in the data: `add`, `increment`, `decrement`, `update`, `transfer`, `import` (it isn't validated against this list, so an unrecognized value just matches nothing rather than erroring). An `end_date` given as `YYYY-MM-DD` includes that whole day; a full ISO timestamp is an inclusive upper bound. `limit` (default `100`) and `offset` (default `0`) must be ≥ 0.
 
 Returns: `{ "events": [...] }` where each event has:
 - `event_type` — What happened
@@ -1327,6 +1439,8 @@ Returns:
 - `below_threshold` — Same entries as the inventory sensor's [`below_threshold`](#per-inventory-sensors) attribute
 - `expiring_items` — One entry per batch within its item's alert threshold, expired batches included, soonest first (same fields as the [expiry sensors'](#per-inventory-sensors) entries)
 
+**Barcode**
+
 ### `simple_inventory/lookup_by_barcode`
 
 Search for an item by barcode across all inventories.
@@ -1370,6 +1484,8 @@ Scan a barcode and perform an action on the matched item.
 Only `barcode` and `action` are required. `amount` defaults to 1 and must be greater than 0 (whole numbers are accepted); `price` must be ≥ 0. `inventory_id` is optional unless the barcode exists in multiple inventories. The batch fields `expiry_date`, `location`, `purchased_at` (increment) and `location`, `batch_id` (decrement) behave as in the [`scan_barcode` service](#simple_inventoryscan_barcode).
 
 Returns: `{ "action": "increment", "success": true, "item_name": "...", "inventory_id": "...", "amount": 1.0 }`
+
+**Import & Export**
 
 ### `simple_inventory/export`
 
@@ -1420,6 +1536,8 @@ Returns: `{ "added": 1, "updated": 0, "skipped": 0, "errors": [] }`
 
 Pass `"dry_run": true` to run the identical validation and merge-strategy decisions and get the same summary shape back, without writing anything or syncing the todo list — use it to preview a file's effect first.
 
+**Barcode** (continued — these two live last since they configure the lookup providers used by the commands above, not scanning itself)
+
 ### `simple_inventory/get_barcode_provider_config`
 
 Read the barcode provider selection.
@@ -1456,6 +1574,7 @@ Download diagnostics from **Settings -> Devices & Services -> Simple Inventory -
 - counts: items, items out of stock, locations, categories, barcodes, aliases, history events
 - auto-add: number of items with auto-add enabled, and each referenced todo list with its item count, whether it currently exists, and whether it supports item descriptions
 - the selected barcode lookup provider (or `null`)
+- `backups_count` and `newest_backup_age_seconds` (the newest [snapshot's](#backups--restore) age; `null` if none exist) — never the snapshots' filenames
 - on the global entry: every inventory entry and its load state
 
 Item names, descriptions, barcodes, aliases, and prices are **never** included.
@@ -1471,6 +1590,7 @@ Problems the integration detects show up under **Settings -> System -> Repairs**
 | **Database upgrade failed** (error) | A schema migration to the current release failed partway through. Setup fails instead of retrying; a snapshot of the database was taken automatically right before the upgrade started. | Confirm to restore that snapshot (your data returns to its state just before the upgrade attempt) and reload every entry. |
 | **Data for removed inventories** (warning) | The database still holds inventories whose config entry no longer exists. Lists each one with its item count. | Confirm to permanently delete that data. |
 | **Inventory panel needs the Simple Inventory card** (warning) | The [sidebar panel](#sidebar-panel) is enabled but `<config>/www/community/simple-inventory-card/simple-inventory-panel.js` is missing. The panel is still registered, but cannot load. | Install or update the Simple Inventory card through HACS (or copy its files into that folder), then restart or save the global entry's options again. |
+| **Voice sentences need updating** (warning) | An installed [custom-sentences](#voice--ai-assistants) file is in an older format (any word could name an inventory in it) *and* has been edited, so it wasn't replaced automatically like an unedited one is. | Not auto-fixable: delete the file and reinstall the example voice commands from the integration's options, or bring your edits over to the current example file, then reload the entry. |
 
 Issues are re-checked every time an inventory is set up; an issue whose condition no longer applies is removed automatically.
 
@@ -1478,7 +1598,7 @@ Issues are re-checked every time an inventory is set up; an issue whose conditio
 
 The database (`<config>/simple_inventory.db`) and item photos (`<config>/simple_inventory/images/`) already live under Home Assistant's config directory, so a full HA backup (Settings -> System -> Backups) captures and restores them automatically. Simple Inventory checkpoints its write-ahead log before every HA backup runs, so that capture is always consistent.
 
-On top of that, Simple Inventory keeps its own lightweight snapshots in `<config>/simple_inventory/backups/` (the 3 most recent are kept):
+On top of that, Simple Inventory keeps its own lightweight snapshots in `<config>/simple_inventory/backups/`. Automatic and manual snapshots share one pool of **3**: taking a new one (of either kind) prunes the oldest until 3 remain, so a manual snapshot you're relying on can be pruned by a later automatic one (or vice versa) — call `backup_database` again right before you need it, rather than relying on one taken earlier.
 
 - **Automatic**: right before a database schema upgrade runs (on update to a release with a newer schema), a snapshot of the pre-upgrade database is taken. If the upgrade fails partway through, a **Database upgrade failed** repair issue appears in Settings -> Repairs (see [Repairs](#repairs) above); confirming it restores that snapshot and reloads every Simple Inventory entry.
 - **On demand**: call [`backup_database`](#simple_inventorybackup_database) before a risky change (e.g. a large import), and [`restore_database`](#simple_inventoryrestore_database) to roll back to it or any other recent snapshot.
@@ -1595,8 +1715,10 @@ file whenever an inventory is added, renamed, enabled, disabled or removed; don'
 it. Home Assistant prefers custom sentences over its own, so a slot that matched any
 words would take over commands such as "add milk to my shopping list" or "add 5
 minutes to my timer". For Slovenian the file also lists common case forms of each
-name's last word ("v kuhinji", "v shrambo"); a name whose forms don't follow those
-endings works in the form it is stored in.
+name's last word ("v kuhinji", "v shrambo") — Slovenian inflects a noun's ending by
+grammatical case, so a spoken "in the kitchen" uses a different word-ending than the
+stored name "Kitchen" does; a name whose forms don't follow those endings works in
+the form it is stored in.
 
 Answers are spoken in the conversation's language (the Assist pipeline's
 language) when it is English, Spanish, French or Slovenian, regional variants

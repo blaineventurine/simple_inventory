@@ -7,6 +7,9 @@ Issues:
   Not fixable from here; setup fails with ``ConfigEntryError``.
 - ``orphaned_inventory_data``: inventories whose config entry no longer exists.
   Fixable: delete their data.
+- ``migration_failed``: a schema migration to the current release failed partway
+  through. Fixable: restore the pre-migration snapshot taken automatically right
+  before the migration started, then reload every entry.
 - ``voice_sentences_outdated``: an edited custom_sentences file still lets any words name
   an inventory (raised by voice_sentences.py). Not fixable from here.
 
@@ -421,7 +424,13 @@ class MigrationFailedRepairFlow(ConfirmRepairFlow):
         self, user_input: dict[str, str] | None = None
     ) -> RepairsFlowResult:
         repository = InventoryRepository(self.hass)
-        snapshots = await self.hass.async_add_executor_job(repository.pre_migration_snapshots)
+        try:
+            snapshots = await self.hass.async_add_executor_job(repository.pre_migration_snapshots)
+        except OSError as err:
+            _LOGGER.exception("Listing pre-migration snapshots failed")
+            return self.async_abort(
+                reason="restore_failed", description_placeholders={"error": str(err)}
+            )
         if not snapshots:
             return self.async_abort(reason="no_snapshot_available")
         if user_input is None:

@@ -508,6 +508,35 @@ async def test_migration_failed_repair_flow_aborts_with_no_snapshot(env: HomeAss
     assert flow["reason"] == "no_snapshot_available"
 
 
+async def test_migration_failed_repair_flow_aborts_cleanly_when_listing_snapshots_fails(
+    env: HomeAssistant,
+) -> None:
+    """Listing pre-migration snapshots is pure filesystem access (mkdir + glob) and can
+    raise ``OSError`` on a corrupted/unwritable backups directory. That must abort the
+    flow with the same translated ``restore_failed`` reason as a failed restore, not
+    crash with an unhandled exception before the confirm form (or on confirm) is shown.
+    """
+    await seed_items(env, KITCHEN, "Kitchen", [_item("Milk", todo_list="")])
+    entry = add_entry(env, KITCHEN, "Kitchen")
+    await setup_entry(env, entry)
+
+    from custom_components.simple_inventory.repairs import async_create_migration_failed_issue
+    from custom_components.simple_inventory.storage.repository import SchemaMigrationError
+
+    async_create_migration_failed_issue(env, SchemaMigrationError(2, 6, RuntimeError("boom")))
+
+    with patch(
+        "custom_components.simple_inventory.storage.repository."
+        "InventoryRepository.pre_migration_snapshots",
+        side_effect=OSError("backups/ is not writable"),
+    ):
+        flow = await _start_fix(env, "migration_failed")
+
+    assert flow["type"] is FlowResultType.ABORT
+    assert flow["reason"] == "restore_failed"
+    assert "backups/ is not writable" in flow["description_placeholders"]["error"]
+
+
 # --- orphaned inventory data ---------------------------------------------------------
 
 

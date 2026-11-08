@@ -699,7 +699,7 @@ backup_database:
 restore_database:
   fields:
     snapshot:
-      example: "manual_1731000000.db"
+      example: "manual_1731082013456789012.db"
       required: false
       selector:
         text:
