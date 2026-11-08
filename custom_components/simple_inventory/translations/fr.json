@@ -571,6 +571,20 @@
       },
       "name": "Décrémenter un article"
     },
+    "export": {
+      "description": "Exporte les données d'un inventaire au format JSON ou CSV.",
+      "fields": {
+        "inventory_id": {
+          "description": "L'inventaire à exporter.",
+          "name": "Inventaire"
+        },
+        "format": {
+          "description": "json ou csv.",
+          "name": "Format"
+        }
+      },
+      "name": "Exporter"
+    },
     "get_inventory_consumption_rates": {
       "description": "Obtenir les analyses de consommation pour tous les articles d'un inventaire basées sur leur historique de décréments. Retourne les taux journaliers/hebdomadaires, les jours avant épuisement et l'intervalle moyen de réapprovisionnement par article.",
       "fields": {

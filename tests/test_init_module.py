@@ -22,6 +22,7 @@ from custom_components.simple_inventory.const import (
     SERVICE_BACKUP_DATABASE,
     SERVICE_CLEAR_ITEM_IMAGE,
     SERVICE_DECREMENT_ITEM,
+    SERVICE_EXPORT,
     SERVICE_GET_ALL_ITEMS,
     SERVICE_GET_INVENTORY_CONSUMPTION_RATES,
     SERVICE_GET_ITEM_CONSUMPTION_RATES,
@@ -192,6 +193,7 @@ async def test_async_setup_entry_first_creates_repo_and_registers_services(
             SERVICE_CLEAR_ITEM_IMAGE,
             SERVICE_BACKUP_DATABASE,
             SERVICE_RESTORE_DATABASE,
+            SERVICE_EXPORT,
         }
 
         # Intents registered
@@ -337,6 +339,7 @@ async def test_async_unload_entry_last_removes_services_and_closes_repo(
             SERVICE_CLEAR_ITEM_IMAGE,
             SERVICE_BACKUP_DATABASE,
             SERVICE_RESTORE_DATABASE,
+            SERVICE_EXPORT,
         }
 
         repo.async_close.assert_awaited_once()

@@ -571,6 +571,20 @@
       },
       "name": "Decrement Item"
     },
+    "export": {
+      "description": "Export one inventory's data as JSON or CSV.",
+      "fields": {
+        "inventory_id": {
+          "description": "The inventory to export.",
+          "name": "Inventory"
+        },
+        "format": {
+          "description": "json or csv.",
+          "name": "Format"
+        }
+      },
+      "name": "Export"
+    },
     "get_inventory_consumption_rates": {
       "description": "Get consumption analytics for all items in an inventory based on their decrement history. Returns daily/weekly rates, days until depletion, and average restock interval per item.",
       "fields": {

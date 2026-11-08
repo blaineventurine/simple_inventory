@@ -703,3 +703,20 @@ restore_database:
       required: false
       selector:
         text:
+
+export:
+  fields:
+    inventory_id:
+      example: "01JYFPCDMBRBRK4MB3C26S2FKH"
+      required: true
+      selector:
+        text:
+    format:
+      example: "csv"
+      required: false
+      default: "json"
+      selector:
+        select:
+          options:
+            - "json"
+            - "csv"

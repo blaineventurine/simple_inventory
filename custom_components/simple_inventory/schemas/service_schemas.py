@@ -16,6 +16,7 @@ from ..const import (
     SERVICE_BACKUP_DATABASE,
     SERVICE_CLEAR_ITEM_IMAGE,
     SERVICE_DECREMENT_ITEM,
+    SERVICE_EXPORT,
     SERVICE_GET_ALL_ITEMS,
     SERVICE_GET_INVENTORY_CONSUMPTION_RATES,
     SERVICE_GET_ITEM_CONSUMPTION_RATES,
@@ -318,6 +319,13 @@ RESTORE_DATABASE_SCHEMA = vol.Schema(
     }
 )
 
+EXPORT_SCHEMA = vol.Schema(
+    {
+        INVENTORY_ID: cv.string,
+        vol.Optional("format", default="json"): vol.In(["json", "csv"]),
+    }
+)
+
 
 @dataclass(frozen=True)
 class ServiceSpec:
@@ -361,6 +369,7 @@ SERVICES: tuple[ServiceSpec, ...] = (
     ServiceSpec(SERVICE_CLEAR_ITEM_IMAGE, CLEAR_ITEM_IMAGE_SCHEMA),
     ServiceSpec(SERVICE_BACKUP_DATABASE, BACKUP_DATABASE_SCHEMA, _OPTIONAL),
     ServiceSpec(SERVICE_RESTORE_DATABASE, RESTORE_DATABASE_SCHEMA, _OPTIONAL),
+    ServiceSpec(SERVICE_EXPORT, EXPORT_SCHEMA, _OPTIONAL),
 )
 
 ALL_SCHEMAS = {spec.name: spec.schema for spec in SERVICES}

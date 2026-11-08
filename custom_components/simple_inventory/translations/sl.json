@@ -571,6 +571,20 @@
       },
       "name": "Zmanjšaj količino"
     },
+    "export": {
+      "description": "Izvozi podatke ene zaloge kot JSON ali CSV.",
+      "fields": {
+        "inventory_id": {
+          "description": "Zaloga za izvoz.",
+          "name": "Zaloga"
+        },
+        "format": {
+          "description": "json ali csv.",
+          "name": "Oblika"
+        }
+      },
+      "name": "Izvozi"
+    },
     "get_inventory_consumption_rates": {
       "description": "Pridobi analitiko porabe za vse predmete v zalogi na podlagi zgodovine zmanjševanja količine. Vrne dnevno/tedensko porabo, število dni do porabe in povprečni interval ponovnega polnjenja za vsak predmet.",
       "fields": {

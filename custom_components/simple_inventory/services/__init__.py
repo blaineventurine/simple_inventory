@@ -100,6 +100,22 @@ class ServiceHandler:
         """Restore a database snapshot on demand."""
         return await self.backup_service.async_restore_database(call)
 
+    async def async_export(self, call: ServiceCall) -> JsonObjectType:
+        """Export one inventory's data, mirroring the ws_export WebSocket command."""
+        data = call.data
+        inventory_id: str = data["inventory_id"]
+        fmt: str = data.get("format", "json")
+
+        coordinators = get_coordinators(self.hass)
+        coordinator = coordinators.get(inventory_id)
+        if coordinator is None:
+            raise inventory_not_loaded_error(self.hass, inventory_id)
+
+        return cast(
+            JsonObjectType,
+            {"data": await coordinator.async_export_inventory(inventory_id, fmt), "format": fmt},
+        )
+
     async def async_get_items(self, call: ServiceCall) -> JsonObjectType:
         """Fetch items, fire an event, and return the result."""
         result = await self.inventory_service.async_get_items(call)
