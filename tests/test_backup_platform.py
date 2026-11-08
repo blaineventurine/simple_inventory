@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 from collections.abc import AsyncGenerator
+from pathlib import Path
+from unittest.mock import patch
 
-import aiosqlite
 import pytest
 from homeassistant.core import HomeAssistant
 
@@ -27,22 +28,30 @@ async def repo(hass_with_tmp_config: HomeAssistant) -> AsyncGenerator[InventoryR
 async def test_pre_backup_checkpoints_the_wal(
     hass_with_tmp_config: HomeAssistant, repo: InventoryRepository
 ) -> None:
+    wal = Path(f"{repo._db_path}-wal")
     await repo.upsert_inventory("inv1", "Kitchen", "", "", "inventory", None)
+    assert wal.stat().st_size > 0  # the write landed in the WAL, not the main file
 
     await async_pre_backup(hass_with_tmp_config)
 
-    # A second, independent connection sees the write even if it only reads the main
-    # file (as a tar-based backup would), proving the WAL was folded in.
-    async with aiosqlite.connect(repo._db_path) as conn:
-        conn.row_factory = aiosqlite.Row
-        cursor = await conn.execute(
-            "PRAGMA journal_mode", []
-        )  # sanity: still WAL, not switched off
-        row = await cursor.fetchone()
-        assert row is not None
-        mode = row[0]
-        await cursor.close()
-    assert mode.lower() == "wal"
+    # TRUNCATE folds the WAL into the main file and empties it, so a file-level copy
+    # of simple_inventory.db alone (what a tar-based backup captures) is complete.
+    assert wal.stat().st_size == 0
+
+
+async def test_pre_backup_does_not_raise_when_the_checkpoint_fails(
+    hass_with_tmp_config: HomeAssistant,
+    repo: InventoryRepository,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    with patch.object(
+        InventoryRepository,
+        "async_checkpoint",
+        side_effect=OSError("database table is locked"),
+    ):
+        await async_pre_backup(hass_with_tmp_config)
+
+    assert "Could not checkpoint" in caplog.text
 
 
 async def test_pre_backup_is_a_no_op_when_nothing_is_loaded(
