@@ -129,6 +129,8 @@ async def test_inventory_diagnostics(env: HomeAssistant) -> None:
             ],
         },
         "barcode_provider": "openfoodfacts",
+        "backups_count": 0,
+        "newest_backup_age_seconds": None,
     }
 
 
@@ -170,3 +172,23 @@ async def test_diagnostics_without_open_database(env: HomeAssistant) -> None:
     assert diagnostics["counts"] is None
     assert diagnostics["auto_add"] is None
     assert diagnostics["barcode_provider"] is None
+    assert diagnostics["backups_count"] is None
+    assert diagnostics["newest_backup_age_seconds"] is None
+
+
+async def test_diagnostics_report_backup_counts_without_filenames(env: HomeAssistant) -> None:
+    entry = add_entry(env, KITCHEN, "Kitchen")
+    await setup_entry(env, entry)
+    from custom_components.simple_inventory.data import get_repository
+
+    repository = get_repository(env)
+    assert repository is not None
+    await repository.async_snapshot("manual")
+    await repository.async_snapshot("manual")
+
+    result = await async_get_config_entry_diagnostics(env, entry)
+
+    assert result["backups_count"] == 2
+    assert result["newest_backup_age_seconds"] >= 0
+    dumped = json.dumps(result)
+    assert "manual_" not in dumped

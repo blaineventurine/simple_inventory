@@ -6,6 +6,7 @@ barcodes, aliases and prices are household data and never appear here.
 
 from __future__ import annotations
 
+import time
 from typing import Any
 
 from homeassistant.config_entries import ConfigEntry
@@ -15,7 +16,7 @@ from homeassistant.loader import async_get_integration
 from .const import API_VERSION, CONF_DESCRIPTION, CONF_ICON, CONF_NAME, DOMAIN
 from .data import get_repository
 from .entries import entry_type, is_global_entry
-from .storage.repository import LEGACY_MIGRATION_FLAG, InventoryRepository
+from .storage.repository import LEGACY_MIGRATION_FLAG, InventoryRepository, _snapshots
 from .todo_manager import supports_description
 
 
@@ -42,6 +43,8 @@ async def async_get_config_entry_diagnostics(
         "counts": None,
         "auto_add": None,
         "barcode_provider": None,
+        "backups_count": None,
+        "newest_backup_age_seconds": None,
     }
 
     if repository is not None:
@@ -70,6 +73,13 @@ async def _async_database_diagnostics(
     references = await repository.get_todo_list_references(entry.entry_id)
     provider = (await repository.get_barcode_provider_config()).get("provider")
 
+    backups_dir = await hass.async_add_executor_job(repository._backups_dir)
+    snapshots = await hass.async_add_executor_job(_snapshots, backups_dir)
+    newest_backup_age_seconds: float | None = None
+    if snapshots:
+        newest_ns = int(snapshots[-1].stem.rpartition("_")[2])
+        newest_backup_age_seconds = (time.time_ns() - newest_ns) / 1e9
+
     return {
         "schema_version": int(schema_version) if schema_version is not None else None,
         "legacy_migrated": await repository.get_metadata_value(LEGACY_MIGRATION_FLAG) == "1",
@@ -87,4 +97,6 @@ async def _async_database_diagnostics(
             ],
         },
         "barcode_provider": provider or None,
+        "backups_count": len(snapshots),
+        "newest_backup_age_seconds": newest_backup_age_seconds,
     }
