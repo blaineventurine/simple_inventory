@@ -574,13 +574,13 @@
     "export": {
       "description": "Export one inventory's data as JSON or CSV.",
       "fields": {
-        "inventory_id": {
-          "description": "ID of the inventory to export.",
-          "name": "Inventory ID"
-        },
         "format": {
           "description": "Export format. \"json\" returns the inventory as a structured object; \"csv\" returns the items as CSV text. Defaults to json.",
           "name": "Format"
+        },
+        "inventory_id": {
+          "description": "ID of the inventory to export.",
+          "name": "Inventory ID"
         }
       },
       "name": "Export"
