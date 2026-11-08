@@ -1418,6 +1418,8 @@ CSV cells beginning with `=`, `+`, `-`, `@`, tab, or carriage return are prefixe
 
 Returns: `{ "added": 1, "updated": 0, "skipped": 0, "errors": [] }`
 
+Pass `"dry_run": true` to run the identical validation and merge-strategy decisions and get the same summary shape back, without writing anything or syncing the todo list — use it to preview a file's effect first.
+
 ### `simple_inventory/get_barcode_provider_config`
 
 Read the barcode provider selection.
