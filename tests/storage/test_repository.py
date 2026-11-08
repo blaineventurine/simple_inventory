@@ -1617,7 +1617,9 @@ async def test_snapshot_locked_without_connection_raises_runtime_error_not_asser
     sets ``self._conn = None`` must raise a catchable ``RuntimeError``, not crash with a
     raw ``AssertionError``.
     """
-    repo._conn = None
+    # async_close() properly closes the real connection (and its worker thread) before
+    # nulling self._conn - setting repo._conn = None directly would leak the thread.
+    await repo.async_close()
 
     async with repo._lock:
         with pytest.raises(RuntimeError, match="InventoryRepository not initialized"):
