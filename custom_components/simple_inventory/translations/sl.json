@@ -308,6 +308,20 @@
       "description": "Podatkovna baza Simple Inventory uporablja različico sheme {found_version}, ta različica integracije pa podpira največ različico sheme {supported_version}. To se zgodi po vrnitvi na starejšo različico Simple Inventory. Vaši podatki niso bili spremenjeni.\n\nNamestite različico Simple Inventory, ki je ustvarila podatkovno bazo (ali novejšo), in znova zaženite Home Assistant.",
       "title": "Podatkovna baza Simple Inventory je iz novejše različice"
     },
+    "migration_failed": {
+      "fix_flow": {
+        "abort": {
+          "no_snapshot_available": "Posnetek pred migracijo ni na voljo za obnovitev. Namesto tega obnovite varnostno kopijo Home Assistant, narejeno pred to posodobitvijo."
+        },
+        "step": {
+          "confirm": {
+            "description": "Nadgradnja baze podatkov iz različice sheme {found_version} na {supported_version} je spodletela na pol poti. Tik pred začetkom nadgradnje je bil samodejno narejen posnetek baze podatkov.\n\nPošljite za obnovitev tega posnetka in ponovni nalaganje vseh vnosov Simple Inventory. Vaši podatki se vrnejo v stanje tik pred tem poskusom nadgradnje; nič po tej točki se ne ohrani.",
+            "title": "Obnovi posnetek baze podatkov pred nadgradnjo"
+          }
+        }
+      },
+      "title": "Nadgradnja baze podatkov Simple Inventory ni uspela"
+    },
     "missing_todo_list": {
       "fix_flow": {
         "abort": {

@@ -37,13 +37,18 @@ from .const import (
 )
 from .data import get_coordinators, get_hub, get_repository
 from .storage.images import async_delete_inventory_with_images
-from .storage.repository import DatabaseFromNewerVersionError, InventoryRepository
+from .storage.repository import (
+    DatabaseFromNewerVersionError,
+    InventoryRepository,
+    SchemaMigrationError,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
 ISSUE_DATABASE_FROM_NEWER_VERSION = "database_from_newer_version"
 ISSUE_ORPHANED_INVENTORY_DATA = "orphaned_inventory_data"
 ISSUE_MISSING_TODO_LIST = "missing_todo_list"
+ISSUE_MIGRATION_FAILED = "migration_failed"
 ISSUE_PANEL_BUNDLE_MISSING = "panel_bundle_missing"
 ISSUE_VOICE_SENTENCES_OUTDATED = "voice_sentences_outdated"
 
@@ -90,6 +95,30 @@ def async_create_newer_database_issue(
 @callback
 def async_delete_newer_database_issue(hass: HomeAssistant) -> None:
     ir.async_delete_issue(hass, DOMAIN, ISSUE_DATABASE_FROM_NEWER_VERSION)
+
+
+# --- schema migration failed ----------------------------------------------------------
+
+
+@callback
+def async_create_migration_failed_issue(hass: HomeAssistant, error: SchemaMigrationError) -> None:
+    ir.async_create_issue(
+        hass,
+        DOMAIN,
+        ISSUE_MIGRATION_FAILED,
+        is_fixable=True,
+        severity=ir.IssueSeverity.ERROR,
+        translation_key=ISSUE_MIGRATION_FAILED,
+        translation_placeholders={
+            "found_version": str(error.found),
+            "supported_version": str(error.expected),
+        },
+    )
+
+
+@callback
+def async_delete_migration_failed_issue(hass: HomeAssistant) -> None:
+    ir.async_delete_issue(hass, DOMAIN, ISSUE_MIGRATION_FAILED)
 
 
 # --- sidebar panel bundle missing --------------------------------------------------
@@ -385,12 +414,42 @@ class OrphanedInventoryRepairFlow(ConfirmRepairFlow):
         return self.async_create_entry(data={})
 
 
+class MigrationFailedRepairFlow(ConfirmRepairFlow):
+    """Confirm, then restore the newest pre-migration snapshot and reload every entry."""
+
+    async def async_step_confirm(
+        self, user_input: dict[str, str] | None = None
+    ) -> RepairsFlowResult:
+        repository = InventoryRepository(self.hass)
+        await repository.async_initialize()
+        try:
+            snapshots = sorted(
+                repository._backups_dir().glob("pre_migration_v*.db"),
+                key=lambda p: int(p.stem.rpartition("_")[2]),
+            )
+            if not snapshots:
+                return self.async_abort(reason="no_snapshot_available")
+            if user_input is None:
+                return await super().async_step_confirm()
+
+            await repository.async_restore(snapshots[-1].name)
+        finally:
+            await repository.async_close()
+
+        async_delete_migration_failed_issue(self.hass)
+        for entry in self.hass.config_entries.async_entries(DOMAIN):
+            self.hass.config_entries.async_schedule_reload(entry.entry_id)
+        return self.async_create_entry(data={})
+
+
 async def async_create_fix_flow(
     hass: HomeAssistant,
     issue_id: str,
     data: dict[str, str | int | float | None] | None,
 ) -> RepairsFlow:
     """Create the fix flow for a fixable Simple Inventory issue."""
+    if issue_id == ISSUE_MIGRATION_FAILED:
+        return MigrationFailedRepairFlow()
     if issue_id == ISSUE_ORPHANED_INVENTORY_DATA:
         return OrphanedInventoryRepairFlow()
     if issue_id.startswith(f"{ISSUE_MISSING_TODO_LIST}_") and data:

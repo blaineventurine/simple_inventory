@@ -308,6 +308,20 @@
       "description": "La base de données de Simple Inventory utilise la version de schéma {found_version}, mais cette version de l'intégration prend en charge au plus la version de schéma {supported_version}. Cela se produit après un retour à une version antérieure de Simple Inventory. Vos données n'ont pas été modifiées.\n\nInstallez la version de Simple Inventory qui a créé la base de données (ou une version plus récente), puis redémarrez Home Assistant.",
       "title": "La base de données de Simple Inventory provient d'une version plus récente"
     },
+    "migration_failed": {
+      "fix_flow": {
+        "abort": {
+          "no_snapshot_available": "Aucun instantané antérieur à la migration n'est disponible pour la restauration. Restaurez plutôt une sauvegarde Home Assistant antérieure à cette mise à jour."
+        },
+        "step": {
+          "confirm": {
+            "description": "La mise à niveau de la base de données de la version de schéma {found_version} vers {supported_version} a échoué en cours de route. Un instantané de la base de données a été pris automatiquement juste avant le début de la mise à niveau.\n\nValidez pour restaurer cet instantané et recharger toutes les entrées Simple Inventory. Vos données reviennent à leur état juste avant cette tentative de mise à niveau ; rien d'après ce point n'est conservé.",
+            "title": "Restaurer l'instantané de la base de données antérieur à la mise à niveau"
+          }
+        }
+      },
+      "title": "La mise à niveau de la base de données Simple Inventory a échoué"
+    },
     "missing_todo_list": {
       "fix_flow": {
         "abort": {

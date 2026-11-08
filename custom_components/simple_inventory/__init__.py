@@ -31,6 +31,7 @@ from .hub import InventoryHub
 from .intents import async_register_intents, async_unregister_intents
 from .panel import async_register_panel_loader_view, async_sync_panel, async_unload_panel
 from .repairs import (
+    async_create_migration_failed_issue,
     async_create_newer_database_issue,
     async_delete_entry_issues,
     async_delete_newer_database_issue,
@@ -39,7 +40,11 @@ from .repairs import (
 from .schemas.service_schemas import SERVICES
 from .services import ServiceHandler
 from .storage.images import async_delete_inventory_with_images, async_sweep_orphan_images
-from .storage.repository import DatabaseFromNewerVersionError, InventoryRepository
+from .storage.repository import (
+    DatabaseFromNewerVersionError,
+    InventoryRepository,
+    SchemaMigrationError,
+)
 from .todo_manager import TodoManager
 from .voice_sentences import async_sync_voice_sentences
 from .websocket_api import async_register_websocket_commands
@@ -138,6 +143,9 @@ async def _async_get_hub(hass: HomeAssistant, domain_data: SimpleInventoryData) 
             domain_data.repository = None
             domain_data.hub = None
             await opened.repository.async_close()
+        if isinstance(err, SchemaMigrationError):
+            async_create_migration_failed_issue(hass, err)
+            raise ConfigEntryError(str(err)) from err
         if isinstance(err, DatabaseFromNewerVersionError):
             async_create_newer_database_issue(hass, err)
             raise ConfigEntryError(str(err)) from err

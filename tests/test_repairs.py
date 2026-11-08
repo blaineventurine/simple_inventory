@@ -7,6 +7,7 @@ import re
 from collections.abc import AsyncGenerator
 from pathlib import Path
 from typing import Any
+from unittest.mock import patch
 
 import aiosqlite
 import pytest
@@ -404,6 +405,66 @@ async def test_newer_database_fails_setup_with_issue_then_clears(env: HomeAssist
     assert _state(entry) is ConfigEntryState.LOADED
     assert _issue(env, "database_from_newer_version") is None
     assert "Milk" in await _items(env)
+
+
+async def test_migration_failure_fails_setup_with_issue(env: HomeAssistant) -> None:
+    await seed_items(env, KITCHEN, "Kitchen", [_item("Milk", todo_list="")])
+    async with aiosqlite.connect(env.config.path("simple_inventory.db")) as conn:
+        await conn.execute("UPDATE metadata SET value = '2' WHERE key = 'schema_version'")
+        await conn.commit()
+    entry = add_entry(env, KITCHEN, "Kitchen")
+
+    with patch(
+        "custom_components.simple_inventory.storage.repository."
+        "InventoryRepository._migrate_to_v3",
+        side_effect=RuntimeError("boom"),
+    ):
+        await setup_entry(env, entry)
+
+    assert _state(entry) is ConfigEntryState.SETUP_ERROR
+    issue = _issue(env, "migration_failed")
+    assert issue is not None
+
+
+async def test_migration_failed_repair_flow_restores_and_reloads(env: HomeAssistant) -> None:
+    await seed_items(env, KITCHEN, "Kitchen", [_item("Milk", todo_list="")])
+    async with aiosqlite.connect(env.config.path("simple_inventory.db")) as conn:
+        await conn.execute("UPDATE metadata SET value = '2' WHERE key = 'schema_version'")
+        await conn.commit()
+    entry = add_entry(env, KITCHEN, "Kitchen")
+
+    with patch(
+        "custom_components.simple_inventory.storage.repository."
+        "InventoryRepository._migrate_to_v3",
+        side_effect=RuntimeError("boom"),
+    ):
+        await setup_entry(env, entry)
+    assert _state(entry) is ConfigEntryState.SETUP_ERROR
+
+    flow = await _start_fix(env, "migration_failed")
+    result = await _configure(env, flow["flow_id"], {})
+
+    assert result["type"] is FlowResultType.CREATE_ENTRY
+    assert _issue(env, "migration_failed") is None
+
+
+async def test_migration_failed_repair_flow_aborts_with_no_snapshot(env: HomeAssistant) -> None:
+    # Directly create the issue without a real failed migration, so backups/ is empty. A
+    # normal, successful setup first loads the integration so its repairs platform (and
+    # thus this fix flow) is registered.
+    await seed_items(env, KITCHEN, "Kitchen", [_item("Milk", todo_list="")])
+    entry = add_entry(env, KITCHEN, "Kitchen")
+    await setup_entry(env, entry)
+
+    from custom_components.simple_inventory.repairs import async_create_migration_failed_issue
+    from custom_components.simple_inventory.storage.repository import SchemaMigrationError
+
+    async_create_migration_failed_issue(env, SchemaMigrationError(2, 6, RuntimeError("boom")))
+
+    flow = await _start_fix(env, "migration_failed")
+
+    assert flow["type"] is FlowResultType.ABORT
+    assert flow["reason"] == "no_snapshot_available"
 
 
 # --- orphaned inventory data ---------------------------------------------------------

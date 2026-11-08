@@ -308,6 +308,20 @@
       "description": "The Simple Inventory database uses schema version {found_version}, but this version of the integration supports schema version {supported_version} at most. This happens after downgrading Simple Inventory. Your data has not been changed.\n\nInstall the Simple Inventory version that created the database (or a newer one) and restart Home Assistant.",
       "title": "Simple Inventory database is from a newer version"
     },
+    "migration_failed": {
+      "fix_flow": {
+        "abort": {
+          "no_snapshot_available": "No pre-migration snapshot is available to restore. Restore a Home Assistant backup taken before this update instead."
+        },
+        "step": {
+          "confirm": {
+            "description": "The database upgrade from schema version {found_version} to {supported_version} failed partway through. A snapshot of the database was taken automatically right before the upgrade started.\n\nSubmit to restore that snapshot and reload every Simple Inventory entry. Your data returns to its state just before this upgrade attempt; nothing from after that point is kept.",
+            "title": "Restore the pre-upgrade database snapshot"
+          }
+        }
+      },
+      "title": "Simple Inventory database upgrade failed"
+    },
     "missing_todo_list": {
       "fix_flow": {
         "abort": {

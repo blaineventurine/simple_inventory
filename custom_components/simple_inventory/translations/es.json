@@ -308,6 +308,20 @@
       "description": "La base de datos de Simple Inventory usa la versión de esquema {found_version}, pero esta versión de la integración admite como máximo la versión de esquema {supported_version}. Esto ocurre al volver a una versión anterior de Simple Inventory. Tus datos no se han modificado.\n\nInstala la versión de Simple Inventory que creó la base de datos (o una más reciente) y reinicia Home Assistant.",
       "title": "La base de datos de Simple Inventory es de una versión más reciente"
     },
+    "migration_failed": {
+      "fix_flow": {
+        "abort": {
+          "no_snapshot_available": "No hay ninguna instantánea previa a la migración disponible para restaurar. En su lugar, restaura una copia de seguridad de Home Assistant anterior a esta actualización."
+        },
+        "step": {
+          "confirm": {
+            "description": "La actualización de la base de datos de la versión de esquema {found_version} a {supported_version} falló a mitad de camino. Se tomó automáticamente una instantánea de la base de datos justo antes de iniciar la actualización.\n\nEnvía para restaurar esa instantánea y recargar todas las entradas de Simple Inventory. Tus datos vuelven a su estado justo antes de este intento de actualización; nada posterior a ese punto se conserva.",
+            "title": "Restaurar la instantánea de la base de datos previa a la actualización"
+          }
+        }
+      },
+      "title": "La actualización de la base de datos de Simple Inventory falló"
+    },
     "missing_todo_list": {
       "fix_flow": {
         "abort": {
