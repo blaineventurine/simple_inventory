@@ -575,11 +575,11 @@
       "description": "Export one inventory's data as JSON or CSV.",
       "fields": {
         "inventory_id": {
-          "description": "The inventory to export.",
-          "name": "Inventory"
+          "description": "ID of the inventory to export.",
+          "name": "Inventory ID"
         },
         "format": {
-          "description": "json or csv.",
+          "description": "Export format. \"json\" returns the inventory as a structured object; \"csv\" returns the items as CSV text. Defaults to json.",
           "name": "Format"
         }
       },

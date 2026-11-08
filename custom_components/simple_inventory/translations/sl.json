@@ -575,11 +575,11 @@
       "description": "Izvozi podatke ene zaloge kot JSON ali CSV.",
       "fields": {
         "inventory_id": {
-          "description": "Zaloga za izvoz.",
-          "name": "Zaloga"
+          "description": "ID zaloge za izvoz.",
+          "name": "ID zaloge"
         },
         "format": {
-          "description": "json ali csv.",
+          "description": "Oblika izvoza. \"json\" vrne zalogo kot strukturiran objekt; \"csv\" vrne predmete kot besedilo CSV. Privzeto je json.",
           "name": "Oblika"
         }
       },

@@ -11,6 +11,7 @@ from homeassistant.exceptions import ServiceValidationError
 
 from custom_components.simple_inventory.const import DOMAIN
 
+from ..error_assertions import assert_translated_error
 from ..harness import add_entry, integration_env, setup_entry
 
 KITCHEN = "kitchen_entry"
@@ -72,7 +73,7 @@ async def test_export_with_unloaded_inventory_raises(
         entry = add_entry(env, KITCHEN, "Kitchen")
         await setup_entry(env, entry)
 
-        with pytest.raises(ServiceValidationError):
+        with pytest.raises(ServiceValidationError) as exc_info:
             await env.services.async_call(
                 DOMAIN,
                 "export",
@@ -80,3 +81,4 @@ async def test_export_with_unloaded_inventory_raises(
                 blocking=True,
                 return_response=True,
             )
+        assert_translated_error(exc_info.value, "inventory_not_loaded", inventory="nonexistent")
