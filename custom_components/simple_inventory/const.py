@@ -7,7 +7,7 @@ STORAGE_VERSION: Final = 1
 
 # Frontend contract version reported by the `simple_inventory/get_info` WS command.
 # Bump ONLY for breaking contract changes; additive changes go in FEATURES.
-API_VERSION: Final = 3
+API_VERSION: Final = 4
 # Optional capability strings; the card gates optional UI on these, never on version.
 FEATURES: Final[tuple[str, ...]] = (
     "batches",

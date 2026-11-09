@@ -1289,7 +1289,7 @@ class TestGetInfoCommand:
         assert msg["success"] is True
         assert msg["result"] == {
             "version": "0.7.0",
-            "api_version": 3,
+            "api_version": API_VERSION,
             "features": [
                 "batches",
                 "transfers",
@@ -1312,7 +1312,7 @@ class TestGetInfoCommand:
         client = await hass_ws_client(hass)
         await client.send_json_auto_id({"type": f"{DOMAIN}/get_info"})
         msg = await client.receive_json()
-        assert msg["result"]["api_version"] == 3
+        assert msg["result"]["api_version"] == API_VERSION
         assert msg["result"]["features"] == [
             "batches",
             "transfers",
