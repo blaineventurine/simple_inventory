@@ -2,6 +2,17 @@
 
 # Upgrading Notes
 
+## Upgrading to 0.12.0
+
+`sensor.<name>_inventory`'s state changes from the sum of every item's
+`quantity` (meaningless once items use different units - e.g. grams and
+"each" summed together) to the count of distinct items in the inventory,
+which is what its `unit_of_measurement` ("items") actually describes. The
+old sum is still available as the `total_quantity` attribute, unchanged.
+Any automation, template, or history graph keyed off this sensor's state
+expecting a quantity total needs to switch to reading the `total_quantity`
+attribute instead. `simple_inventory/get_info` now reports `api_version: 4`.
+
 ## Upgrading to 0.11.0
 
 0.11.0 adds [item images](features.md#item-images). On first start the database moves to schema v6: every existing item gets an empty `image` (no photo). Photos are stored in `<config>/simple_inventory/images/`, so they are part of Home Assistant backups. No manual steps are needed; like every schema upgrade it cannot be undone by downgrading. `simple_inventory/get_info` now also reports the `item_images` feature; `api_version` stays `3`.
