@@ -2,10 +2,10 @@
 
 # Upgrading Notes
 
-## Upgrading to 0.12.0
+## Next release
 
 `sensor.<name>_inventory`'s state changes from the sum of every item's
-`quantity` (meaningless once items use different units - e.g. grams and
+`quantity` (meaningless once items use different units — e.g. grams and
 "each" summed together) to the count of distinct items in the inventory,
 which is what its `unit_of_measurement` ("items") actually describes. The
 old sum is still available as the `total_quantity` attribute, unchanged.

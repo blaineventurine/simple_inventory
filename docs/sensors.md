@@ -7,7 +7,7 @@
 Each inventory creates three sensors:
 
 **`sensor.<name>_inventory`** — Main inventory sensor
-- **State**: Total quantity across all items
+- **State**: Count of distinct items in the inventory (see [Upgrading Notes](upgrading.md#next-release) — the old cross-unit quantity sum is still available as the `total_quantity` attribute below)
 - **Attributes**:
   - `inventory_id` — The config entry ID
   - `description` — The inventory description
