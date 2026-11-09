@@ -99,7 +99,7 @@ async def test_update_state_comprehensive(
     with patch.object(inventory_sensor, "async_write_ha_state"):
         await inventory_sensor._async_update_state()
 
-    assert inventory_sensor._attr_native_value == 4
+    assert inventory_sensor._attr_native_value == 3
 
     attrs = inventory_sensor._attr_extra_state_attributes
     assert attrs["inventory_id"] == "kitchen_123"
@@ -208,9 +208,11 @@ async def test_local_midnight_refreshes_expiring_soon(
     stats_mock.assert_awaited_once_with(inventory_sensor._entry_id)
 
 
-async def test_total_quantity_float_drift_rounded(
+async def test_total_quantity_attribute_float_drift_rounded(
     inventory_sensor: InventorySensor, mock_sensor_coordinator: MagicMock
 ) -> None:
+    """The total_quantity *attribute* (not the state, which is now an item count)
+    must still round away float drift from summing decimal quantities."""
     stats = await mock_sensor_coordinator.async_get_inventory_statistics()
     mock_sensor_coordinator.async_get_inventory_statistics = AsyncMock(
         return_value={**stats, "total_quantity": 0.1 + 0.2}
@@ -219,5 +221,4 @@ async def test_total_quantity_float_drift_rounded(
     with patch.object(inventory_sensor, "async_write_ha_state"):
         await inventory_sensor._async_update_state()
 
-    assert inventory_sensor._attr_native_value == 0.3
     assert inventory_sensor._attr_extra_state_attributes["total_quantity"] == 0.3

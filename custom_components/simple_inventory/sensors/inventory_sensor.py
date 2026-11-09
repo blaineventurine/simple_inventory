@@ -11,7 +11,8 @@ from ._base import InventoryRefreshSensor
 
 
 class InventorySensor(InventoryRefreshSensor):
-    """Total quantity of one inventory, with summary attributes."""
+    """Count of distinct items in one inventory, with summary attributes
+    (including the total_quantity cross-unit sum, which is no longer the state)."""
 
     def __init__(
         self,
@@ -38,7 +39,7 @@ class InventorySensor(InventoryRefreshSensor):
         stats = await self.coordinator.async_get_inventory_statistics(self._entry_id)
 
         total_quantity = round_quantity(stats["total_quantity"])
-        self._attr_native_value = total_quantity
+        self._attr_native_value = stats["total_items"]
 
         description = ""
         config_entry = self.hass.config_entries.async_get_entry(self._entry_id)
