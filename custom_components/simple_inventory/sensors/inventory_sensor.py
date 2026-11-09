@@ -11,8 +11,7 @@ from ._base import InventoryRefreshSensor
 
 
 class InventorySensor(InventoryRefreshSensor):
-    """Count of distinct items in one inventory, with summary attributes
-    (including the total_quantity cross-unit sum, which is no longer the state)."""
+    """Sensor to track item count for one inventory, with quantity and expiry summary attributes."""
 
     def __init__(
         self,
