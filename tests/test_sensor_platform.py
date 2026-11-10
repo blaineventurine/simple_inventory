@@ -8,6 +8,7 @@ import pytest
 from homeassistant import config_entries
 
 from custom_components.simple_inventory.const import DOMAIN
+from custom_components.simple_inventory.data import SimpleInventoryData
 from custom_components.simple_inventory.sensor import async_setup_entry
 
 
@@ -31,7 +32,7 @@ class TestSensorPlatform:
     def mock_hass(self) -> MagicMock:
         """Provide a minimal hass mock with real dict hass.data."""
         hass = MagicMock()
-        hass.data = {DOMAIN: {"coordinators": {}}}
+        hass.data = {DOMAIN: SimpleInventoryData()}
         return hass
 
     @pytest.mark.asyncio
@@ -47,7 +48,7 @@ class TestSensorPlatform:
         )
 
         coordinator = MagicMock()
-        mock_hass.data[DOMAIN]["coordinators"][entry.entry_id] = coordinator
+        mock_hass.data[DOMAIN].coordinators[entry.entry_id] = coordinator
 
         with (
             patch(
@@ -64,6 +65,7 @@ class TestSensorPlatform:
 
             mock_inventory_sensor.assert_called_once_with(
                 mock_hass,
+                coordinator.hub,
                 coordinator,
                 "Kitchen Inventory",
                 "mdi:fridge",
@@ -71,13 +73,13 @@ class TestSensorPlatform:
             )
             mock_expiry_sensor.assert_called_once_with(
                 mock_hass,
-                coordinator,
+                coordinator.hub,
                 "test_entry_123",
                 "Kitchen Inventory",
             )
             mock_expired_sensor.assert_called_once_with(
                 mock_hass,
-                coordinator,
+                coordinator.hub,
                 "test_entry_123",
                 "Kitchen Inventory",
             )
@@ -102,7 +104,7 @@ class TestSensorPlatform:
         )
 
         coordinator = MagicMock()
-        mock_hass.data[DOMAIN]["coordinators"][entry.entry_id] = coordinator
+        mock_hass.data[DOMAIN].coordinators[entry.entry_id] = coordinator
 
         with (
             patch(
@@ -119,6 +121,7 @@ class TestSensorPlatform:
 
             mock_inventory_sensor.assert_called_once_with(
                 mock_hass,
+                coordinator.hub,
                 coordinator,
                 "Inventory",
                 "mdi:package-variant",
@@ -126,13 +129,13 @@ class TestSensorPlatform:
             )
             mock_expiry_sensor.assert_called_once_with(
                 mock_hass,
-                coordinator,
+                coordinator.hub,
                 "minimal_entry_456",
                 "Inventory",
             )
             mock_expired_sensor.assert_called_once_with(
                 mock_hass,
-                coordinator,
+                coordinator.hub,
                 "minimal_entry_456",
                 "Inventory",
             )
@@ -150,7 +153,7 @@ class TestSensorPlatform:
         )
 
         coordinator = MagicMock()
-        mock_hass.data[DOMAIN]["coordinators"][entry.entry_id] = coordinator
+        mock_hass.data[DOMAIN].coordinators[entry.entry_id] = coordinator
 
         with (
             patch(
@@ -171,8 +174,8 @@ class TestSensorPlatform:
             mock_inventory_sensor.assert_not_called()
             mock_expiry_sensor.assert_not_called()
 
-            mock_global_sensor.assert_called_once_with(mock_hass, coordinator)
-            mock_global_expired_sensor.assert_called_once_with(mock_hass, coordinator)
+            mock_global_sensor.assert_called_once_with(mock_hass, coordinator.hub)
+            mock_global_expired_sensor.assert_called_once_with(mock_hass, coordinator.hub)
             mock_add_entities.assert_called_once_with(
                 [mock_global_sensor.return_value, mock_global_expired_sensor.return_value]
             )

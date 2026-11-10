@@ -6,61 +6,57 @@ import logging
 from typing import Any, cast
 
 from homeassistant.core import HomeAssistant, ServiceCall
-from homeassistant.exceptions import HomeAssistantError, ServiceValidationError
+from homeassistant.exceptions import ServiceValidationError
 from homeassistant.util.json import JsonObjectType, JsonValueType
 
 from ..const import (
     DOMAIN,
-    FIELD_AUTO_ADD_ENABLED,
-    FIELD_AUTO_ADD_ID_TO_DESCRIPTION_ENABLED,
-    FIELD_AUTO_ADD_TO_LIST_QUANTITY,
-    FIELD_CATEGORY,
-    FIELD_DESCRIPTION,
-    FIELD_DESIRED_QUANTITY,
-    FIELD_EXPIRY_ALERT_DAYS,
+    FIELD_ALIASES,
+    FIELD_AMOUNT,
+    FIELD_BARCODE,
+    FIELD_BATCH_ID,
     FIELD_EXPIRY_DATE,
+    FIELD_FROM_LOCATION,
+    FIELD_ITEMS,
     FIELD_LOCATION,
-    FIELD_PRICE,
+    FIELD_NAME,
+    FIELD_PURCHASED_AT,
     FIELD_QUANTITY,
-    FIELD_TODO_LIST,
-    FIELD_TODO_QUANTITY_PLACEMENT,
-    FIELD_UNIT,
+    FIELD_TO_LOCATION,
+    FIELD_UNIT_PRICE,
 )
+from ..coordinator import SimpleInventoryCoordinator
+from ..data import get_hub, get_repository
+from ..entries import inventory_display_name
+from ..item_fields import UPDATABLE_ITEM_FIELDS
 from ..storage.repository import InventoryRepository
 from ..todo_manager import TodoManager
 from ..types import (
     AddItemServiceData,
-    GetAllItemsServiceData,
     GetItemsServiceData,
     InventoryItem,
     UpdateItemServiceData,
 )
 from .base_service import BaseServiceHandler
-from .domain_data import get_coordinators, get_repository
-from .resolvers import inventory_display_name, resolve_inventory_id, resolve_item_name
+from .resolvers import inventory_not_loaded_error, resolve_inventory_id, resolve_item_name
 
 _LOGGER = logging.getLogger(__name__)
+
+
+_BATCH_UPDATE_KEYS = (
+    FIELD_QUANTITY,
+    FIELD_EXPIRY_DATE,
+    FIELD_LOCATION,
+    FIELD_UNIT_PRICE,
+    FIELD_PURCHASED_AT,
+)
+_TRANSFER_KEYS = (FIELD_AMOUNT, FIELD_FROM_LOCATION, FIELD_BATCH_ID)
 
 
 class InventoryService(BaseServiceHandler):
     """Handle inventory-specific operations (add, remove, update items)."""
 
-    _UPDATEABLE_FIELDS = [
-        FIELD_AUTO_ADD_ENABLED,
-        FIELD_AUTO_ADD_ID_TO_DESCRIPTION_ENABLED,
-        FIELD_AUTO_ADD_TO_LIST_QUANTITY,
-        FIELD_CATEGORY,
-        FIELD_DESCRIPTION,
-        FIELD_DESIRED_QUANTITY,
-        FIELD_EXPIRY_ALERT_DAYS,
-        FIELD_EXPIRY_DATE,
-        FIELD_LOCATION,
-        FIELD_PRICE,
-        FIELD_QUANTITY,
-        FIELD_TODO_LIST,
-        FIELD_TODO_QUANTITY_PLACEMENT,
-        FIELD_UNIT,
-    ]
+    _UPDATEABLE_FIELDS = UPDATABLE_ITEM_FIELDS
 
     def __init__(
         self,
@@ -71,21 +67,6 @@ class InventoryService(BaseServiceHandler):
         super().__init__(hass)
         self.todo_manager = todo_manager
         self._repository: InventoryRepository | None = get_repository(hass)
-
-    # ---------------------------------------------------------------------
-    # Internal helpers
-    # ---------------------------------------------------------------------
-
-    async def _handle_todo_auto_add(self, item_name: str, item: InventoryItem) -> None:
-        """Handle auto-add to todo list based on item configuration."""
-        quantity = item.get("quantity", 0)
-        auto_add_quantity = item.get("auto_add_to_list_quantity", 0)
-        auto_add_enabled = item.get("auto_add_enabled", False)
-
-        if auto_add_enabled and quantity <= auto_add_quantity:
-            await self.todo_manager.check_and_add_item(item_name, item)
-        else:
-            await self.todo_manager.check_and_remove_item(item_name, item)
 
     def _extract_update_fields(self, data: UpdateItemServiceData) -> dict[str, Any]:
         """Extract updateable fields from service call data."""
@@ -104,47 +85,37 @@ class InventoryService(BaseServiceHandler):
         inventory_id = await resolve_inventory_id(
             self.hass, item_data.get("inventory_id"), item_data.get("inventory_name")
         )
-        name = item_data["name"]
+        name = item_data[FIELD_NAME]
 
         coordinator = self._require_coordinator(inventory_id)
         if coordinator is None:
-            raise ServiceValidationError(
-                f"Inventory '{inventory_display_name(self.hass, inventory_id)}' is not currently loaded"
-            )
+            raise inventory_not_loaded_error(self.hass, inventory_id)
 
         item_kwargs = self._extract_item_kwargs(
             item_data, ["inventory_id", "inventory_name", "barcode", "aliases"]
         )
-        barcode = item_data.get("barcode")
-        aliases = item_data.get("aliases")
+        barcode = item_data.get(FIELD_BARCODE)
+        aliases = item_data.get(FIELD_ALIASES)
 
-        try:
-            item_id = await coordinator.async_add_item(
-                inventory_id, barcode=barcode, aliases=aliases, **item_kwargs
+        item_id = await coordinator.async_add_item(
+            inventory_id, barcode=barcode, aliases=aliases, **item_kwargs
+        )
+        if not item_id:
+            self._log_operation_failed("Add item", name, inventory_id)
+            raise ServiceValidationError(
+                translation_domain=DOMAIN,
+                translation_key="invalid_auto_add_config",
+                translation_placeholders={
+                    "name": name,
+                    "inventory": inventory_display_name(self.hass, inventory_id),
+                },
             )
-            if not item_id:
-                self._log_operation_failed("Add item", name, inventory_id)
-                raise ServiceValidationError(
-                    f"Could not add item '{name}' to inventory "
-                    f"'{inventory_display_name(self.hass, inventory_id)}' "
-                    "(duplicate name/barcode or invalid auto-add configuration)"
-                )
 
-            item = await coordinator.async_get_item(inventory_id, name)
-            if item:
-                await self._handle_todo_auto_add(name, cast(InventoryItem, item))
+        item = await coordinator.async_get_item(inventory_id, name.strip())
+        if item:
+            await self.todo_manager.async_sync(str(item[FIELD_NAME]), cast(InventoryItem, item))
 
-            await self._save_and_log_success(coordinator, inventory_id, "Added item", name)
-
-        except HomeAssistantError:
-            raise
-        except Exception as exc:
-            _LOGGER.error(
-                "Failed to add item %s to inventory %s: %s",
-                name,
-                inventory_id,
-                exc,
-            )
+        self._log_success(inventory_id, "Added item", name)
 
     async def async_remove_item(self, call: ServiceCall) -> None:
         inventory_id_raw, inventory_name, name, barcode = self._get_inventory_name_barcode(call)
@@ -153,53 +124,41 @@ class InventoryService(BaseServiceHandler):
 
         coordinator = self._require_coordinator(inventory_id)
         if coordinator is None:
-            raise ServiceValidationError(
-                f"Inventory '{inventory_display_name(self.hass, inventory_id)}' is not currently loaded"
-            )
+            raise inventory_not_loaded_error(self.hass, inventory_id)
 
         if name:
-            name = await resolve_item_name(coordinator, inventory_id, name)
+            # Destructive: exact name or alias only, never a fuzzy neighbour.
+            name = await resolve_item_name(coordinator, inventory_id, name, fuzzy=False)
             display_name = name
 
-        try:
-            # Resolve name for todo cleanup before removal
-            resolved_name = name
-            if not resolved_name and barcode:
-                matches = await coordinator.async_lookup_by_barcode(barcode)
-                match = next((m for m in matches if m.get("inventory_id") == inventory_id), None)
-                if match:
-                    resolved_name = match.get("name")
+        # Resolve the item before removal so its todo entry can be cleaned up.
+        resolved_name = name
+        if not resolved_name and barcode:
+            match = await coordinator.async_get_item_by_barcode(inventory_id, barcode)
+            if match:
+                resolved_name = match.get(FIELD_NAME)
 
-            if resolved_name:
-                item = await coordinator.async_get_item(inventory_id, resolved_name)
-            else:
-                item = None
+        item = (
+            await coordinator.async_get_item(inventory_id, resolved_name) if resolved_name else None
+        )
 
-            if await coordinator.async_remove_item(inventory_id, name, barcode=barcode):
-                if item and resolved_name:
-                    await self.todo_manager.check_and_remove_item(
-                        resolved_name, cast(InventoryItem, item)
-                    )
-
-                await self._save_and_log_success(
-                    coordinator, inventory_id, "Removed item", display_name
-                )
-            else:
-                self._log_item_not_found("Remove item", display_name, inventory_id)
-                raise ServiceValidationError(
-                    f"No item named '{display_name}' found in inventory "
-                    f"'{inventory_display_name(self.hass, inventory_id)}'"
-                )
-
-        except HomeAssistantError:
-            raise
-        except Exception as exc:
-            _LOGGER.error(
-                "Failed to remove item %s from inventory %s: %s",
-                display_name,
-                inventory_id,
-                exc,
+        if not await coordinator.async_remove_item(inventory_id, name, barcode=barcode):
+            self._log_item_not_found("Remove item", display_name, inventory_id)
+            raise ServiceValidationError(
+                translation_domain=DOMAIN,
+                translation_key="item_not_found",
+                translation_placeholders={
+                    "name": display_name,
+                    "inventory": inventory_display_name(self.hass, inventory_id),
+                },
             )
+
+        if item:
+            await self.todo_manager.remove_item_entry(
+                str(item[FIELD_NAME]), cast(InventoryItem, item)
+            )
+
+        self._log_success(inventory_id, "Removed item", display_name)
 
     async def async_update_item(self, call: ServiceCall) -> None:
         data = cast(UpdateItemServiceData, call.data)
@@ -207,15 +166,13 @@ class InventoryService(BaseServiceHandler):
             self.hass, data.get("inventory_id"), data.get("inventory_name")
         )
         old_name = data["old_name"]
-        new_name = data["name"]
-        barcode = data.get("barcode")
-        aliases = data.get("aliases")
+        new_name = data[FIELD_NAME]
+        barcode = data.get(FIELD_BARCODE)
+        aliases = data.get(FIELD_ALIASES)
 
         coordinator = self._require_coordinator(inventory_id)
         if coordinator is None:
-            raise ServiceValidationError(
-                f"Inventory '{inventory_display_name(self.hass, inventory_id)}' is not currently loaded"
-            )
+            raise inventory_not_loaded_error(self.hass, inventory_id)
 
         old_name = await resolve_item_name(coordinator, inventory_id, old_name)
 
@@ -223,48 +180,84 @@ class InventoryService(BaseServiceHandler):
         if not existing_item:
             self._log_item_not_found("Update item", old_name, inventory_id)
             raise ServiceValidationError(
-                f"No item named '{old_name}' found in inventory "
-                f"'{inventory_display_name(self.hass, inventory_id)}'"
+                translation_domain=DOMAIN,
+                translation_key="item_not_found",
+                translation_placeholders={
+                    "name": old_name,
+                    "inventory": inventory_display_name(self.hass, inventory_id),
+                },
             )
 
         update_data = self._extract_update_fields(data)
 
-        try:
-            updated = await coordinator.async_update_item(
-                inventory_id,
-                old_name,
-                new_name,
-                barcode=barcode,
-                aliases=aliases,
-                **update_data,
-            )
-            if not updated:
-                self._log_operation_failed("Update item", old_name, inventory_id)
-                raise ServiceValidationError(
-                    f"Could not update item '{old_name}' in inventory "
-                    f"'{inventory_display_name(self.hass, inventory_id)}'"
-                )
-
-            updated_item = await coordinator.async_get_item(inventory_id, new_name)
-            if updated_item:
-                await self._handle_todo_auto_add(new_name, cast(InventoryItem, updated_item))
-
-            await self._save_and_log_success(
-                coordinator,
-                inventory_id,
-                f"Updated item: {old_name} -> {new_name}",
-                new_name,
+        updated = await coordinator.async_update_item(
+            inventory_id,
+            old_name,
+            new_name,
+            barcode=barcode,
+            aliases=aliases,
+            **update_data,
+        )
+        if not updated:
+            self._log_operation_failed("Update item", old_name, inventory_id)
+            raise ServiceValidationError(
+                translation_domain=DOMAIN,
+                translation_key="update_item_failed",
+                translation_placeholders={
+                    "name": old_name,
+                    "inventory": inventory_display_name(self.hass, inventory_id),
+                },
             )
 
-        except HomeAssistantError:
-            raise
-        except Exception as exc:
-            _LOGGER.error(
-                "Failed to update item %s in inventory %s: %s",
-                old_name,
-                inventory_id,
-                exc,
+        updated_item = cast(
+            InventoryItem | None, await coordinator.async_get_item(inventory_id, new_name.strip())
+        )
+        existing = cast(InventoryItem, existing_item)
+        if updated_item:
+            await self.todo_manager.async_sync(
+                str(updated_item[FIELD_NAME]), updated_item, previous=existing
             )
+        else:
+            await self.todo_manager.remove_item_entry(str(existing.get(FIELD_NAME, "")), existing)
+
+        self._log_success(inventory_id, f"Updated item: {old_name} -> {new_name}", new_name)
+
+    async def async_update_batch(self, call: ServiceCall) -> None:
+        """Edit one batch, then re-sync the item's todo entry."""
+        coordinator, inventory_id = await self._coordinator_for_call(call)
+        fields = {k: call.data[k] for k in _BATCH_UPDATE_KEYS if k in call.data}
+        name = await coordinator.async_update_batch(
+            inventory_id, call.data[FIELD_BATCH_ID], **fields
+        )
+        await self._sync_after_batch_change(coordinator, inventory_id, name)
+
+    async def async_remove_batch(self, call: ServiceCall) -> None:
+        """Delete one batch, then re-sync the item's todo entry."""
+        coordinator, inventory_id = await self._coordinator_for_call(call)
+        name = await coordinator.async_remove_batch(inventory_id, call.data[FIELD_BATCH_ID])
+        await self._sync_after_batch_change(coordinator, inventory_id, name)
+
+    async def async_transfer_item(self, call: ServiceCall) -> None:
+        """Move stock between locations; no todo sync, the item's total is unchanged."""
+        coordinator, inventory_id = await self._coordinator_for_call(call)
+        name = call.data.get(FIELD_NAME)
+        if name:
+            name = await resolve_item_name(coordinator, inventory_id, name)
+        extras = {key: call.data[key] for key in _TRANSFER_KEYS if key in call.data}
+        await coordinator.async_transfer_item(
+            inventory_id,
+            name,
+            barcode=call.data.get(FIELD_BARCODE),
+            to_location=call.data[FIELD_TO_LOCATION],
+            **extras,
+        )
+
+    async def _sync_after_batch_change(
+        self, coordinator: SimpleInventoryCoordinator, inventory_id: str, name: str
+    ) -> None:
+        item = await coordinator.async_get_item(inventory_id, name)
+        if item:
+            await self.todo_manager.async_sync(name, cast(InventoryItem, item))
 
     # ---------------------------------------------------------------------
     # Query helpers
@@ -274,25 +267,9 @@ class InventoryService(BaseServiceHandler):
         """Return full list of items for an inventory."""
         data = cast(GetItemsServiceData, call.data)
 
-        if data.get("inventory_id"):
-            inventory_id = data["inventory_id"]
-        elif data.get("inventory_name"):
-            inventory_name = data["inventory_name"]
-            matching_entry = next(
-                (
-                    entry
-                    for entry in self.hass.config_entries.async_entries(DOMAIN)
-                    if entry.data.get("name", "").lower() == inventory_name.lower()
-                ),
-                None,
-            )
-            if not matching_entry:
-                raise ServiceValidationError(f"Inventory with name '{inventory_name}' not found")
-            inventory_id = matching_entry.entry_id
-        else:
-            raise ServiceValidationError(
-                "Either 'inventory_id' or 'inventory_name' must be provided"
-            )
+        inventory_id = await resolve_inventory_id(
+            self.hass, data.get("inventory_id"), data.get("inventory_name")
+        )
 
         coordinator = self._require_coordinator(inventory_id)
         if coordinator:
@@ -300,49 +277,14 @@ class InventoryService(BaseServiceHandler):
         else:
             repo = get_repository(self.hass)
             if repo is None:
-                raise ServiceValidationError(
-                    f"No coordinator or repository available for inventory '{inventory_id}'"
-                )
+                raise inventory_not_loaded_error(self.hass, inventory_id)
             items_list = await repo.list_items_with_details(inventory_id)
 
-        items_list.sort(key=lambda item: cast(str, item.get("name", "")).lower())
-        return cast(JsonObjectType, {"items": cast(list[JsonValueType], items_list)})
+        items_list.sort(key=lambda item: cast(str, item.get(FIELD_NAME, "")).lower())
+        return cast(JsonObjectType, {FIELD_ITEMS: cast(list[JsonValueType], items_list)})
 
     async def async_get_items_from_all_inventories(self, call: ServiceCall) -> JsonObjectType:
         """Return full list of items grouped by inventory."""
-        _ = cast(GetAllItemsServiceData, call.data)
-
-        repo = get_repository(self.hass)
-        if repo is None:
-            return cast(JsonObjectType, {"inventories": []})
-
-        inventories_data: list[JsonObjectType] = []
-        inventories = await repo.list_inventories()
-
-        coordinators = get_coordinators(self.hass)
-
-        for inventory in inventories:
-            inventory_id = cast(str, inventory["id"])
-            coordinator = coordinators.get(inventory_id)
-
-            if coordinator:
-                items_list = await coordinator.async_list_items(inventory_id)
-            else:
-                items_list = await repo.list_items_with_details(inventory_id)
-
-            items_list.sort(key=lambda item: cast(str, item.get("name", "")).lower())
-
-            inventories_data.append(
-                cast(
-                    JsonObjectType,
-                    {
-                        "inventory_id": inventory_id,
-                        "inventory_name": inventory.get("name", inventory_id),
-                        "description": inventory.get("description", ""),
-                        "items": cast(list[JsonValueType], items_list),
-                    },
-                )
-            )
-
-        inventories_data.sort(key=lambda inv: cast(str, inv.get("inventory_name", "")).lower())
-        return cast(JsonObjectType, {"inventories": cast(list[JsonValueType], inventories_data)})
+        hub = get_hub(self.hass)
+        inventories = [] if hub is None else await hub.async_items_by_inventory()
+        return cast(JsonObjectType, {"inventories": cast(list[JsonValueType], inventories)})

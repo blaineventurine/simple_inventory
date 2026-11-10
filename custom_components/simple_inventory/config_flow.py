@@ -4,21 +4,43 @@ from __future__ import annotations
 
 import logging
 import re
+from collections.abc import Iterable, Mapping
 from typing import Any
 
 import homeassistant.helpers.config_validation as cv
 import voluptuous as vol
 from homeassistant import config_entries
-from homeassistant.config_entries import ConfigFlowResult
+from homeassistant.config_entries import ConfigEntryState, ConfigFlowResult
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers import selector, translation
 
-from .const import DOMAIN
+from .const import (
+    CONF_CREATE_GLOBAL,
+    CONF_DESCRIPTION,
+    CONF_ENTRY_TYPE,
+    CONF_ICON,
+    CONF_NAME,
+    CONF_PANEL_ADMIN_ONLY,
+    CONF_SHOW_PANEL,
+    DEFAULT_INVENTORY_ICON,
+    DOMAIN,
+    ENTRY_TYPE_INVENTORY,
+    GLOBAL_ENTRY_TITLE,
+    match_key,
+)
+from .entries import is_global_entry
+from .panel import async_sync_panel
 from .voice_sentences import async_install_voice_sentences, can_offer_voice_sentences
 
 _LOGGER = logging.getLogger(__name__)
 
-DEFAULT_ICON = "mdi:package-variant"
+GLOBAL_ENTRY_UNIQUE_ID = "global"
+CONF_INSTALL_VOICE_SENTENCES = "install_voice_sentences"
+
+
+def _is_usable_name(name: str) -> bool:
+    """A cleaned inventory name must contain at least one letter or digit."""
+    return any(char.isalnum() for char in name)
 
 
 async def clean_inventory_name(hass: HomeAssistant, name: str) -> str:
@@ -41,6 +63,42 @@ async def clean_inventory_name(hass: HomeAssistant, name: str) -> str:
     return " ".join(cleaned.split()).strip()
 
 
+async def _async_validate_inventory_name(
+    hass: HomeAssistant, raw_name: str, other_entries: Iterable[config_entries.ConfigEntry]
+) -> tuple[str, str | None]:
+    """Clean ``raw_name``; return it with the form error key, or None when it is valid."""
+    cleaned = await clean_inventory_name(hass, raw_name)
+    if not _is_usable_name(cleaned):
+        return cleaned, "invalid_name"
+    key = match_key(cleaned)
+    if any(match_key(str(entry.data.get(CONF_NAME, ""))) == key for entry in other_entries):
+        return cleaned, "name_exists"
+    return cleaned, None
+
+
+def _voice_sentences_field(defaults: Mapping[str, Any]) -> dict[Any, Any]:
+    return {
+        vol.Optional(
+            CONF_INSTALL_VOICE_SENTENCES,
+            default=defaults.get(CONF_INSTALL_VOICE_SENTENCES, False),
+        ): cv.boolean
+    }
+
+
+def _inventory_schema(defaults: Mapping[str, Any], *, offer_voice_sentences: bool) -> vol.Schema:
+    """The name/icon/description form shared by the config and options flows."""
+    schema: dict[Any, Any] = {
+        vol.Required(CONF_NAME, default=defaults.get(CONF_NAME, "")): cv.string,
+        vol.Optional(
+            CONF_ICON, default=defaults.get(CONF_ICON, DEFAULT_INVENTORY_ICON)
+        ): selector.IconSelector(),
+        vol.Optional(CONF_DESCRIPTION, default=defaults.get(CONF_DESCRIPTION, "")): cv.string,
+    }
+    if offer_voice_sentences:
+        schema.update(_voice_sentences_field(defaults))
+    return vol.Schema(schema)
+
+
 class SimpleInventoryConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Handle a config flow for Simple Inventory."""
 
@@ -54,74 +112,58 @@ class SimpleInventoryConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
         """Handle adding a new inventory."""
-        errors = {}
+        errors: dict[str, str] = {}
         is_first_inventory = not self._global_entry_exists()
         offer_voice_sentences = is_first_inventory and can_offer_voice_sentences(self.hass)
 
         if user_input is not None:
-            cleaned_name = await clean_inventory_name(self.hass, user_input["name"])
-
-            if await self._async_name_exists(cleaned_name):
-                errors["name"] = "name_exists"
+            cleaned_name, error = await _async_validate_inventory_name(
+                self.hass, user_input[CONF_NAME], self._async_current_entries()
+            )
+            if error:
+                errors[CONF_NAME] = error
             else:
-                icon = user_input.get("icon") or DEFAULT_ICON
-
-                if offer_voice_sentences and user_input.get("install_voice_sentences"):
+                if offer_voice_sentences and user_input.get(CONF_INSTALL_VOICE_SENTENCES):
                     await async_install_voice_sentences(self.hass)
 
                 return self.async_create_entry(
                     title=cleaned_name,
                     data={
-                        "name": cleaned_name,
-                        "icon": icon,
-                        "description": user_input.get("description", ""),
-                        "entry_type": "inventory",
-                        "create_global": is_first_inventory,
+                        CONF_NAME: cleaned_name,
+                        CONF_ICON: user_input.get(CONF_ICON) or DEFAULT_INVENTORY_ICON,
+                        CONF_DESCRIPTION: user_input.get(CONF_DESCRIPTION, ""),
+                        CONF_ENTRY_TYPE: ENTRY_TYPE_INVENTORY,
+                        # Only the very first entry requests the global sensors, so a
+                        # global entry the user deleted is not recreated by later adds.
+                        CONF_CREATE_GLOBAL: not self._async_current_entries(),
                     },
                 )
 
-        defaults = user_input or {}
-
-        schema_dict: dict[Any, Any] = {
-            vol.Required("name", default=defaults.get("name", "")): cv.string,
-            vol.Optional(
-                "icon", default=defaults.get("icon", DEFAULT_ICON)
-            ): selector.IconSelector(),
-            vol.Optional("description", default=defaults.get("description", "")): cv.string,
-        }
-        if offer_voice_sentences:
-            schema_dict[
-                vol.Optional(
-                    "install_voice_sentences",
-                    default=defaults.get("install_voice_sentences", False),
-                )
-            ] = cv.boolean
-
         return self.async_show_form(
             step_id="add_inventory",
-            data_schema=vol.Schema(schema_dict),
+            data_schema=_inventory_schema(
+                user_input or {}, offer_voice_sentences=offer_voice_sentences
+            ),
             errors=errors,
         )
 
     async def async_step_internal(
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
-        """Handle internal creation of global entry."""
+        """Handle internal creation of the (single) global entry."""
+        await self.async_set_unique_id(GLOBAL_ENTRY_UNIQUE_ID)
+        self._abort_if_unique_id_configured()
+        # Global entries created before the unique_id existed have none set.
+        if self._global_entry_exists():
+            return self.async_abort(reason="already_configured")
         return self.async_create_entry(
-            title="All Items Expiring Soon",
+            title=GLOBAL_ENTRY_TITLE,
             data=user_input or {},
         )
 
     def _global_entry_exists(self) -> bool:
         """Check if global config entry already exists."""
-        existing_entries = self._async_current_entries()
-        return any(entry.data.get("entry_type") == "global" for entry in existing_entries)
-
-    async def _async_name_exists(self, name: str) -> bool:
-        """Check if inventory name already exists."""
-        existing_entries = self._async_current_entries()
-        existing_names = [entry.data.get("name", "").lower() for entry in existing_entries]
-        return name.lower() in existing_names
+        return any(is_global_entry(entry) for entry in self._async_current_entries())
 
     @staticmethod
     @callback
@@ -129,118 +171,82 @@ class SimpleInventoryConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         config_entry: config_entries.ConfigEntry,
     ) -> "OptionsFlowHandler":
         """Get the options flow for this handler."""
-        return OptionsFlowHandler(config_entry)
+        return OptionsFlowHandler()
 
 
 class OptionsFlowHandler(config_entries.OptionsFlow):
-    """Handle options flow for inventory configuration."""
-
-    def __init__(self, config_entry: config_entries.ConfigEntry) -> None:
-        """Initialize options flow."""
-        self._config_entry = config_entry
+    """Inventory entries edit their name/icon/description; the global entry sets up the
+    sidebar panel and offers the example voice sentences."""
 
     async def async_step_init(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
         """Manage the options."""
-        errors = {}
-        is_global_entry = self._config_entry.data.get("entry_type") == "global"
-        offer_voice_sentences = is_global_entry and can_offer_voice_sentences(self.hass)
+        if is_global_entry(self.config_entry):
+            return await self.async_step_global_settings()
 
+        entry = self.config_entry
+        errors: dict[str, str] = {}
         if user_input is not None:
-            cleaned_name = await clean_inventory_name(self.hass, user_input["name"])
-
-            if await self._async_name_exists_excluding_current(cleaned_name):
-                errors["name"] = "name_exists"
+            other_entries = (
+                other
+                for other in self.hass.config_entries.async_entries(DOMAIN)
+                if other.entry_id != entry.entry_id
+            )
+            cleaned_name, error = await _async_validate_inventory_name(
+                self.hass, user_input[CONF_NAME], other_entries
+            )
+            if error:
+                errors[CONF_NAME] = error
             else:
-                updated_data = {
-                    **self._config_entry.data,
-                    "name": cleaned_name,
-                    "icon": user_input.get("icon", DEFAULT_ICON),
-                    "description": user_input.get("description", ""),
-                }
-
+                # The entry's update listener reloads it: entities/device pick up the new
+                # name and icon and setup mirrors the metadata into the repository.
                 self.hass.config_entries.async_update_entry(
-                    self._config_entry,
-                    data=updated_data,
+                    entry,
+                    data={
+                        **entry.data,
+                        CONF_NAME: cleaned_name,
+                        CONF_ICON: user_input.get(CONF_ICON, DEFAULT_INVENTORY_ICON),
+                        CONF_DESCRIPTION: user_input.get(CONF_DESCRIPTION, ""),
+                    },
                     title=cleaned_name,
                 )
-
-                await self._async_update_repository_metadata(updated_data)
-
-                self.hass.bus.async_fire(
-                    f"{DOMAIN}_updated_{self._config_entry.entry_id}",
-                    {"action": "renamed", "new_name": cleaned_name},
-                )
-
-                if offer_voice_sentences and user_input.get("install_voice_sentences"):
-                    await async_install_voice_sentences(self.hass)
-
                 return self.async_create_entry(title="", data={})
-
-        schema_dict: dict[Any, Any] = {
-            vol.Required("name", default=self._config_entry.data.get("name", "")): cv.string,
-            vol.Optional(
-                "icon",
-                default=self._config_entry.data.get("icon", DEFAULT_ICON),
-            ): selector.IconSelector(),
-            vol.Optional(
-                "description",
-                default=self._config_entry.data.get("description", ""),
-            ): cv.string,
-        }
-        if offer_voice_sentences:
-            schema_dict[
-                vol.Optional(
-                    "install_voice_sentences",
-                    default=(user_input or {}).get("install_voice_sentences", False),
-                )
-            ] = cv.boolean
 
         return self.async_show_form(
             step_id="init",
-            data_schema=vol.Schema(schema_dict),
+            data_schema=_inventory_schema(entry.data, offer_voice_sentences=False),
             errors=errors,
-            description_placeholders={
-                "current_name": self._config_entry.data.get("name", ""),
-            },
+            description_placeholders={"current_name": entry.data.get(CONF_NAME, "")},
         )
 
-    async def _async_name_exists_excluding_current(self, name: str) -> bool:
-        """Check if name exists in other entries."""
-        all_entries = self.hass.config_entries.async_entries(DOMAIN)
-        return any(
-            entry.entry_id != self._config_entry.entry_id
-            and entry.data.get("name", "").lower() == name.lower()
-            for entry in all_entries
-        )
+    async def async_step_global_settings(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """Sidebar panel settings, plus the bundled example voice sentences when offerable."""
+        offer_voice_sentences = can_offer_voice_sentences(self.hass)
+        if user_input is not None:
+            if offer_voice_sentences and user_input.get(CONF_INSTALL_VOICE_SENTENCES):
+                await async_install_voice_sentences(self.hass)
+            panel_options = {
+                CONF_SHOW_PANEL: bool(user_input.get(CONF_SHOW_PANEL, False)),
+                CONF_PANEL_ADMIN_ONLY: bool(user_input.get(CONF_PANEL_ADMIN_ONLY, False)),
+            }
+            # Changed options reload the global entry, which registers or removes the panel.
+            # Unchanged options fire no update listener, so re-sync here: saving again is how
+            # the bundle-missing issue tells users to pick up a newly installed card.
+            if (
+                panel_options == dict(self.config_entry.options)
+                and self.config_entry.state is ConfigEntryState.LOADED
+            ):
+                await async_sync_panel(self.hass, self.config_entry)
+            return self.async_create_entry(title="", data=panel_options)
 
-    async def _async_update_repository_metadata(self, data: dict[str, Any]) -> None:
-        """Mirror option changes into the SQLite repository."""
-        domain_data = self.hass.data.get(DOMAIN)
-        if not domain_data:
-            return
-
-        coordinator = (
-            domain_data.get("coordinators", {}).get(self._config_entry.entry_id)
-            if "coordinators" in domain_data
-            else None
-        )
-        repository = domain_data.get("repository")
-
-        if coordinator:
-            await coordinator.async_upsert_inventory_metadata(
-                inventory_id=self._config_entry.entry_id,
-                name=data.get("name", self._config_entry.title or self._config_entry.entry_id),
-                description=data.get("description", ""),
-                icon=data.get("icon", DEFAULT_ICON),
-                entry_type=data.get("entry_type", "inventory"),
-                metadata=None,
-            )
-        elif repository:
-            await repository.upsert_inventory(
-                inventory_id=self._config_entry.entry_id,
-                name=data.get("name", self._config_entry.title or self._config_entry.entry_id),
-                description=data.get("description", ""),
-                icon=data.get("icon", DEFAULT_ICON),
-                entry_type=data.get("entry_type", "inventory"),
-                metadata=None,
-            )
+        options = self.config_entry.options
+        schema: dict[Any, Any] = {
+            vol.Optional(CONF_SHOW_PANEL, default=options.get(CONF_SHOW_PANEL, False)): cv.boolean,
+            vol.Optional(
+                CONF_PANEL_ADMIN_ONLY, default=options.get(CONF_PANEL_ADMIN_ONLY, False)
+            ): cv.boolean,
+        }
+        if offer_voice_sentences:
+            schema.update(_voice_sentences_field({}))
+        return self.async_show_form(step_id="global_settings", data_schema=vol.Schema(schema))

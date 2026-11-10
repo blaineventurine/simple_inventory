@@ -11,6 +11,8 @@ from typing_extensions import Self
 from custom_components.simple_inventory.const import DOMAIN
 from custom_components.simple_inventory.services import ServiceHandler
 
+from ..error_assertions import assert_translated_error
+
 
 class TestServiceHandler:
     """Test ServiceHandler class."""
@@ -252,6 +254,8 @@ class TestServiceHandler:
             "amount": 2.0,
             "inventory_id": "kitchen",
             "price": None,
+            "location": "Garage",
+            "batch_id": "b1",
         }
 
         with (
@@ -268,6 +272,8 @@ class TestServiceHandler:
             amount=2.0,
             inventory_id="kitchen",
             price=None,
+            location="Garage",
+            batch_id="b1",
         )
         assert result == expected
 
@@ -348,8 +354,9 @@ class TestServiceHandler:
             ),
         ):
             handler = ServiceHandler(mock_hass, mock_todo_manager)
-            with pytest.raises(ServiceValidationError, match="missing"):
+            with pytest.raises(ServiceValidationError) as err:
                 await handler.async_get_inventory_consumption_rates(call)
+        assert_translated_error(err.value, "inventory_not_loaded", inventory="missing")
 
     @pytest.mark.asyncio
     async def test_async_lookup_by_barcode_no_inventories_raises(
@@ -364,14 +371,12 @@ class TestServiceHandler:
         with (
             patch("custom_components.simple_inventory.services.InventoryService"),
             patch("custom_components.simple_inventory.services.QuantityService"),
-            patch(
-                "custom_components.simple_inventory.services.get_coordinators",
-                return_value={},
-            ),
+            patch("custom_components.simple_inventory.services.get_hub", return_value=None),
         ):
             handler = ServiceHandler(mock_hass, mock_todo_manager)
-            with pytest.raises(ServiceValidationError, match="No inventories configured"):
+            with pytest.raises(ServiceValidationError) as err:
                 await handler.async_lookup_by_barcode(call)
+        assert_translated_error(err.value, "no_inventories_configured")
 
     @pytest.mark.asyncio
     async def test_async_get_item_consumption_rates_no_coordinator_raises(
@@ -392,8 +397,9 @@ class TestServiceHandler:
             ),
         ):
             handler = ServiceHandler(mock_hass, mock_todo_manager)
-            with pytest.raises(ServiceValidationError, match="missing"):
+            with pytest.raises(ServiceValidationError) as err:
                 await handler.async_get_item_consumption_rates(call)
+        assert_translated_error(err.value, "inventory_not_loaded", inventory="missing")
 
     @pytest.mark.asyncio
     async def test_async_get_item_consumption_rates_item_not_found_raises(
@@ -417,8 +423,9 @@ class TestServiceHandler:
             ),
         ):
             handler = ServiceHandler(mock_hass, mock_todo_manager)
-            with pytest.raises(ServiceValidationError, match="Ghost Item"):
+            with pytest.raises(ServiceValidationError) as err:
                 await handler.async_get_item_consumption_rates(call)
+        assert_translated_error(err.value, "item_not_found", name="Ghost Item", inventory="kitchen")
 
     def test_exports(self: Self) -> None:
         """Test that __all__ exports are correct."""
