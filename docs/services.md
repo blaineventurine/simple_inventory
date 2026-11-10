@@ -198,7 +198,7 @@ data:
 
 ## `simple_inventory.transfer_item`
 
-Move stock of an item to another location in the same inventory (0.9.0+). Identify the item by `name` (or alias) or `barcode`, and the inventory by `inventory_id` or `inventory_name`.
+Move stock of an item to another location in the same inventory. Identify the item by `name` (or alias) or `barcode`, and the inventory by `inventory_id` or `inventory_name`.
 
 | Field | Description |
 |---|---|
@@ -231,7 +231,7 @@ Nothing is changed when the move can't be made:
 
 ## `simple_inventory.set_item_image_from_barcode`
 
-Use the product photo of a barcode lookup as the item's [photo](features.md#item-images) (0.11.0+). Identify the item by `name` (or alias, exact match) or `barcode`, and the inventory by `inventory_id` or `inventory_name`. `lookup_barcode` picks the barcode to look up; it must be one of the item's barcodes and defaults to its first one (sorted). The lookup uses the [configured provider](websocket-api.md#simple_inventoryset_barcode_provider_config) (or all of them); the first result with a photo wins. Only that photo URL is fetched (`http`/`https`, at most 10 MB within 10 seconds) — the service never takes a URL from the caller.
+Use the product photo of a barcode lookup as the item's [photo](features.md#item-images). Identify the item by `name` (or alias, exact match) or `barcode`, and the inventory by `inventory_id` or `inventory_name`. `lookup_barcode` picks the barcode to look up; it must be one of the item's barcodes and defaults to its first one (sorted). The lookup uses the [configured provider](websocket-api.md#simple_inventoryset_barcode_provider_config) (or all of them); the first result with a photo wins. Only that photo URL is fetched (`http`/`https`, at most 10 MB within 10 seconds) — the service never takes a URL from the caller.
 
 ```yaml
 service: simple_inventory.set_item_image_from_barcode
@@ -244,7 +244,7 @@ Errors: `image_not_found` (the item has no barcode, or the lookup has no photo),
 
 ## `simple_inventory.set_item_image_from_media`
 
-Copy an image from Home Assistant's local media folders (`media_dirs`, e.g. `/media`) or one uploaded through Home Assistant's own image upload (`media-source://image_upload/<id>`, stored as `<config>/image/<id>/original`) as the item's [photo](features.md#item-images) (0.11.0+). Other media sources (cameras, TTS, add-ons) are rejected with `unsupported_media_source`, as is anything outside those folders and any image upload id that isn't 32 lowercase hex characters.
+Copy an image from Home Assistant's local media folders (`media_dirs`, e.g. `/media`) or one uploaded through Home Assistant's own image upload (`media-source://image_upload/<id>`, stored as `<config>/image/<id>/original`) as the item's [photo](features.md#item-images). Other media sources (cameras, TTS, add-ons) are rejected with `unsupported_media_source`, as is anything outside those folders and any image upload id that isn't 32 lowercase hex characters.
 
 ```yaml
 service: simple_inventory.set_item_image_from_media
@@ -256,7 +256,7 @@ data:
 
 ## `simple_inventory.clear_item_image`
 
-Remove the item's [photo](features.md#item-images) (0.11.0+); does nothing when it has none.
+Remove the item's [photo](features.md#item-images); does nothing when it has none.
 
 ```yaml
 service: simple_inventory.clear_item_image

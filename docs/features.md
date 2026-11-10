@@ -23,7 +23,7 @@ Each item has a **name** (required) and these optional fields:
 
 ## Item Images
 
-Each item can have one photo. Every source is copied into the integration: the photo is decoded, turned upright (EXIF orientation), stripped of metadata and stored as WebP in `<config>/simple_inventory/images/` — `<item_id>.webp` (long edge at most 1024 px), `<item_id>_tile.webp` (at most 384 px, for tile layouts) and `<item_id>_thumb.webp` (at most 128 px). JPEG, PNG, WebP and GIF (first frame) up to 10 MB are accepted (and rejected above 64 megapixels, to guard against decompression-bomb files); HEIC/AVIF only when the Home Assistant installation's Pillow can open them. Ways to set a photo:
+Each item can have one photo. Every source is normalized (EXIF-rotated, stripped of metadata) and stored as WebP at three sizes (full, tile, thumbnail). JPEG, PNG, WebP and GIF up to 10 MB / 64 megapixels are accepted; HEIC/AVIF depend on the server's Pillow build. Ways to set a photo:
 
 > 🖼️ *Screenshot: an item card/row showing a photo thumbnail* — replace with `![Item photo](images/item-photo.png)`.
 
@@ -31,7 +31,7 @@ Each item can have one photo. Every source is copied into the integration: the p
 - **Product photo** — [`set_item_image_from_barcode`](services.md#simple_inventoryset_item_image_from_barcode) downloads the photo the barcode lookup returns.
 - **Media** — [`set_item_image_from_media`](services.md#simple_inventoryset_item_image_from_media) copies a file from Home Assistant's local media folders or an image uploaded to Home Assistant.
 
-[`clear_item_image`](services.md#simple_inventoryclear_item_image) (or `DELETE`) removes the photo. Removing an item or an inventory deletes its photos, and files that no longer belong to an item are cleaned up at startup. Exports only say whether an item has a photo (`image: true/false`); photos are not exported and imports ignore `image`.
+[`clear_item_image`](services.md#simple_inventoryclear_item_image) (or `DELETE`) removes the photo; removing an item or inventory removes its photos too. Exports only record whether an item has a photo (`true`/`false`) — photos themselves are not exported or imported.
 
 The item's `image` field is a version stamp, so clients can cache photos forever and refetch only when the stamp changes. The HTTP endpoints need a Home Assistant access token (`Authorization: Bearer <token>`) but no admin rights:
 
@@ -53,7 +53,7 @@ An item's stock is held in **batches**. A batch is one lot of the item with its 
   - `batch_id` consumes from exactly that batch (`batch_not_found` error if it doesn't exist) and takes precedence over `location`.
 - A batch that reaches 0 is **deleted**; the item remains with quantity 0. History keeps the record.
 - **Editing** a batch is done with [`update_batch`](services.md#simple_inventoryupdate_batch) (quantity, expiry, location, unit price, purchase date) and [`remove_batch`](services.md#simple_inventoryremove_batch).
-- **Moving** stock to another location of the same inventory is done with [`transfer_item`](services.md#simple_inventorytransfer_item) (0.9.0+): part of a batch, a whole batch, everything at one location, or the soonest-expiring stock wherever it is. Moved stock keeps its expiry date, unit price and purchase date.
+- **Moving** stock to another location of the same inventory is done with [`transfer_item`](services.md#simple_inventorytransfer_item): part of a batch, a whole batch, everything at one location, or the soonest-expiring stock wherever it is. Moved stock keeps its expiry date, unit price and purchase date.
 - **Expiry** is evaluated per batch: each expiring or expired batch is its own entry on the [expiry sensors](sensors.md#sensors), so an item with one batch expiring tomorrow and one next month is only partly "expiring soon".
 - **Value**: `total_value` is the sum of each batch's quantity × its unit price.
 - `update_item` still accepts scalar `quantity`, `expiry_date` and `price` — see [`update_item`](services.md#simple_inventoryupdate_item) for how they map onto batches.
@@ -89,14 +89,11 @@ Automatically add items to a Home Assistant todo list when stock drops below a t
 
 **How it works:**
 
-- When `quantity` (the total across all batches) drops to or below `auto_add_to_list_quantity`, the item is added to your todo list. A threshold of `0` is every item's default, so it only counts as "below threshold" — here, in the inventory sensor's `below_threshold` stat, and in low-stock voice/LLM queries — when `auto_add_enabled` is also on ("add when empty"); otherwise every out-of-stock item would match everywhere.
-- When `desired_quantity > 0` (fixed mode): the todo shows the desired quantity, and the item is removed from the list when `quantity >= desired_quantity`. Changing `desired_quantity` refreshes the existing entry.
-- When `desired_quantity = 0` (threshold mode): the todo shows `threshold - quantity + 1`, updates live on each change, and the item is removed when `quantity > threshold`
-- Every change re-checks the item against its current stock, whichever way it went: an item still at or below its threshold after a restock goes back on the list if its entry was deleted, and a stocked item's leftover entry is removed on its next change
-- Removing the item, renaming it, moving it to another `todo_list`, or disabling auto-add removes its existing todo entry
-- Imports sync the todo entries of the items they add or change, like the services do
-- When a todo list cannot be read (its `todo.get_items` call fails), that sync is skipped with one warning in the log, so no duplicate entry is added and nothing is removed. A skipped add or refresh is redone by the item's next change; a skipped removal of an old entry (item removed, renamed, moved to another list, or auto-add disabled) is not retried, so remove that entry by hand (the warning names it)
-- Notes you type on a todo entry are preserved, unless `todo_quantity_placement` is `"description"` (the integration then owns the description)
+- When `quantity` drops to or below `auto_add_to_list_quantity` with `auto_add_enabled` on, the item is added to your todo list. A threshold of `0` — every item's default — only counts as "below threshold" *anywhere* (the sensor's `below_threshold` stat, low-stock voice/LLM queries, this list) when `auto_add_enabled` is also on; otherwise every out-of-stock item would match.
+- With `desired_quantity > 0` (fixed mode): the todo shows that target quantity; the item comes off the list once `quantity` reaches it.
+- With `desired_quantity = 0` (threshold mode, legacy): the todo shows `threshold - quantity + 1`, live-updated; the item comes off once `quantity` exceeds the threshold.
+- The list stays in sync on every quantity change, rename, `todo_list` change, or when auto-add is disabled (which removes the entry). Imports sync the same way.
+- Notes you add to an entry are preserved, unless `todo_quantity_placement` is `"description"` (the integration then owns the description).
 
 **Note:** The core Shopping List integration does not support item descriptions, so description-based features only work with todo lists that do (for example Local To-do). The integration checks each list's supported features, not its entity id.
 
@@ -118,36 +115,20 @@ A third service, [`lookup_barcode_product`](services.md#simple_inventorylookup_b
 ## Item Aliases
 
 Items can have alternate names ("oats", "steel-cut oats", "hot cereal" for
-an item stored as "Oatmeal") that resolve to the same item wherever a name
-is accepted — service calls, voice commands, and LLM tool calls. Set them
-via the `aliases` field on `add_item`/`update_item` (comma-separated, e.g.
-`"oats, steel-cut oats, hot cereal"`); passing an empty string clears all
-aliases.
+an item named "Oatmeal") that resolve to the same item in service calls,
+voice commands, and LLM tool calls. Set them via the `aliases` field
+(comma-separated); an empty string clears them.
 
-Every service call and voice/LLM command that looks up an *existing* item
-by name (`increment_item`, `decrement_item`, `update_item`'s `old_name`)
-resolves aliases automatically, using the same typo-tolerant matching
-already used for real names (exact match, then substring, then
-closest-match) — no per-command setup needed. `remove_item` is stricter:
-it only accepts an exact name or alias (case-insensitive), so a typo can
-never delete a different item.
+Lookups by name (`increment_item`, `decrement_item`, `update_item`'s
+`old_name`) resolve aliases automatically using the same typo-tolerant
+matching as real names. `remove_item` is stricter — exact name or alias
+only, so a typo can't delete the wrong item.
 
-`add_item`'s own `name` field is never alias-resolved. Adding an item whose
-name already exists in the inventory (case-insensitive with Unicode case
-folding, so "čokolada" clashes with "Čokolada" and "STRASSE" with "Straße")
-is rejected with an
-error — use `increment_item` or `update_item` instead. Renaming an item onto
-another item's name is rejected too.
-
-Names and aliases must not clash within an inventory, compared
-case-insensitively (Unicode case folding) exactly as lookups, todo-list
-matching and [search](websocket-api.md#simple_inventorysearch) compare them. An alias already used by another
-item as an alias or as its name is rejected, and so is an item name (when
-adding, renaming or importing) that is already another item's alias, e.g.
-"Oats" while "Oatmeal" has the alias "oats". An alias equal to the item's own
-name is allowed. Data stored before this check existed can still clash: then a lookup
-reports the match as ambiguous (listing the items) rather than silently
-picking one, and editing the item only re-checks the aliases you add.
+Names and aliases must be unique within an inventory (case-insensitive,
+Unicode-aware — "čokolada" clashes with "Čokolada"). Adding or renaming
+onto an existing name or alias is rejected; `add_item`'s own `name` field
+is never alias-resolved. Data that already clashed before this check
+existed is reported as ambiguous on lookup rather than silently picked.
 
 ## Change History
 
