@@ -34,7 +34,6 @@ GLOBAL_ENTRY_TITLE: Final = "All Items Expiring Soon"
 GLOBAL_ENTRY_ICON: Final = "mdi:calendar-alert"
 GLOBAL_ENTRY_DESCRIPTION: Final = "Tracks expiring items across all inventories"
 
-# Global entry options
 CONF_SHOW_PANEL: Final = "show_panel"
 CONF_PANEL_ADMIN_ONLY: Final = "panel_admin_only"
 
@@ -225,7 +224,6 @@ def updated_event(inventory_id: str | None) -> str:
     return f"{EVENT_UPDATED}_{inventory_id}" if inventory_id else EVENT_UPDATED
 
 
-# HA events
 EVENT_ITEM_ADDED_TO_LIST: Final = f"{DOMAIN}_item_added_to_list"
 EVENT_ITEM_REMOVED_FROM_LIST: Final = f"{DOMAIN}_item_removed_from_list"
 EVENT_ITEM_DEPLETED: Final = f"{DOMAIN}_item_depleted"

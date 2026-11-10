@@ -1440,7 +1440,6 @@ class SimpleInventoryCoordinator(
 
         # Strip the ID tag from the description regardless of position
         if id_tag in normalized:
-            # Remove " (id)" or "(id)" and clean up extra whitespace
             normalized = normalized.replace(f" {id_tag}", "")
             normalized = normalized.replace(id_tag, "")
             normalized = normalized.strip()

@@ -474,7 +474,6 @@ async def ws_lookup_barcode_product(hass: HomeAssistant, msg: dict[str, Any]) ->
     """Look up a barcode, checking internal inventory first, then external providers."""
     barcode = msg[FIELD_BARCODE]
 
-    # Check if an item with this barcode already exists in any inventory
     hub = get_hub(hass)
     if hub is not None:
         existing = await hub.async_lookup_by_barcode(barcode)

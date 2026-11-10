@@ -141,7 +141,7 @@ class _ImportRecord:
     source_inventory_id: str = ""
     # Stock from ``batches`` or the scalar quantity/expiry_date; None when neither was given.
     batches: list[_ImportBatch] | None = None
-    # A scalar expiry_date given without stock: applies to the item's only batch (D6).
+    # A scalar expiry_date given without stock: applies to the item's only batch.
     expiry_date: str | None = None
 
     @property
@@ -184,7 +184,7 @@ class _ImportExportMixin(_CoordinatorProtocol):
             item[FIELD_DESCRIPTION] = self._process_description_update(
                 item.get(FIELD_DESCRIPTION), inventory_id, False
             )
-            # Image files are not exported (I15): only whether the item has one.
+            # Image files are not exported: only whether the item has one.
             item[FIELD_IMAGE] = bool(item.get(FIELD_IMAGE))
             # Batch IDs are database-local.
             item[FIELD_BATCHES] = [
@@ -691,7 +691,7 @@ class _ImportExportMixin(_CoordinatorProtocol):
     ) -> None:
         item_id: str = existing["id"]
         old_price = float(existing.get(FIELD_PRICE) or 0)
-        # A priced restock also sets the item's price, like a priced increment (D5).
+        # A priced restock also sets the item's price, like a priced increment.
         new_price = float(record.fields.get(FIELD_PRICE) or 0)
         item_price = new_price or old_price
         batches_before = await self.repository.list_batches(item_id)
@@ -740,7 +740,7 @@ class _ImportExportMixin(_CoordinatorProtocol):
             self._single_batch_fields(existing, record, batches) if record.batches is None else {}
         )
         batches_before = batches if record.batches is not None else None
-        # (batch id, original values) to undo a D6 edit of the only batch.
+        # (batch id, original values) to undo an edit of the only batch.
         batch_undo = (
             (batches[0]["id"], {key: batches[0][key] for key in batch_fields})
             if batch_fields

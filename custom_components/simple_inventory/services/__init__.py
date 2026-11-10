@@ -170,7 +170,6 @@ class ServiceHandler:
         """Look up a barcode, checking internal inventory first, then external providers."""
         barcode: str = call.data[FIELD_BARCODE]
 
-        # Check if an item with this barcode already exists in any inventory
         hub = get_hub(self.hass)
         if hub is not None:
             existing = await hub.async_lookup_by_barcode(barcode)

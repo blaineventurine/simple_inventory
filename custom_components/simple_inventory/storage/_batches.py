@@ -11,7 +11,6 @@ import aiosqlite
 
 from ..const import QUANTITY_PRECISION, round_quantity
 
-# D3: soonest expiry first, then oldest purchase; batches without expiry last.
 _CONSUME_ORDER = "ORDER BY b.expiry_date = '', b.expiry_date, b.purchased_at, b.created_at, b.id"
 # Derived items columns, correlated on the outer ``items`` row.
 _DERIVED_QUANTITY = (
@@ -374,7 +373,7 @@ class _BatchRepositoryMixin(_RepositoryProtocol):
                     )
                 )
             if moves:
-                # T4: appended after the existing rows, so the first usual location stays first.
+                # Appended after the existing rows, so the first usual location stays first.
                 await conn.execute(
                     "INSERT OR IGNORE INTO item_locations (item_id, location_id) VALUES (?, ?)",
                     (item_id, to_location_id),
