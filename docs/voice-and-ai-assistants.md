@@ -13,9 +13,8 @@ agent, without writing any automations:
 - **Move stock** — "move two milk from the fridge to the garage fridge in the
   kitchen" (without a quantity, everything at the source moves)
 - **Query a quantity** — "how many aluminum foil do we have in disposable
-  goods" or "how many apples are in dry goods" (the answer uses the stored
-  item and inventory names; when stock is in several places it adds a
-  breakdown: "…: 2 in Fridge, 1 in Garage.")
+  goods" or "how many apples are in dry goods" (when stock is in several
+  places it adds a breakdown: "…: 2 in Fridge, 1 in Garage.")
 - **Find an item in every inventory** — "how many batteries do we have",
   "do we have any butter", "where are the batteries", or in one inventory
   "do we have any milk in the kitchen" (searches item names and aliases in
@@ -38,22 +37,14 @@ The add and remove intents take an optional **location** (the storage spot
 inside the inventory, e.g. "Fridge"): adding stores the new stock there,
 removing only takes stock that is there. The location must already exist in
 the inventory (matched with the same typo tolerance as items); an unknown
-location is refused with "I don't know a location called … in …" and
-nothing changes, so a misheard name never creates a new location. When the
-spoken location matches several locations (e.g. "fridge" for "Fridge Door"
-and "Fridge Drawer", with no location named exactly "Fridge"), removing
-narrows them to the ones where the item has stock: one left is used, several
-are asked about ("Which location in … did you mean: …?"), and none is refused
-with "There is no … at … in …"; adding always asks. Nothing changes until
-the location is clear. LLM-backed agents fill this slot directly. With the
-bundled example sentences, name the
-location before the inventory: "remove 2 milk from the fridge in the
-kitchen", "add milk to the garage fridge in the kitchen". The add/remove
-intents split "<location> in [the] <inventory>" only when the words after
-"in" are exactly an inventory's name and the words before it match at least
-one of that inventory's locations (the last "in" is tried first, so inventory
-names containing "in" still work); anything else is treated as the inventory
-name as before.
+location is refused with "I don't know a location called … in …" rather than
+created. When the spoken location is ambiguous (e.g. "fridge" matching both
+"Fridge Door" and "Fridge Drawer", with no location named exactly "Fridge"),
+removing narrows the candidates to ones where the item has stock — one match
+is used, several are asked about, none is refused; adding always asks.
+LLM-backed agents fill this slot directly. With the bundled example
+sentences, name the location before the inventory: "remove 2 milk from the
+fridge in the kitchen", "add milk to the garage fridge in the kitchen".
 
 The move intent needs the destination and, optionally, the source location;
 both must already exist in the inventory (same matching and refusal as
@@ -68,14 +59,12 @@ giving voice commands a shorter or more natural name than what's stored.
 
 ## LLM-backed Assist (OpenAI, Google Generative AI, a local model via Ollama, etc.)
 
-No setup needed beyond configuring the LLM conversation agent itself in
-"Assist" control mode. Simple Inventory ships an `llm.py` platform module
-that contributes these intents as callable tools to Home
-Assistant's Assist API, so any LLM conversation agent using it gets them
-automatically -- no entity exposure required, since these tools resolve
-inventories and items by name rather than acting on Home Assistant
-entities. Each tool's description ends with your current inventory names, so
-the agent fills the inventory parameter with a real name.
+No setup needed beyond configuring the LLM conversation agent in "Assist"
+control mode. Simple Inventory exposes these intents as callable tools to
+Home Assistant's Assist API automatically — no entity exposure required,
+since the tools resolve inventories and items by name rather than acting on
+Home Assistant entities. Each tool's description ends with your current
+inventory names, so the agent fills the inventory parameter with a real name.
 
 ## Local/offline Assist (Home Assistant Voice's default pipeline)
 
@@ -105,15 +94,14 @@ add your own phrasing.
 
 The sentences only accept the names of your inventories
 (`{simple_inventory_name:inventory}`). Simple Inventory keeps them in
-`<config>/custom_sentences/<language>/simple_inventory_names.yaml` and rewrites that
-file whenever an inventory is added, renamed, enabled, disabled or removed; don't edit
-it. Home Assistant prefers custom sentences over its own, so a slot that matched any
-words would take over commands such as "add milk to my shopping list" or "add 5
-minutes to my timer". For Slovenian the file also lists common case forms of each
-name's last word ("v kuhinji", "v shrambo") — Slovenian inflects a noun's ending by
-grammatical case, so a spoken "in the kitchen" uses a different word-ending than the
-stored name "Kitchen" does; a name whose forms don't follow those endings works in
-the form it is stored in.
+`<config>/custom_sentences/<language>/simple_inventory_names.yaml` and
+rewrites that file whenever an inventory is added, renamed, enabled, disabled
+or removed — don't edit it. Home Assistant prefers custom sentences over its
+own, so an overly broad slot would hijack unrelated commands such as "add
+milk to my shopping list" or "add 5 minutes to my timer". For Slovenian the
+file also lists common case forms of each name's last word ("v kuhinji", "v
+shrambo") to match how the language inflects noun endings; a name whose
+forms don't follow those endings still works in the form it is stored in.
 
 Answers are spoken in the conversation's language (the Assist pipeline's
 language) when it is English, Spanish, French or Slovenian, regional variants

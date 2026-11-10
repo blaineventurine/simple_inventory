@@ -219,7 +219,7 @@ data:
   to_location: "Garage Fridge"
 ```
 
-Moved stock keeps its expiry date, unit price and purchase date. At the destination it joins a batch with the same expiry date and unit price (keeping the earliest purchase date); a source batch that is emptied is deleted. The item's total quantity doesn't change, so no quantity, depleted or restocked events fire and todo lists are left alone; one [`simple_inventory_item_transferred`](features.md#events) event fires instead, and each source batch gets a `transfer` history row.
+Moved stock keeps its expiry date, unit price and purchase date. At the destination it joins a batch with the same expiry date and unit price (keeping the earliest purchase date); an emptied source batch is deleted. Total quantity is unchanged, so no quantity/depleted/restocked events fire and todo lists aren't touched — only one [`simple_inventory_item_transferred`](features.md#events) event, and a `transfer` history row per source batch.
 
 Nothing is changed when the move can't be made:
 
@@ -231,7 +231,7 @@ Nothing is changed when the move can't be made:
 
 ## `simple_inventory.set_item_image_from_barcode`
 
-Use the product photo of a barcode lookup as the item's [photo](features.md#item-images). Identify the item by `name` (or alias, exact match) or `barcode`, and the inventory by `inventory_id` or `inventory_name`. `lookup_barcode` picks the barcode to look up; it must be one of the item's barcodes and defaults to its first one (sorted). The lookup uses the [configured provider](websocket-api.md#simple_inventoryset_barcode_provider_config) (or all of them); the first result with a photo wins. Only that photo URL is fetched (`http`/`https`, at most 10 MB within 10 seconds) — the service never takes a URL from the caller.
+Use the product photo from a barcode lookup as the item's [photo](features.md#item-images). Identify the item by `name` (exact match, alias included) or `barcode`, and the inventory by `inventory_id` or `inventory_name`. `lookup_barcode` picks which of the item's barcodes to look up (default: first, sorted). The lookup uses the [configured provider](websocket-api.md#simple_inventoryset_barcode_provider_config) (or all of them); the first result with a photo wins, and only that URL is fetched (`http`/`https`, 10 MB / 10 s limit) — never a caller-supplied URL.
 
 ```yaml
 service: simple_inventory.set_item_image_from_barcode
@@ -244,7 +244,7 @@ Errors: `image_not_found` (the item has no barcode, or the lookup has no photo),
 
 ## `simple_inventory.set_item_image_from_media`
 
-Copy an image from Home Assistant's local media folders (`media_dirs`, e.g. `/media`) or one uploaded through Home Assistant's own image upload (`media-source://image_upload/<id>`, stored as `<config>/image/<id>/original`) as the item's [photo](features.md#item-images). Other media sources (cameras, TTS, add-ons) are rejected with `unsupported_media_source`, as is anything outside those folders and any image upload id that isn't 32 lowercase hex characters.
+Copy an image from Home Assistant's local media folders (`media_dirs`) or its own image upload feature (`media-source://image_upload/<id>`) as the item's [photo](features.md#item-images). Other sources (cameras, TTS, add-ons) and malformed paths or upload ids are rejected with `unsupported_media_source`.
 
 ```yaml
 service: simple_inventory.set_item_image_from_media
@@ -483,7 +483,7 @@ Example response:
 
 ## `simple_inventory.lookup_by_barcode`
 
-Search for an item by barcode across all inventories. Useful for finding which inventory contains a scanned item. Supports `response_variable` for use in automations and scripts.
+Search for an item by barcode across all inventories. Supports `response_variable` for use in automations and scripts.
 
 ```yaml
 service: simple_inventory.lookup_by_barcode
@@ -520,7 +520,7 @@ data:
 response_variable: product
 ```
 
-If an item in any inventory already has the barcode, only that item is reported (as provider `inventory`, with its `name` and, when set, `description`, `category` and `unit`) and no external database is queried. Otherwise the external providers are queried in parallel: only the one selected with [`simple_inventory/set_barcode_provider_config`](websocket-api.md#simple_inventoryset_barcode_provider_config), or all of `openfoodfacts`, `openbeautyfacts`, `openpetfoodfacts` and `upcitemdb` when none is selected. Each provider gets a 10-second timeout; a slow or unreachable one just reports `"found": false` rather than delaying the others.
+If an item in any inventory already has the barcode, only that item is reported (as provider `inventory`, with its `name` and, when set, `description`, `category` and `unit`) and no external database is queried. Otherwise the external providers are queried in parallel — only the one selected via [`simple_inventory/set_barcode_provider_config`](websocket-api.md#simple_inventoryset_barcode_provider_config), or all four (`openfoodfacts`, `openbeautyfacts`, `openpetfoodfacts`, `upcitemdb`) when none is selected — each with a 10-second timeout; a slow or unreachable one just reports `"found": false` rather than delaying the others.
 
 Example response:
 
@@ -652,7 +652,7 @@ Example response:
 
 ## `simple_inventory.export`
 
-Export one inventory's data as JSON or CSV — a service-call equivalent of the WebSocket `simple_inventory/export` command, for automation-triggered exports (e.g. writing the result to a file on a schedule). Supports `response_variable` for use in automations and scripts.
+Export one inventory as JSON or CSV — the service-call equivalent of the WebSocket `simple_inventory/export` command, useful for scheduled automation exports. Supports `response_variable` for use in automations and scripts.
 
 ```yaml
 service: simple_inventory.export

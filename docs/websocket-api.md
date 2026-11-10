@@ -4,7 +4,7 @@
 
 The integration provides WebSocket commands for real-time communication. These are used by the companion card and can also be used by custom panels or scripts.
 
-**Conventions:** most errors carry a stable `translation_key` (see [Error codes](#error-codes)) the same way service errors do. A command scoped to one `inventory_id` rejects an unknown one with `inventory_not_found` before your handler-specific logic ever runs. Schema validation failures (wrong type, out-of-range value) report `code: "invalid_format"`. A handful of setup-level failures — no inventories configured at all (`no_inventories`), the shared database not open (`no_repository`) — are plain WS-only codes with a message but no `translation_key`/placeholders, since there's nothing to localize. Date fields accept `YYYY-MM-DD` or a full ISO 8601 timestamp.
+**Conventions:** most errors carry a stable `translation_key` (see [Error codes](#error-codes)), same as service errors. A command scoped to one `inventory_id` rejects an unknown one with `inventory_not_found` first. Schema validation failures report `code: "invalid_format"`. A few setup-level failures (`no_inventories`, `no_repository`) are plain WS-only codes with a message but no `translation_key`, since there's nothing to localize. Date fields accept `YYYY-MM-DD` or a full ISO 8601 timestamp.
 
 **Handshake & Listing**
 | Command | Purpose |
@@ -53,8 +53,8 @@ Version handshake. No arguments, available to every authenticated user.
 Returns: `{ "version": "0.11.0", "api_version": 4, "features": ["batches", "transfers", "item_icons", "item_images", "panel", "tile_images", "search", "overview"] }`
 
 - `version` — the installed integration version (from `manifest.json`).
-- `api_version` — the frontend contract version, bumped **only** for breaking changes (`3` added batches; `4` changed the inventory sensor's state from a quantity sum to an item count). Clients should compare against the minimum they support; additive changes never bump it.
-- `features` — optional capability strings. Gate optional UI on these rather than on `version` string comparisons. `"batches"`: items carry `batches`/`stocked_locations`, and the batch services and fields described above are available. `"transfers"`: the [`transfer_item`](services.md#simple_inventorytransfer_item) service is available. `"item_icons"`: items carry `icon`, and `add_item`/`update_item` accept it. `"item_images"`: items carry `image`, the [image endpoints](features.md#item-images) exist, and `set_item_image_from_barcode`, `set_item_image_from_media` and `clear_item_image` are available. `"panel"`: the [`list_inventories`](#simple_inventorylist_inventories) command exists and the integration can register the [sidebar panel](../README.md#sidebar-panel). `"tile_images"`: the [image endpoint](features.md#item-images) accepts `?tile=1` (at most 384 px). `"search"`: the [`search`](#simple_inventorysearch) command exists. `"overview"`: the [`overview`](#simple_inventoryoverview) command exists.
+- `api_version` — the frontend contract version, bumped **only** for breaking changes (`3`: batches; `4`: inventory sensor state changed from a quantity sum to an item count). Compare against the minimum version you support; additive changes never bump it.
+- `features` — optional capability strings; gate UI on these, not on `version`. `batches`: batch fields/services. `transfers`: [`transfer_item`](services.md#simple_inventorytransfer_item). `item_icons`: items carry `icon`. `item_images`: items carry `image`; [image endpoints](features.md#item-images) and the image services exist. `panel`: [`list_inventories`](#simple_inventorylist_inventories) and the [sidebar panel](../README.md#sidebar-panel). `tile_images`: the image endpoint accepts `?tile=1`. `search`/`overview`: those commands exist.
 
 A backend without this command answers `get_info` with an `unknown_command` error.
 
@@ -263,7 +263,7 @@ Returns:
 }
 ```
 
-- `inventories` — one summary per enabled inventory (the global entry excluded), sorted by display name (case-insensitive). `total_items` and `total_value` are the same numbers as [`get_inventory_statistics`](#simple_inventoryget_inventory_statistics) reports. `attention` counts the inventory's items in each section below.
+- `inventories` — one summary per enabled inventory (global entry excluded), sorted by display name. `total_items`/`total_value` match [`get_inventory_statistics`](#simple_inventoryget_inventory_statistics). `attention` counts items in each section below.
 - Each section entry is the item's [`list_items`](#simple_inventorylist_items) dict plus `inventory_id`, `inventory_name` (the inventory's display name) and `reason`.
 
 | Section | `reason` | Sorted by |
@@ -273,7 +273,7 @@ Returns:
 | `out_of_stock` | `{}` | item name, then inventory name |
 | `low_stock` | `threshold` (the item's `auto_add_to_list_quantity`) and `quantity_needed` (see [Auto-Add to Todo List](features.md#auto-add-to-todo-list)) | item name, then inventory name |
 
-Names sort case-insensitively. Each item is listed once, in its most urgent section: expired, then expiring soon, then out of stock (quantity 0 or less), then low stock (in stock, but at or below a positive auto-add threshold). The `attention` counts follow the same rule. Expiry is per batch with each item's own alert window, exactly as the [expiry sensors](sensors.md#per-inventory-sensors) count it, so a batch expiring today is "expiring soon" and one that expired yesterday is "expired". To refresh live, [subscribe](#simple_inventorysubscribe) without `inventory_id` and fetch the overview again on each event.
+Each item is listed once, in its most urgent section: expired, then expiring soon, then out of stock (quantity ≤ 0), then low stock. The `attention` counts follow the same rule. Expiry is per batch with each item's own alert window, matching the [expiry sensors](sensors.md#per-inventory-sensors). To refresh live, [subscribe](#simple_inventorysubscribe) without `inventory_id` and fetch the overview again on each event.
 
 ## `simple_inventory/subscribe`
 
@@ -315,7 +315,7 @@ Query change history for an inventory or a specific item.
 }
 ```
 
-All fields except `inventory_id` are optional. `event_type` values in the data: `add`, `increment`, `decrement`, `update`, `transfer`, `import` (it isn't validated against this list, so an unrecognized value just matches nothing rather than erroring). An `end_date` given as `YYYY-MM-DD` includes that whole day; a full ISO timestamp is an inclusive upper bound. `limit` (default `100`) and `offset` (default `0`) must be ≥ 0.
+All fields except `inventory_id` are optional. `event_type` values: `add`, `increment`, `decrement`, `update`, `transfer`, `import`. An `end_date` as `YYYY-MM-DD` includes that whole day; a full ISO timestamp is an inclusive upper bound. `limit` (default `100`) and `offset` (default `0`) must be ≥ 0.
 
 Returns: `{ "events": [...] }` where each event has:
 - `event_type` — What happened
@@ -460,7 +460,7 @@ Scan a barcode and perform an action on the matched item.
 }
 ```
 
-Only `barcode` and `action` are required. `amount` defaults to 1 and must be greater than 0 (whole numbers are accepted); `price` must be ≥ 0. `inventory_id` is optional unless the barcode exists in multiple inventories. The batch fields `expiry_date`, `location`, `purchased_at` (increment) and `location`, `batch_id` (decrement) behave as in the [`scan_barcode` service](services.md#simple_inventoryscan_barcode).
+Only `barcode` and `action` are required. `amount` defaults to 1 and must be greater than 0; `price` must be ≥ 0. `inventory_id` is optional unless the barcode exists in multiple inventories. The batch fields `expiry_date`, `location`, `purchased_at` (increment) and `location`, `batch_id` (decrement) behave as in the [`scan_barcode` service](services.md#simple_inventoryscan_barcode).
 
 Returns: `{ "action": "increment", "success": true, "item_name": "...", "inventory_id": "...", "amount": 1.0 }`
 
@@ -498,22 +498,22 @@ Import inventory data with a merge strategy.
 
 `data` is an object or list for `format: "json"` (a JSON string is also accepted), and a CSV string for `format: "csv"`.
 
-A record matches an existing item when their names are equal under Unicode case folding ("čokolada" matches "Čokolada", "STRASSE" matches "Straße"). A record is listed in `errors` and skipped when it would make a name ambiguous: a new item whose name or aliases clash with another item's name or aliases, or an `overwrite` that adds an alias already used as another item's name or alias. Earlier records of the same import count.
+A record matches an existing item when their names are equal under Unicode case folding (e.g. "STRASSE" matches "Straße"). A record is listed in `errors` and skipped when it would make a name ambiguous: a new item whose name or aliases clash with another item's, or an `overwrite` that adds an alias already used as another item's name or alias. Earlier records in the same import count too.
 
 Merge strategies:
 - `skip` — Skip items that already exist (default)
-- `overwrite` — Replace only the fields present in each record — scalar fields and locations/categories/barcodes/aliases. An empty list clears that relation; fields absent from the record are left untouched. When the record has `batches` (or a `quantity`), the item's stock is replaced with them. An `expiry_date`/`price` without stock follows the [`update_item` rules](services.md#simple_inventoryupdate_item).
-- `merge_quantities` — Add the record's quantity to the existing stock, merging it into a batch with the same expiry date, location, and unit price, otherwise as a new batch (a record with a price also updates the item's price); records with no or zero quantity count as skipped
+- `overwrite` — Replace only fields present in each record (scalars and locations/categories/barcodes/aliases). An empty list clears that relation; absent fields are untouched. A record with `batches` (or `quantity`) replaces the item's stock. An `expiry_date`/`price` without stock follows the [`update_item` rules](services.md#simple_inventoryupdate_item).
+- `merge_quantities` — Add the record's quantity to existing stock, merging into a batch with the same expiry date, location and unit price, else a new batch (a price also updates the item's price). Records with no or zero quantity count as skipped.
 
-Records with a `batches` list (JSON list, or JSON string in CSV) restore those batches; records without one (older exports, hand-written CSVs) import their scalar `quantity` as a single batch. Imported stock is recorded in history as `import` events. Imports fire no item lifecycle events (added, quantity changed, depleted, restocked); only the todo-list events (`simple_inventory_item_added_to_list` / `simple_inventory_item_removed_from_list`) fire, when an imported item's todo entry is added, refreshed or removed.
+Records with a `batches` list restore those batches; records without one import their scalar `quantity` as a single batch. Imported stock is recorded in history as `import` events. Imports fire no item lifecycle events (added, quantity changed, depleted, restocked) — only todo-list events (`simple_inventory_item_added_to_list` / `simple_inventory_item_removed_from_list`) fire, when an imported item's todo entry changes.
 
-Each record is validated like `add_item` (non-negative numbers, `YYYY-MM-DD` dates, valid `todo_quantity_placement`, valid auto-add configuration, `icon` empty or `prefix:name`). Invalid records are listed in `errors` (`Item N (...)` for JSON, `Row N (...)` for CSV) and skipped; a record that fails part-way leaves no changes. Files without `icon` (exports from before 0.10.0) import with the default icon, and an `overwrite` import without it keeps the item's icon.
+Each record is validated like `add_item` (non-negative numbers, `YYYY-MM-DD` dates, valid `todo_quantity_placement`/auto-add config, `icon` empty or `prefix:name`). Invalid records are listed in `errors` (`Item N (...)` / `Row N (...)`) and skipped; a record that fails part-way leaves no changes. Files without `icon` import with the default icon; an `overwrite` import without it keeps the item's icon.
 
 CSV cells beginning with `=`, `+`, `-`, `@`, tab, or carriage return are prefixed with `'` on export so spreadsheets don't evaluate them as formulas; the prefix is removed on import. Exported descriptions omit the `(inventory_id)` tag; it is re-applied for the target inventory on import.
 
 Returns: `{ "added": 1, "updated": 0, "skipped": 0, "errors": [] }`
 
-Pass `"dry_run": true` to run the identical validation and merge-strategy decisions and get the same summary shape back, without writing anything or syncing the todo list — use it to preview a file's effect first.
+Pass `"dry_run": true` to run the same validation and merge-strategy decisions and get the same summary back, without writing anything or syncing the todo list — use it to preview a file's effect first.
 
 **Barcode** (continued — these two live last since they configure the lookup providers used by the commands above, not scanning itself)
 
