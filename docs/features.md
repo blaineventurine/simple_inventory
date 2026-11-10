@@ -181,14 +181,14 @@ The integration fires Home Assistant events on key inventory transitions, enabli
 
 **Event payloads:**
 
-`item_added`: `item_name`, `inventory_id`, `quantity`
-`item_removed`: `item_name`, `inventory_id`
-`item_quantity_changed`: `item_name`, `inventory_id`, `quantity_before`, `quantity_after`, `amount`, `direction` (`"increment"` or `"decrement"`)
-`item_depleted`: `item_name`, `inventory_id`, `previous_quantity`
-`item_restocked`: `item_name`, `inventory_id`, `quantity`
-`item_transferred`: `item_name`, `inventory_id`, `amount`, `from_location` (`""` when the stock came from several locations), `to_location`
-`item_added_to_list`: `item_name`, `inventory_id`, `quantity`, `todo_list`, `quantity_needed`
-`item_removed_from_list`: `item_name`, `inventory_id`, `quantity`, `todo_list`
+- `item_added`: `item_name`, `inventory_id`, `quantity`
+- `item_removed`: `item_name`, `inventory_id`
+- `item_quantity_changed`: `item_name`, `inventory_id`, `quantity_before`, `quantity_after`, `amount`, `direction` (`"increment"` or `"decrement"`)
+- `item_depleted`: `item_name`, `inventory_id`, `previous_quantity`
+- `item_restocked`: `item_name`, `inventory_id`, `quantity`
+- `item_transferred`: `item_name`, `inventory_id`, `amount`, `from_location` (`""` when the stock came from several locations), `to_location`
+- `item_added_to_list`: `item_name`, `inventory_id`, `quantity`, `todo_list`, `quantity_needed`
+- `item_removed_from_list`: `item_name`, `inventory_id`, `quantity`, `todo_list`
 
 ## Import and Export
 
