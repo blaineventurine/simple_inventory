@@ -3,9 +3,11 @@
 ## Development setup
 
 ```bash
-pip install -r requirements-dev.txt
-pre-commit install
+uv sync
+uv run pre-commit install
 ```
+
+`uv sync` creates `.venv` from `uv.lock` (Python ≥ 3.14.2; uv downloads one if none is installed). Prefix commands with `uv run`, or activate `.venv`. To add or bump a dependency, edit `pyproject.toml` and run `uv lock`.
 
 ## Before opening a PR
 
@@ -14,7 +16,7 @@ All of the following must pass. CI enforces them automatically, but run them loc
 ### Lint
 
 ```bash
-pre-commit run --all-files
+uv run pre-commit run --all-files
 ```
 
 This runs black (100-char lines), isort, flake8 (with flake8-simplify), and basic file checks.
@@ -22,7 +24,7 @@ This runs black (100-char lines), isort, flake8 (with flake8-simplify), and basi
 ### Type checking
 
 ```bash
-mypy --explicit-package-bases custom_components/ tests/
+uv run mypy --explicit-package-bases custom_components/ tests/
 ```
 
 Do **not** run mypy on `./` — the `mutants/` directory produces thousands of spurious errors.
@@ -30,7 +32,7 @@ Do **not** run mypy on `./` — the `mutants/` directory produces thousands of s
 ### Tests
 
 ```bash
-python -m pytest tests/
+uv run pytest tests/
 ```
 
 Coverage must stay at or above **80%**. New code needs tests. If you're touching existing behaviour, make sure the relevant tests still pass and update them if the behaviour intentionally changes.
@@ -57,8 +59,8 @@ A few things that are easy to get wrong:
 
 ```bash
 # Single file
-python -m pytest tests/test_coordinator.py
+uv run pytest tests/test_coordinator.py
 
 # By keyword
-python -m pytest tests/ -k "barcode"
+uv run pytest tests/ -k "barcode"
 ```

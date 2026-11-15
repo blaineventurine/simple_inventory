@@ -29,19 +29,17 @@ jobs:
         uses: pre-commit/action@v3.0.1
 
       # mypy is not run by current pre-commit config, so keep it here
-      - name: Cache pip dependencies
-        uses: actions/cache@v5
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v10
         with:
-          path: ~/.cache/pip
-          key: ${{ runner.os }}-pip-${{ env.DEFAULT_PYTHON }}-${{ hashFiles('requirements-dev.txt') }}
+          python-version: ${{ env.DEFAULT_PYTHON }}
+          enable-cache: true
 
       - name: Install dependencies (for mypy)
-        run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements-dev.txt
+        run: uv sync --locked
 
       - name: Run mypy
-        run: mypy --explicit-package-bases ./
+        run: uv run mypy --explicit-package-bases ./
 
   test:
     runs-on: ubuntu-latest
@@ -49,25 +47,18 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
-      - name: Set up Python
-        uses: actions/setup-python@v6
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v10
         with:
           python-version: ${{ env.DEFAULT_PYTHON }}
-
-      - name: Cache pip dependencies
-        uses: actions/cache@v5
-        with:
-          path: ~/.cache/pip
-          key: ${{ runner.os }}-pip-${{ env.DEFAULT_PYTHON }}-${{ hashFiles('requirements-dev.txt') }}
+          enable-cache: true
 
       - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements-dev.txt
+        run: uv sync --locked
 
       - name: Run tests with coverage
         run: |
-          pytest tests/ \
+          uv run pytest tests/ \
             --cov=custom_components/simple_inventory \
             --cov-report=xml \
             --cov-report=html \
@@ -87,7 +78,7 @@ jobs:
           echo "## 📊 Coverage Report" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
-          python -m coverage report --show-missing >> $GITHUB_STEP_SUMMARY
+          uv run coverage report --show-missing >> $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "📈 [View detailed HTML report](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})" >> $GITHUB_STEP_SUMMARY
@@ -96,7 +87,7 @@ jobs:
         if: github.event_name == 'pull_request'
         run: |
           echo "COVERAGE_REPORT<<EOF" >> $GITHUB_ENV
-          python -m coverage report --show-missing | head -20 >> $GITHUB_ENV
+          uv run coverage report --show-missing | head -20 >> $GITHUB_ENV
           echo "EOF" >> $GITHUB_ENV
 
       - name: Comment PR with coverage
@@ -120,13 +111,14 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
-      - name: Set up Python
-        uses: actions/setup-python@v6
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v10
         with:
           python-version: ${{ env.DEFAULT_PYTHON }}
+          enable-cache: true
 
-      - name: Install safety
-        run: pip install safety
-
-      - name: Run safety check
-        run: safety check -r requirements-dev.txt
+      # Report-only: the advisories so far are in packages Home Assistant pins (e.g. pillow),
+      # which this repo cannot upgrade.
+      - name: Audit locked dependencies
+        continue-on-error: true
+        run: uv audit --locked --preview-features audit-command
