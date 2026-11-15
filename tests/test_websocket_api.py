@@ -1328,7 +1328,7 @@ class TestGetInfoCommand:
         self, hass: HomeAssistant, hass_ws_client: WebSocketGenerator
     ) -> None:
         integration = MagicMock()
-        integration.version = AwesomeVersion("0.8.0")
+        integration.version = AwesomeVersion("0.7.0")
         async_register_websocket_commands(hass)
         client = await hass_ws_client(hass)
 

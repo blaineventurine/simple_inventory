@@ -50,7 +50,7 @@ Version handshake. No arguments, available to every authenticated user.
 }
 ```
 
-Returns: `{ "version": "0.11.0", "api_version": 4, "features": ["batches", "transfers", "item_icons", "item_images", "panel", "tile_images", "search", "overview"] }`
+Returns: `{ "version": "0.7.0", "api_version": 4, "features": ["batches", "transfers", "item_icons", "item_images", "panel", "tile_images", "search", "overview"] }`
 
 - `version` — the installed integration version (from `manifest.json`).
 - `api_version` — the frontend contract version, bumped **only** for breaking changes (`3`: batches; `4`: inventory sensor state changed from a quantity sum to an item count). Compare against the minimum version you support; additive changes never bump it.
