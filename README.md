@@ -45,8 +45,6 @@ This integration works best with the companion Lovelace card:
 
 An optional full-page **Inventory** panel in the Home Assistant sidebar, with one tab per inventory (sorted by name). Each tab shows the same list as the Simple Inventory card.
 
-> 🖼️ *Screenshot: the sidebar panel open on one inventory tab* — replace with `![Inventory sidebar panel](images/sidebar-panel.png)`.
-
 - **Enable it:** Settings -> Devices & Services -> Simple Inventory -> the **All Items Expiring Soon** (global) entry -> **Configure** -> check **Show the Inventory panel in the sidebar**. Saving the options adds or removes the sidebar entry right away.
 - **Admins only:** in the same dialog, check **Only administrators can see the panel** to hide it from non-admin users (default: every user sees it).
 - **Requirements:** the panel's code ships with the [Simple Inventory Card](https://github.com/blaineventurine/simple-inventory-card) (`simple-inventory-panel.js`). Install the card through HACS, or copy its release files into `<config>/www/community/simple-inventory-card/` by hand. The panel loads `/api/simple_inventory/panel-loader.js` (no login needed, never cached), which imports `/local/community/simple-inventory-card/simple-inventory-panel.js` stamped with the file's modification time, so a card update reaches the browser on the next page load without restarting Home Assistant.
