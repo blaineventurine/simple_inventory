@@ -6,6 +6,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
+from custom_components.simple_inventory.const import DOMAIN
+from custom_components.simple_inventory.data import SimpleInventoryData
 from custom_components.simple_inventory.providers.lookup import (
     async_lookup_barcode_all_providers,
 )
@@ -13,17 +15,18 @@ from custom_components.simple_inventory.providers.lookup import (
 
 @pytest.fixture
 def hass_mock() -> MagicMock:
-    return MagicMock()
+    hass = MagicMock()
+    hass.data = {}
+    return hass
 
 
 def _make_provider(name: str, product: dict | None = None, error: bool = False) -> MagicMock:
     provider = MagicMock()
-    provider.provider_name = name
+    provider.name = name
     if error:
         provider.async_lookup = AsyncMock(side_effect=Exception("Network error"))
     else:
         provider.async_lookup = AsyncMock(return_value=product)
-    provider.async_close = AsyncMock()
     return provider
 
 
@@ -108,21 +111,6 @@ class TestAsyncLookupBarcodeAllProviders:
 
         assert results == []
 
-    async def test_async_close_called_on_all(self, hass_mock: MagicMock) -> None:
-        providers = [
-            _make_provider("openfoodfacts", {"name": "Product"}),
-            _make_provider("openbeautyfacts", error=True),
-        ]
-
-        with patch(
-            "custom_components.simple_inventory.providers.lookup.get_all_providers",
-            return_value=providers,
-        ):
-            await async_lookup_barcode_all_providers(hass_mock, "123456")
-
-        for p in providers:
-            p.async_close.assert_awaited_once()
-
     async def test_multiple_providers_found(self, hass_mock: MagicMock) -> None:
         providers = [
             _make_provider("openfoodfacts", {"name": "Product A"}),
@@ -139,3 +127,50 @@ class TestAsyncLookupBarcodeAllProviders:
         assert len(found_results) == 2
         assert found_results[0]["product"]["name"] == "Product A"
         assert found_results[1]["product"]["name"] == "Product B"
+
+
+def _hass_with_provider_config(config: dict | Exception) -> MagicMock:
+    hass = MagicMock()
+    repository = MagicMock()
+    if isinstance(config, Exception):
+        repository.get_barcode_provider_config = AsyncMock(side_effect=config)
+    else:
+        repository.get_barcode_provider_config = AsyncMock(return_value=config)
+    hass.data = {DOMAIN: SimpleInventoryData(repository=repository)}
+    return hass
+
+
+class TestConfiguredProvider:
+    async def test_stored_provider_is_the_only_one_queried(self) -> None:
+        hass = _hass_with_provider_config({"provider": "upcitemdb"})
+        selected = _make_provider("upcitemdb", {"name": "Widget"})
+
+        with (
+            patch(
+                "custom_components.simple_inventory.providers.lookup.create_provider",
+                return_value=selected,
+            ) as create_mock,
+            patch(
+                "custom_components.simple_inventory.providers.lookup.get_all_providers"
+            ) as all_mock,
+        ):
+            results = await async_lookup_barcode_all_providers(hass, "123456")
+
+        create_mock.assert_called_once_with(hass, "upcitemdb")
+        all_mock.assert_not_called()
+        assert results == [{"provider": "upcitemdb", "found": True, "product": {"name": "Widget"}}]
+
+    @pytest.mark.parametrize(
+        "config", [{}, {"provider": "no_longer_registered"}, RuntimeError("db closed")]
+    )
+    async def test_falls_back_to_all_providers(self, config: dict | Exception) -> None:
+        hass = _hass_with_provider_config(config)
+        providers = [_make_provider("openfoodfacts", None), _make_provider("upcitemdb", None)]
+
+        with patch(
+            "custom_components.simple_inventory.providers.lookup.get_all_providers",
+            return_value=providers,
+        ):
+            results = await async_lookup_barcode_all_providers(hass, "123456")
+
+        assert [r["provider"] for r in results] == ["openfoodfacts", "upcitemdb"]

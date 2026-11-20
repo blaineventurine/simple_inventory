@@ -1,3 +1,44 @@
+[project]
+name = "simple-inventory"
+# The release version lives in custom_components/simple_inventory/manifest.json.
+version = "0"
+# homeassistant 2026.10 (pinned by pytest-homeassistant-custom-component) needs >=3.14.2
+requires-python = ">=3.14.2"
+dependencies = [
+  "voluptuous>=0.15.2",
+  "homeassistant>=2025.1.0",
+  "aiosqlite>=0.22.1",
+]
+
+[dependency-groups]
+dev = [
+  # Code formatting
+  "black",
+  "isort",
+  # Linting
+  "flake8",
+  "flake8-bugbear",
+  "flake8-comprehensions",
+  "flake8-simplify",
+  # Type checking
+  "mypy",
+  # Testing
+  "pytest",
+  "pytest-cov",
+  # Pins Home Assistant (2026.10.4). Bump it together with the conversation agent's own
+  # requirements below (homeassistant/components/conversation/manifest.json).
+  "pytest-homeassistant-custom-component==0.13.375",
+  # Default conversation agent in the voice end-to-end tests
+  "hassil==3.12.1",
+  "home-assistant-intents==2026.10.27",
+  "gazetteer-matcher==1.2.0",
+  "pre-commit",
+]
+
+[tool.uv]
+# A Home Assistant custom component, not an installable package.
+package = false
+
 [tool.black]
 line-length = 100
 target-version = ['py313']
@@ -34,6 +75,7 @@ use_parentheses = true
 ensure_newline_before_comments = true
 
 [tool.mypy]
+mypy_path = "typings"
 check_untyped_defs = true
 disallow_incomplete_defs = true
 disallow_untyped_decorators = true

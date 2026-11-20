@@ -1,12 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, NotRequired, TypedDict
-
-if TYPE_CHECKING:
-    from .coordinator import SimpleInventoryCoordinator
-    from .services import ServiceHandler
-    from .storage.repository import InventoryRepository
-    from .todo_manager import TodoManager
+from typing import NotRequired, TypedDict
 
 
 class AddItemServiceData(TypedDict):
@@ -22,6 +16,7 @@ class AddItemServiceData(TypedDict):
     desired_quantity: NotRequired[float]
     expiry_alert_days: NotRequired[int]
     expiry_date: NotRequired[str]
+    icon: NotRequired[str]
     inventory_id: NotRequired[str]
     inventory_name: NotRequired[str]
     location: NotRequired[str]
@@ -46,6 +41,7 @@ class UpdateItemServiceData(TypedDict):
     desired_quantity: NotRequired[float]
     expiry_alert_days: NotRequired[int]
     expiry_date: NotRequired[str]
+    icon: NotRequired[str]
     inventory_id: NotRequired[str]
     inventory_name: NotRequired[str]
     location: NotRequired[str]
@@ -76,10 +72,15 @@ class GetItemsServiceData(TypedDict, total=False):
     inventory_name: str
 
 
-class GetAllItemsServiceData(TypedDict, total=False):
-    """Type for get items from all inventories service call data."""
+class InventoryBatch(TypedDict):
+    """One stock batch as returned on an item (``list_items_with_details``)."""
 
-    pass
+    id: str
+    quantity: float
+    expiry_date: str  # YYYY-MM-DD or ''
+    location: str  # '' when unassigned
+    unit_price: float
+    purchased_at: str  # YYYY-MM-DD
 
 
 class InventoryItem(TypedDict, total=False):
@@ -88,32 +89,20 @@ class InventoryItem(TypedDict, total=False):
     auto_add_enabled: bool
     auto_add_id_to_description_enabled: bool
     auto_add_to_list_quantity: float
+    batches: NotRequired[list[InventoryBatch]]
     category: str
     description: str
     desired_quantity: float
     expiry_alert_days: int
     expiry_date: str
+    icon: str
+    image: str
     inventory_id: str
     location: str
     name: str
     price: float
     quantity: float
+    stocked_locations: NotRequired[list[str]]
     todo_list: str
     todo_quantity_placement: str
     unit: str
-
-
-class InventoryData(TypedDict):
-    """Type definition for the main inventory data structure."""
-
-    inventories: dict[str, dict[str, Any]]
-    config: NotRequired[dict[str, Any]]  # Optional field
-
-
-class SimpleInventoryDomainData(TypedDict):
-    coordinators: dict[str, "SimpleInventoryCoordinator"]
-    repository: "InventoryRepository"
-    repository_task: NotRequired[object]
-    service_handler: NotRequired["ServiceHandler"]
-    services_registered: bool
-    todo_manager: NotRequired["TodoManager"]

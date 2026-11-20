@@ -14,8 +14,8 @@ from custom_components.simple_inventory.providers.open_pet_food_facts import (
 )
 from custom_components.simple_inventory.providers.openfoodfacts import OpenFoodFactsProvider
 from custom_components.simple_inventory.providers.registry import (
-    DEFAULT_PROVIDER,
     PROVIDER_REGISTRY,
+    PROVIDERS,
     create_provider,
     get_all_providers,
 )
@@ -44,20 +44,9 @@ class TestCreateProvider:
         provider = create_provider(hass_mock, "upcitemdb")
         assert isinstance(provider, UPCItemDBProvider)
 
-    def test_default_provider(self, hass_mock: MagicMock) -> None:
-        provider = create_provider(hass_mock)
-        assert isinstance(provider, OpenFoodFactsProvider)
-
-    def test_default_provider_constant(self) -> None:
-        assert DEFAULT_PROVIDER == "openfoodfacts"
-
     def test_unknown_provider_raises(self, hass_mock: MagicMock) -> None:
         with pytest.raises(ValueError, match="Unknown barcode provider"):
             create_provider(hass_mock, "nonexistent")
-
-    def test_none_uses_default(self, hass_mock: MagicMock) -> None:
-        provider = create_provider(hass_mock, None)
-        assert isinstance(provider, OpenFoodFactsProvider)
 
 
 class TestProviderRegistry:
@@ -70,16 +59,19 @@ class TestProviderRegistry:
     def test_registry_has_four_providers(self) -> None:
         assert len(PROVIDER_REGISTRY) == 4
 
+    def test_registry_is_keyed_by_provider_name(self) -> None:
+        assert PROVIDER_REGISTRY == {cls.name: cls for cls in PROVIDERS}
+
 
 class TestGetAllProviders:
     def test_returns_all_providers(self, hass_mock: MagicMock) -> None:
         providers = get_all_providers(hass_mock)
         assert len(providers) == 4
-        names = {p.provider_name for p in providers}
+        names = {p.name for p in providers}
         assert names == {"openfoodfacts", "openbeautyfacts", "openpetfoodfacts", "upcitemdb"}
 
     def test_returns_provider_instances(self, hass_mock: MagicMock) -> None:
         providers = get_all_providers(hass_mock)
         for p in providers:
             assert hasattr(p, "async_lookup")
-            assert hasattr(p, "async_close")
+            assert p.hass is hass_mock

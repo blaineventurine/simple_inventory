@@ -1,0 +1,85 @@
+# Example French custom sentences for Simple Inventory voice control.
+#
+# Installed by the "Install example voice commands" checkbox when Home Assistant's
+# language is French, or copy it by hand to
+# <config>/custom_sentences/fr/simple_inventory.yaml and reload the integration.
+# LLM-backed conversation agents don't need it: they get the intents as tools.
+#
+# {simple_inventory_name:inventory} only matches your inventories' names, which Simple
+# Inventory keeps in simple_inventory_names.yaml next to this file (see the English file).
+language: "fr"
+intents:
+  SimpleInventoryRemoveItem:
+    data:
+      - sentences:
+          - "(retire|enlève|enleve) {quantity} {item} (de|du|des) [la] {simple_inventory_name:inventory}"
+          - "(retire|enlève|enleve) {item} (de|du|des) [la] {simple_inventory_name:inventory}"
+          - "on a utilisé {quantity} {item} (de|du|des) [la] {simple_inventory_name:inventory}"
+  SimpleInventoryAddItem:
+    data:
+      - sentences:
+          - "ajoute {quantity} {item} (à|a|au|aux) [la] {simple_inventory_name:inventory}"
+          - "ajoute {item} (à|a|au|aux) [la] {simple_inventory_name:inventory}"
+  SimpleInventoryQueryItem:
+    data:
+      - sentences:
+          - "combien de {item} (il y a|on a|avons-nous|y a-t-il) dans [le|la|les] {simple_inventory_name:inventory}"
+          - "(est-ce qu'il reste|il reste|reste-t-il) (du|de la|des|de) {item} dans [le|la|les] {simple_inventory_name:inventory}"
+  SimpleInventoryFindItem:
+    data:
+      - sentences:
+          - "combien de {item} (il y a|on a|avons-nous|y a-t-il)"
+          - "(est-ce qu'on a|avons-nous) (du|de la|des|de) {item}"
+          - "(où|ou) (est|sont) [le|la|les] {item}"
+          - "(où|ou) (puis-je|est-ce que je peux) trouver [le|la|les] {item}"
+  SimpleInventoryExpiryCountQuery:
+    data:
+      - sentences:
+          - "combien (d'articles|de produits) sont {status} [dans [le|la|les] {simple_inventory_name:inventory}]"
+  SimpleInventoryLowStockCountQuery:
+    data:
+      - sentences:
+          - "combien (d'articles|de produits) (sont presque épuisés|commencent à manquer) [dans [le|la|les] {simple_inventory_name:inventory}]"
+  SimpleInventoryLowStockListQuery:
+    data:
+      - sentences:
+          - "qu'est-ce qui (commence à manquer|est presque épuisé) [dans [le|la|les] {simple_inventory_name:inventory}]"
+          - "(quels|quelles) (articles|produits) (sont presque épuisés|commencent à manquer) [dans [le|la|les] {simple_inventory_name:inventory}]"
+  SimpleInventoryExpiryListQuery:
+    data:
+      - sentences:
+          - "(quels|quelles) (articles|produits) sont {status} [dans [le|la|les] {simple_inventory_name:inventory}]"
+          - "liste les (articles|produits) {status} [dans [le|la|les] {simple_inventory_name:inventory}]"
+  SimpleInventorySetItemQuantity:
+    data:
+      - sentences:
+          - "mets {item} à {quantity} dans [le|la|les] {simple_inventory_name:inventory}"
+  SimpleInventoryTransferItem:
+    data:
+      - sentences:
+          - "déplace {quantity} {item} (de|du|des) [la] {from_location} (vers|à|au) [le|la|les] {to_location} dans [le|la|les] {simple_inventory_name:inventory}"
+          - "déplace {item} (de|du|des) [la] {from_location} (vers|à|au) [le|la|les] {to_location} dans [le|la|les] {simple_inventory_name:inventory}"
+lists:
+  # Filled by simple_inventory_names.yaml (Home Assistant concatenates the lists).
+  simple_inventory_name:
+    values: []
+  item:
+    wildcard: true
+  from_location:
+    wildcard: true
+  to_location:
+    wildcard: true
+  quantity:
+    range:
+      from: 1
+      to: 100
+  status:
+    values:
+      - in: "périmés"
+        out: "expired"
+      - in: "perimes"
+        out: "expired"
+      - in: "bientôt périmés"
+        out: "expiring_soon"
+      - in: "bientot perimes"
+        out: "expiring_soon"

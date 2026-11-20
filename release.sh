@@ -4,8 +4,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 MANIFEST="custom_components/simple_inventory/manifest.json"
-SETUP="custom_components/simple_inventory/setup.py"
-VERSION_FILES=("$MANIFEST" "$SETUP")
+VERSION_FILES=("$MANIFEST")
 
 write_version_files() {
     local ver="$1"
@@ -14,10 +13,6 @@ write_version_files() {
     tmp="$(mktemp)"
     sed "s/\"version\": \"[^\"]*\"/\"version\": \"${ver}\"/" "$MANIFEST" > "$tmp"
     mv "$tmp" "$MANIFEST"
-
-    tmp="$(mktemp)"
-    sed "s/version=\"[^\"]*\"/version=\"${ver}\"/" "$SETUP" > "$tmp"
-    mv "$tmp" "$SETUP"
 }
 
 usage() {
@@ -31,7 +26,7 @@ Behavior (based on latest stable tag vX.Y.Z):
   beta  -> vX.(Y+1).0bN  (N increments if existing betas for that base exist)
 
 Steps performed:
-  1. Bump version in manifest.json and setup.py, commit the change (jj commit),
+  1. Bump version in manifest.json, commit the change (jj commit),
      and advance the release bookmark
   2. Open $EDITOR to write release notes (saved as the annotated git tag message)
   3. Create annotated tag (signed if GPG key available)

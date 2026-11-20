@@ -12,6 +12,7 @@ from homeassistant import config_entries
 from homeassistant.core import HomeAssistant, ServiceCall
 
 from custom_components.simple_inventory.const import DOMAIN
+from custom_components.simple_inventory.data import SimpleInventoryData
 from custom_components.simple_inventory.services import ServiceHandler
 from custom_components.simple_inventory.services.base_service import (
     BaseServiceHandler,
@@ -25,20 +26,24 @@ from custom_components.simple_inventory.services.quantity_service import (
 from custom_components.simple_inventory.todo_manager import TodoManager
 from custom_components.simple_inventory.types import InventoryItem
 
+from .harness import point_config_dir
+
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
+
+
+@pytest.fixture
+def hass_with_tmp_config(hass: HomeAssistant, tmp_path: Path) -> HomeAssistant:
+    """``hass`` whose config dir (and so the SQLite database) is *tmp_path*."""
+    point_config_dir(hass, tmp_path)
+    return hass
 
 
 @pytest.fixture
 def hass_mock() -> MagicMock:
     """Create a mock Home Assistant instance."""
     hass_mock = MagicMock()
-    hass_mock.data = {
-        "simple_inventory": {
-            "coordinators": {},
-            "repository": MagicMock(),
-        }
-    }
+    hass_mock.data = {"simple_inventory": SimpleInventoryData(repository=MagicMock())}
 
     hass_mock.services = MagicMock()
     hass_mock.services.async_call = AsyncMock()
@@ -69,7 +74,6 @@ def hass_mock() -> MagicMock:
 def mock_coordinator() -> MagicMock:
     """Create a mock coordinator with common async methods."""
     coordinator = MagicMock()
-    coordinator.async_save_data = AsyncMock()
 
     coordinator.async_add_item = AsyncMock(return_value="item-id")
     coordinator.async_remove_item = AsyncMock(return_value=True)
@@ -92,9 +96,6 @@ def mock_coordinator() -> MagicMock:
             "expiring_items": [],
         }
     )
-    coordinator.async_get_items_expiring_soon = AsyncMock(return_value=[])
-
-    coordinator.async_add_listener = MagicMock(return_value=lambda: None)
 
     mock_repo = MagicMock()
     mock_repo.get_item_by_barcode = AsyncMock(return_value=None)
@@ -107,8 +108,7 @@ def mock_coordinator() -> MagicMock:
 def mock_todo_manager() -> TodoManager:
     """Create a mock todo manager."""
     todo_manager = MagicMock()
-    todo_manager.check_and_add_item = AsyncMock(return_value=True)
-    todo_manager.check_and_remove_item = AsyncMock(return_value=True)
+    todo_manager.async_sync = AsyncMock(return_value=True)
     return todo_manager
 
 
@@ -132,10 +132,10 @@ def inventory_service(
     mock_todo_manager: TodoManager,
     mock_coordinator: MagicMock,
 ) -> InventoryService:
-    hass.data.setdefault(DOMAIN, {})
-    hass.data[DOMAIN].setdefault("coordinators", {})
-    hass.data[DOMAIN]["coordinators"]["kitchen"] = mock_coordinator
-    hass.data[DOMAIN].setdefault("repository", MagicMock())
+    domain_data = hass.data.setdefault(DOMAIN, SimpleInventoryData())
+    domain_data.coordinators["kitchen"] = mock_coordinator
+    if domain_data.repository is None:
+        domain_data.repository = MagicMock()
     return InventoryService(hass, mock_todo_manager)
 
 
@@ -145,7 +145,7 @@ def quantity_service(
     mock_todo_manager: TodoManager,
     mock_coordinator: MagicMock,
 ) -> QuantityService:
-    hass.data["simple_inventory"]["coordinators"]["kitchen"] = mock_coordinator
+    hass.data["simple_inventory"].coordinators["kitchen"] = mock_coordinator
     return QuantityService(hass, mock_todo_manager)
 
 
@@ -372,7 +372,7 @@ def full_service_setup(
     mock_coordinator: MagicMock,
     mock_todo_manager: TodoManager,
 ) -> dict[str, Any]:
-    hass.data["simple_inventory"]["coordinators"]["kitchen"] = mock_coordinator
+    hass.data["simple_inventory"].coordinators["kitchen"] = mock_coordinator
 
     return {
         "hass": hass,
@@ -387,29 +387,6 @@ def full_service_setup(
 def domain() -> str:
     """Return the domain constant."""
     return "simple_inventory"
-
-
-@pytest.fixture
-def coordinator_with_errors(
-    mock_coordinator: MagicMock,
-) -> MagicMock:
-    """Create a coordinator that simulates various error conditions."""
-    coordinator = mock_coordinator
-
-    def simulate_save_error() -> None:
-        coordinator.async_save_data.side_effect = Exception("Save failed")
-
-    def simulate_get_error() -> None:
-        coordinator.get_item.side_effect = Exception("Get failed")
-
-    def simulate_update_error() -> None:
-        coordinator.update_item.side_effect = Exception("Update failed")
-
-    coordinator.simulate_save_error = simulate_save_error
-    coordinator.simulate_get_error = simulate_get_error
-    coordinator.simulate_update_error = simulate_update_error
-
-    return coordinator
 
 
 @pytest.fixture

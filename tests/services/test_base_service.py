@@ -27,55 +27,28 @@ class TestBaseServiceHandler:
 
         assert handler.hass is hass
 
-    @pytest.mark.asyncio
-    async def test_save_and_log_success(
+    def test_log_success(
         self: Self,
         base_service_handler: BaseServiceHandler,
-        mock_coordinator: MagicMock,
         caplog: pytest.LogCaptureFixture,
     ) -> None:
-        """Test saving data and logging success."""
+        """Success is only logged; the coordinator already signalled the change (C9)."""
         with caplog.at_level(logging.DEBUG):
-            await base_service_handler._save_and_log_success(
-                mock_coordinator, "kitchen", "Added item", "milk"
-            )
-
-        mock_coordinator.async_save_data.assert_called_once_with("kitchen")
+            base_service_handler._log_success("kitchen", "Added item", "milk")
 
         assert "Added item: milk in inventory: kitchen" in caplog.text
         assert caplog.records[0].levelname == "DEBUG"
 
-    @pytest.mark.asyncio
-    async def test_save_and_log_success_with_special_characters(
+    def test_log_success_with_special_characters(
         self: Self,
         base_service_handler: BaseServiceHandler,
-        mock_coordinator: MagicMock,
         caplog: pytest.LogCaptureFixture,
     ) -> None:
-        """Test saving and logging with special characters in names."""
+        """Test logging with special characters in names."""
         with caplog.at_level(logging.DEBUG):
-            await base_service_handler._save_and_log_success(
-                mock_coordinator, "my-pantry_01", "Updated item", "café-latte"
-            )
+            base_service_handler._log_success("my-pantry_01", "Updated item", "café-latte")
 
-        mock_coordinator.async_save_data.assert_called_once_with("my-pantry_01")
         assert "Updated item: café-latte in inventory: my-pantry_01" in caplog.text
-
-    @pytest.mark.asyncio
-    async def test_save_and_log_success_coordinator_exception(
-        self: Self,
-        base_service_handler: BaseServiceHandler,
-        mock_coordinator: MagicMock,
-    ) -> None:
-        """Test handling coordinator exception during save."""
-        mock_coordinator.async_save_data.side_effect = Exception("Save failed")
-
-        with pytest.raises(Exception, match="Save failed"):
-            await base_service_handler._save_and_log_success(
-                mock_coordinator, "kitchen", "Added item", "milk"
-            )
-
-        mock_coordinator.async_save_data.assert_called_once_with("kitchen")
 
     def test_log_item_not_found(
         self: Self,
@@ -178,28 +151,6 @@ class TestBaseServiceHandler:
         with pytest.raises(KeyError, match="name"):
             base_service_handler._get_inventory_and_name(call)
 
-    @pytest.mark.asyncio
-    async def test_concurrent_save_operations(
-        self: Self,
-        base_service_handler: BaseServiceHandler,
-        mock_coordinator: MagicMock,
-    ) -> None:
-        """Test concurrent save operations."""
-        import asyncio
-
-        # Create multiple concurrent save operations
-        tasks = [
-            base_service_handler._save_and_log_success(
-                mock_coordinator, f"inventory_{i}", "Operation", f"item_{i}"
-            )
-            for i in range(3)
-        ]
-
-        await asyncio.gather(*tasks)
-
-        # Verify all coordinator calls were made
-        assert mock_coordinator.async_save_data.call_count == 3
-
     def test_inheritance_capability(
         self: Self, hass: HomeAssistant, mock_coordinator: MagicMock
     ) -> None:
@@ -214,7 +165,7 @@ class TestBaseServiceHandler:
 
         child_handler = TestChildHandler(hass)
 
-        assert hasattr(child_handler, "_save_and_log_success")
+        assert hasattr(child_handler, "_log_success")
         assert hasattr(child_handler, "_extract_item_kwargs")
         assert child_handler.hass is hass
         assert child_handler.test_method() == "child method"

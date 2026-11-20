@@ -13,7 +13,11 @@ from custom_components.simple_inventory.const import (
     FIELD_DESIRED_QUANTITY,
     FIELD_TODO_QUANTITY_PLACEMENT,
 )
-from custom_components.simple_inventory.todo_manager import TodoManager
+from custom_components.simple_inventory.todo_manager import (
+    TodoManager,
+    restock_state,
+    supports_description,
+)
 from custom_components.simple_inventory.types import InventoryItem
 
 
@@ -122,8 +126,10 @@ class TestTodoManager:
             assert result == expected_items
 
     @pytest.mark.asyncio
-    async def test_get_incomplete_items_no_entity(self: Self, todo_manager: TodoManager) -> None:
-        """Test _get_incomplete_items when entity doesn't exist."""
+    async def test_get_incomplete_items_unreadable_list(
+        self: Self, todo_manager: TodoManager
+    ) -> None:
+        """A failed get_items is None (unknown), never an empty list."""
         with (
             patch.object(
                 todo_manager.hass.services,
@@ -134,13 +140,13 @@ class TestTodoManager:
         ):
 
             result = await todo_manager._get_incomplete_items("todo.nonexistent")
-            assert result == []
+            assert result is None
 
     @pytest.mark.asyncio
-    async def test_check_and_add_item_success(
+    async def test_add_or_refresh_success(
         self: Self, todo_manager: TodoManager, sample_item_data: InventoryItem
     ) -> None:
-        """Test check_and_add_item with successful addition."""
+        """Test _add_or_refresh with successful addition."""
         with (
             patch.object(
                 todo_manager,
@@ -150,7 +156,7 @@ class TestTodoManager:
             patch.object(todo_manager.hass.services, "async_call", new=AsyncMock()) as mock_call,
         ):
 
-            result = await todo_manager.check_and_add_item("bread", sample_item_data)
+            result = await todo_manager._add_or_refresh("bread", sample_item_data)
 
             assert result is True
             mock_call.assert_called_with(
@@ -161,10 +167,10 @@ class TestTodoManager:
             )
 
     @pytest.mark.asyncio
-    async def test_check_and_add_item_duplicate(
+    async def test_add_or_refresh_duplicate(
         self: Self, todo_manager: TodoManager, sample_item_data: InventoryItem
     ) -> None:
-        """Test check_and_add_item with duplicate item."""
+        """Test _add_or_refresh with duplicate item."""
         with (
             patch.object(
                 todo_manager,
@@ -178,16 +184,16 @@ class TestTodoManager:
             patch.object(todo_manager.hass.services, "async_call", new=AsyncMock()) as mock_call,
         ):
 
-            result = await todo_manager.check_and_add_item("bread", sample_item_data)
+            result = await todo_manager._add_or_refresh("bread", sample_item_data)
 
             assert result is False
             mock_call.assert_not_called()
 
     @pytest.mark.asyncio
-    async def test_check_and_add_item_case_insensitive_duplicate(
+    async def test_add_or_refresh_case_insensitive_duplicate(
         self: Self, todo_manager: TodoManager, sample_item_data: InventoryItem
     ) -> None:
-        """Test check_and_add_item with case-insensitive duplicate."""
+        """Test _add_or_refresh with case-insensitive duplicate."""
         with (
             patch.object(
                 todo_manager,
@@ -197,7 +203,7 @@ class TestTodoManager:
             patch.object(todo_manager.hass.services, "async_call", new=AsyncMock()) as mock_call,
         ):
 
-            result = await todo_manager.check_and_add_item("bread", sample_item_data)
+            result = await todo_manager._add_or_refresh("bread", sample_item_data)
 
             assert result is True
             mock_call.assert_called()
@@ -243,23 +249,23 @@ class TestTodoManager:
         ],
     )
     @pytest.mark.asyncio
-    async def test_check_and_add_item_conditions_not_met(
+    async def test_add_or_refresh_conditions_not_met(
         self: Self,
         todo_manager: TodoManager,
         item_data: InventoryItem,
         expected: bool,
     ) -> None:
-        """Test check_and_add_item when conditions are not met."""
+        """Test _add_or_refresh when conditions are not met."""
         with patch.object(todo_manager.hass.services, "async_call", new=AsyncMock()) as mock_call:
-            result = await todo_manager.check_and_add_item("Buy bread", item_data)
+            result = await todo_manager._add_or_refresh("Buy bread", item_data)
             assert result == expected
             mock_call.assert_not_called()
 
     @pytest.mark.asyncio
-    async def test_check_and_add_item_service_error(
+    async def test_add_or_refresh_service_error(
         self: Self, todo_manager: TodoManager, sample_item_data: InventoryItem
     ) -> None:
-        """Test check_and_add_item with service error."""
+        """Test _add_or_refresh with service error."""
         with (
             patch.object(
                 todo_manager,
@@ -273,21 +279,21 @@ class TestTodoManager:
             ),
         ):
 
-            result = await todo_manager.check_and_add_item("Buy bread", sample_item_data)
+            result = await todo_manager._add_or_refresh("Buy bread", sample_item_data)
 
             assert result is False
 
     @pytest.mark.asyncio
-    async def test_check_and_add_item_get_items_error(
+    async def test_add_or_refresh_get_items_error(
         self: Self, todo_manager: TodoManager, sample_item_data: InventoryItem
     ) -> None:
-        """Test check_and_add_item with get items error."""
+        """Test _add_or_refresh with get items error."""
         with patch.object(
             todo_manager,
             "_get_incomplete_items",
             new=AsyncMock(side_effect=Exception("Get items error")),
         ):
-            result = await todo_manager.check_and_add_item("Buy bread", sample_item_data)
+            result = await todo_manager._add_or_refresh("Buy bread", sample_item_data)
 
             assert result is False
 
@@ -316,7 +322,7 @@ class TestTodoManager:
                 None,
             ]
 
-            result = await todo_manager.check_and_add_item("bread", item_data)
+            result = await todo_manager._add_or_refresh("bread", item_data)
 
             assert result is True
             assert mock_call.call_count == 2
@@ -328,7 +334,7 @@ class TestTodoManager:
         """Test when auto_add is disabled, should return False."""
         valid_item_data["auto_add_enabled"] = False
 
-        result = await todo_manager.check_and_remove_item("bread", valid_item_data)
+        result = await todo_manager._remove_or_refresh("bread", valid_item_data)
 
         assert result is False
 
@@ -339,7 +345,7 @@ class TestTodoManager:
         """Test when todo_list is empty, should return False."""
         valid_item_data["todo_list"] = ""
 
-        result = await todo_manager.check_and_remove_item("bread", valid_item_data)
+        result = await todo_manager._remove_or_refresh("bread", valid_item_data)
 
         assert result is False
 
@@ -353,7 +359,7 @@ class TestTodoManager:
             "_find_matching_incomplete_item",
             new=AsyncMock(return_value=None),
         ):
-            result = await todo_manager.check_and_remove_item("bread", valid_item_data)
+            result = await todo_manager._remove_or_refresh("bread", valid_item_data)
 
             assert result is False
 
@@ -376,7 +382,7 @@ class TestTodoManager:
             ),
             patch.object(todo_manager, "_remove_todo_item", new=AsyncMock()) as mock_remove,
         ):
-            result = await todo_manager.check_and_remove_item("bread", valid_item_data)
+            result = await todo_manager._remove_or_refresh("bread", valid_item_data)
 
             assert result is True
             mock_remove.assert_called_once_with("todo.shopping_list", matching_item)
@@ -402,12 +408,10 @@ class TestTodoManager:
             patch.object(
                 todo_manager, "_build_todo_item_name", return_value="bread (x2)"
             ) as mock_build_name,
-            patch.object(todo_manager, "_calculate_quantity_needed", return_value=2) as mock_calc,
         ):
-            result = await todo_manager.check_and_remove_item("bread", valid_item_data)
+            result = await todo_manager._remove_or_refresh("bread", valid_item_data)
 
             assert result is True
-            mock_calc.assert_called_once_with(1.0, 2.0, 0.0)
             mock_build_name.assert_called_once_with("bread", 2)
             mock_update.assert_called_once_with(
                 "todo.shopping_list", matching_item, "bread (x2)", None
@@ -423,7 +427,7 @@ class TestTodoManager:
         valid_item_data["auto_add_to_list_quantity"] = 2
         # quantity_needed = 2 - 2 + 1 = 1 (which is > 0, so UPDATE not REMOVE)
 
-        matching_item = {"summary": "bread (x1)", "uid": "123"}
+        matching_item = {"summary": "bread (x3)", "uid": "123"}  # stale quantity text
 
         with (
             patch.object(
@@ -433,7 +437,7 @@ class TestTodoManager:
             ),
             patch.object(todo_manager, "_update_todo_item", new=AsyncMock()) as mock_update,
         ):
-            result = await todo_manager.check_and_remove_item("bread", valid_item_data)
+            result = await todo_manager._remove_or_refresh("bread", valid_item_data)
 
             assert result is True
             # Should update, not remove
@@ -459,7 +463,7 @@ class TestTodoManager:
             ),
             patch.object(todo_manager, "_remove_todo_item", new=AsyncMock()) as mock_remove,
         ):
-            result = await todo_manager.check_and_remove_item("bread", valid_item_data)
+            result = await todo_manager._remove_or_refresh("bread", valid_item_data)
 
             assert result is True
             mock_remove.assert_called_once_with("todo.shopping_list", matching_item)
@@ -485,7 +489,7 @@ class TestTodoManager:
                 new=AsyncMock(side_effect=Exception("Service error")),
             ),
         ):
-            result = await todo_manager.check_and_remove_item("bread", valid_item_data)
+            result = await todo_manager._remove_or_refresh("bread", valid_item_data)
 
             assert result is False
 
@@ -496,7 +500,7 @@ class TestTodoManager:
         """Test handling service error during item update."""
         valid_item_data["quantity"] = 1  # Low enough to trigger update
 
-        matching_item = {"summary": "bread (x2)", "uid": "123"}
+        matching_item = {"summary": "bread (x5)", "uid": "123"}  # stale -> update needed
 
         with (
             patch.object(
@@ -510,7 +514,7 @@ class TestTodoManager:
                 new=AsyncMock(side_effect=Exception("Service error")),
             ),
         ):
-            result = await todo_manager.check_and_remove_item("bread", valid_item_data)
+            result = await todo_manager._remove_or_refresh("bread", valid_item_data)
 
             assert result is False
 
@@ -524,7 +528,7 @@ class TestTodoManager:
             "_find_matching_incomplete_item",
             new=AsyncMock(side_effect=Exception("Get items error")),
         ):
-            result = await todo_manager.check_and_remove_item("bread", valid_item_data)
+            result = await todo_manager._remove_or_refresh("bread", valid_item_data)
 
             assert result is False
 
@@ -545,7 +549,7 @@ class TestTodoManager:
             ),
             patch.object(todo_manager.hass.services, "async_call", new=AsyncMock()) as mock_call,
         ):
-            result = await todo_manager.check_and_remove_item("bread", valid_item_data)
+            result = await todo_manager._remove_or_refresh("bread", valid_item_data)
 
             assert result is True
             # Should use summary since no UID
@@ -589,7 +593,7 @@ class TestTodoManager:
                 patch.object(todo_manager, "_remove_todo_item", new=AsyncMock()) as mock_remove,
                 patch.object(todo_manager, "_update_todo_item", new=AsyncMock()) as mock_update,
             ):
-                result = await todo_manager.check_and_remove_item("test_item", item_data)
+                result = await todo_manager._remove_or_refresh("test_item", item_data)
 
                 assert result is True
 
@@ -603,25 +607,30 @@ class TestTodoManager:
     # --- desired_quantity tests ---
 
     @pytest.mark.parametrize(
-        "quantity,auto_add,desired,expected",
+        "quantity,auto_add,desired,expected,restocked",
         [
-            (2, 5, 0, 4),  # legacy: 5 - 2 + 1 = 4
-            (2, 5, 10, 10),  # desired: always returns desired_quantity
-            (2, 5, 2, 2),  # desired: returns desired_quantity regardless of current
-            (0, 5, 10, 10),  # desired from zero
+            (2, 5, 0, 4, False),  # legacy: 5 - 2 + 1 = 4
+            (6, 5, 0, 0, True),  # legacy: above the threshold
+            (2, 5, 10, 10, False),  # desired: always returns desired_quantity
+            (2, 5, 2, 2, True),  # desired: returns desired_quantity regardless of current
+            (0, 5, 10, 10, False),  # desired from zero
         ],
     )
-    def test_calculate_quantity_needed(
+    def test_restock_state(
         self,
-        todo_manager: TodoManager,
         quantity: float,
         auto_add: float,
         desired: float,
         expected: float,
+        restocked: bool,
     ) -> None:
-        """Test _calculate_quantity_needed with and without desired_quantity."""
-        result = todo_manager._calculate_quantity_needed(quantity, auto_add, desired)
-        assert result == expected
+        """restock_state shows desired_quantity when set, else the legacy shortfall."""
+        item = {
+            "quantity": quantity,
+            "auto_add_to_list_quantity": auto_add,
+            FIELD_DESIRED_QUANTITY: desired,
+        }
+        assert restock_state(item) == (expected, restocked)
 
     @pytest.mark.parametrize(
         "quantity_needed,expected_suffix",
@@ -643,10 +652,8 @@ class TestTodoManager:
         assert result == f"Bacon ({expected_suffix})"
 
     @pytest.mark.asyncio
-    async def test_check_and_add_item_with_desired_quantity(
-        self, todo_manager: TodoManager
-    ) -> None:
-        """Test check_and_add_item uses desired_quantity directly as the display amount."""
+    async def test_add_or_refresh_with_desired_quantity(self, todo_manager: TodoManager) -> None:
+        """Test _add_or_refresh uses desired_quantity directly as the display amount."""
         item_data: InventoryItem = {
             "auto_add_enabled": True,
             "quantity": 2,
@@ -663,7 +670,7 @@ class TestTodoManager:
             ),
             patch.object(todo_manager.hass.services, "async_call", new=AsyncMock()) as mock_call,
         ):
-            result = await todo_manager.check_and_add_item("Bacon", item_data)
+            result = await todo_manager._add_or_refresh("Bacon", item_data)
 
             assert result is True
             mock_call.assert_called_with(
@@ -674,10 +681,10 @@ class TestTodoManager:
             )
 
     @pytest.mark.asyncio
-    async def test_check_and_add_item_desired_quantity_already_met(
+    async def test_add_or_refresh_desired_quantity_already_met(
         self, todo_manager: TodoManager
     ) -> None:
-        """Test check_and_add_item returns False when quantity >= desired_quantity."""
+        """Test _add_or_refresh returns False when quantity >= desired_quantity."""
         item_data: InventoryItem = {
             "auto_add_enabled": True,
             "quantity": 2,
@@ -694,16 +701,16 @@ class TestTodoManager:
             ),
             patch.object(todo_manager.hass.services, "async_call", new=AsyncMock()) as mock_call,
         ):
-            result = await todo_manager.check_and_add_item("Bacon", item_data)
+            result = await todo_manager._add_or_refresh("Bacon", item_data)
 
             assert result is False
             mock_call.assert_not_called()
 
     @pytest.mark.asyncio
-    async def test_check_and_remove_item_desired_quantity_reached_removes(
+    async def test_remove_or_refresh_desired_quantity_reached_removes(
         self, todo_manager: TodoManager
     ) -> None:
-        """Test check_and_remove_item removes todo item when quantity reaches
+        """Test _remove_or_refresh removes todo item when quantity reaches
         desired_quantity."""
         item_data: InventoryItem = {
             "auto_add_enabled": True,
@@ -723,18 +730,18 @@ class TestTodoManager:
             ),
             patch.object(todo_manager, "_remove_todo_item", new=AsyncMock()) as mock_remove,
         ):
-            result = await todo_manager.check_and_remove_item("Bacon", item_data)
+            result = await todo_manager._remove_or_refresh("Bacon", item_data)
 
             assert result is True
             # quantity (10) >= desired_quantity (10) → remove
             mock_remove.assert_called_once_with("todo.shopping_list", matching_item)
 
     @pytest.mark.asyncio
-    async def test_check_and_remove_item_desired_quantity_not_reached_unchanged(
+    async def test_remove_or_refresh_desired_quantity_not_reached_unchanged(
         self, todo_manager: TodoManager
     ) -> None:
-        """Test check_and_remove_item leaves todo item unchanged when desired_quantity
-        is set but quantity is still below it."""
+        """Test _remove_or_refresh leaves a current todo item untouched when
+        desired_quantity is set but quantity is still below it."""
         item_data: InventoryItem = {
             "auto_add_enabled": True,
             "quantity": 5,
@@ -754,19 +761,19 @@ class TestTodoManager:
             patch.object(todo_manager, "_remove_todo_item", new=AsyncMock()) as mock_remove,
             patch.object(todo_manager, "_update_todo_item", new=AsyncMock()) as mock_update,
         ):
-            result = await todo_manager.check_and_remove_item("Bacon", item_data)
+            result = await todo_manager._remove_or_refresh("Bacon", item_data)
 
-            assert result is False
-            # quantity (5) < desired_quantity (10) → leave unchanged
+            assert result is True
+            # quantity (5) < desired_quantity (10) and entry already reads (x10) → unchanged
             mock_remove.assert_not_called()
             mock_update.assert_not_called()
 
     @pytest.mark.asyncio
-    async def test_check_and_add_item_desired_quantity_existing_item_unchanged(
+    async def test_add_or_refresh_desired_quantity_existing_item_unchanged(
         self, todo_manager: TodoManager
     ) -> None:
-        """Test check_and_add_item leaves existing todo item unchanged when
-        desired_quantity is set (snapshot behavior)."""
+        """Test _add_or_refresh leaves an existing todo item unchanged when its
+        text already reflects desired_quantity."""
         item_data: InventoryItem = {
             "auto_add_enabled": True,
             "quantity": 1,
@@ -779,14 +786,14 @@ class TestTodoManager:
             patch.object(
                 todo_manager,
                 "_get_incomplete_items",
-                new=AsyncMock(return_value=[{"summary": "Bacon (x9)", "status": "needs_action"}]),
+                new=AsyncMock(return_value=[{"summary": "Bacon (x10)", "status": "needs_action"}]),
             ),
             patch.object(todo_manager.hass.services, "async_call", new=AsyncMock()) as mock_call,
         ):
-            result = await todo_manager.check_and_add_item("Bacon", item_data)
+            result = await todo_manager._add_or_refresh("Bacon", item_data)
 
             assert result is True
-            # desired_quantity > 0 and item already on list → no update
+            # entry already reads (x10) → no update call
             mock_call.assert_not_called()
 
     # --- todo_quantity_placement tests ---
@@ -819,7 +826,7 @@ class TestTodoManager:
             ),
             patch.object(todo_manager.hass.services, "async_call", new=AsyncMock()) as mock_call,
         ):
-            result = await todo_manager.check_and_add_item("Milk", item_data)
+            result = await todo_manager._add_or_refresh("Milk", item_data)
 
             assert result is True
             mock_call.assert_called_with(
@@ -855,7 +862,7 @@ class TestTodoManager:
             ),
             patch.object(todo_manager.hass.services, "async_call", new=AsyncMock()) as mock_call,
         ):
-            result = await todo_manager.check_and_add_item("Milk", item_data)
+            result = await todo_manager._add_or_refresh("Milk", item_data)
 
             assert result is True
             mock_call.assert_called_with(
@@ -895,7 +902,7 @@ class TestTodoManager:
             ),
             patch.object(todo_manager.hass.services, "async_call", new=AsyncMock()) as mock_call,
         ):
-            result = await todo_manager.check_and_add_item("Milk", item_data)
+            result = await todo_manager._add_or_refresh("Milk", item_data)
 
             assert result is True
             mock_call.assert_called_with(
@@ -920,8 +927,10 @@ class TestTodoManager:
             FIELD_TODO_QUANTITY_PLACEMENT: "description",
         }
 
-        # todo.shopping_list doesn't support descriptions
+        # The core Shopping List integration's entity: create/delete/update/move, no descriptions
+        shopping_list_state = MagicMock(attributes={"supported_features": 15})
         with (
+            patch.object(todo_manager.hass.states, "get", return_value=shopping_list_state),
             patch.object(
                 todo_manager,
                 "_get_incomplete_items",
@@ -929,7 +938,7 @@ class TestTodoManager:
             ),
             patch.object(todo_manager.hass.services, "async_call", new=AsyncMock()) as mock_call,
         ):
-            result = await todo_manager.check_and_add_item("Milk", item_data)
+            result = await todo_manager._add_or_refresh("Milk", item_data)
 
             assert result is True
             # Should fall back to name placement
@@ -967,7 +976,7 @@ class TestTodoManager:
             ),
             patch.object(todo_manager.hass.services, "async_call", new=AsyncMock()) as mock_call,
         ):
-            result = await todo_manager.check_and_add_item("Milk", item_data)
+            result = await todo_manager._add_or_refresh("Milk", item_data)
 
             assert result is True
             # Bare name, no quantity anywhere; description still set (empty)
@@ -976,10 +985,8 @@ class TestTodoManager:
             assert "(x" not in call_args[0][2].get("description", "")
 
     @pytest.mark.asyncio
-    async def test_check_and_remove_item_placement_description(
-        self, todo_manager: TodoManager
-    ) -> None:
-        """Test check_and_remove_item with placement 'description' updates correctly."""
+    async def test_remove_or_refresh_placement_description(self, todo_manager: TodoManager) -> None:
+        """Test _remove_or_refresh with placement 'description' updates correctly."""
         item_data: InventoryItem = {
             "auto_add_enabled": True,
             "quantity": 1,
@@ -1007,7 +1014,7 @@ class TestTodoManager:
             ),
             patch.object(todo_manager, "_update_todo_item", new=AsyncMock()) as mock_update,
         ):
-            result = await todo_manager.check_and_remove_item("Milk", item_data)
+            result = await todo_manager._remove_or_refresh("Milk", item_data)
 
             assert result is True
             # quantity_needed = 2 - 1 + 1 = 2 > 0, so update
@@ -1037,7 +1044,7 @@ class TestTodoManager:
             patch.object(todo_manager.hass.services, "async_call", new=AsyncMock()),
             patch.object(todo_manager.hass.bus, "async_fire") as mock_fire,
         ):
-            result = await todo_manager.check_and_add_item("Bread", item_data)
+            result = await todo_manager._add_or_refresh("Bread", item_data)
 
             assert result is True
             mock_fire.assert_called_once()
@@ -1066,13 +1073,13 @@ class TestTodoManager:
                 todo_manager,
                 "_get_incomplete_items",
                 new=AsyncMock(
-                    return_value=[{"summary": "Bread (x4)", "status": "needs_action", "uid": "1"}]
+                    return_value=[{"summary": "Bread (x3)", "status": "needs_action", "uid": "1"}]
                 ),
             ),
             patch.object(todo_manager.hass.services, "async_call", new=AsyncMock()),
             patch.object(todo_manager.hass.bus, "async_fire") as mock_fire,
         ):
-            result = await todo_manager.check_and_add_item("Bread", item_data)
+            result = await todo_manager._add_or_refresh("Bread", item_data)
 
             assert result is True
             mock_fire.assert_called_once()
@@ -1106,7 +1113,7 @@ class TestTodoManager:
             patch.object(todo_manager, "_remove_todo_item", new=AsyncMock()),
             patch.object(todo_manager.hass.bus, "async_fire") as mock_fire,
         ):
-            result = await todo_manager.check_and_remove_item("Bread", item_data)
+            result = await todo_manager._remove_or_refresh("Bread", item_data)
 
             assert result is True
             mock_fire.assert_called_once()
@@ -1141,7 +1148,7 @@ class TestTodoManager:
             patch.object(todo_manager, "_remove_todo_item", new=AsyncMock()),
             patch.object(todo_manager.hass.bus, "async_fire") as mock_fire,
         ):
-            result = await todo_manager.check_and_remove_item("Bread", item_data)
+            result = await todo_manager._remove_or_refresh("Bread", item_data)
 
             assert result is True
             mock_fire.assert_called_once()
@@ -1161,7 +1168,7 @@ class TestTodoManager:
             "inventory_id": "kitchen_123",
         }
 
-        matching_item = {"summary": "Bread (x2)", "uid": "123"}
+        matching_item = {"summary": "Bread (x1)", "uid": "123"}  # stale quantity text
 
         with (
             patch.object(
@@ -1172,7 +1179,7 @@ class TestTodoManager:
             patch.object(todo_manager, "_update_todo_item", new=AsyncMock()) as mock_update,
             patch.object(todo_manager.hass.bus, "async_fire") as mock_fire,
         ):
-            result = await todo_manager.check_and_remove_item("Bread", item_data)
+            result = await todo_manager._remove_or_refresh("Bread", item_data)
 
             assert result is True
             mock_update.assert_called_once()
@@ -1184,3 +1191,117 @@ class TestTodoManager:
             assert payload["inventory_id"] == "kitchen_123"
             assert payload["todo_list"] == "todo.shopping_list"
             assert payload["quantity_needed"] == 2  # 2 - 1 + 1
+
+    # --- audit regressions ---
+
+    def test_supports_description_false_for_missing_entity(self, mock_hass: MagicMock) -> None:
+        mock_hass.states.get.return_value = None
+        assert supports_description(mock_hass, "todo.gone") is False
+
+    def test_supports_description_follows_features_not_entity_id(
+        self, mock_hass: MagicMock
+    ) -> None:
+        """A Local To-do list named "Shopping List" gets todo.shopping_list and has descriptions."""
+        mock_hass.states.get.return_value = MagicMock(attributes={"supported_features": 127})
+        assert supports_description(mock_hass, "todo.shopping_list") is True
+
+    @pytest.mark.asyncio
+    async def test_add_or_refresh_skips_missing_entity(
+        self, todo_manager: TodoManager, mock_hass: MagicMock
+    ) -> None:
+        mock_hass.states.get.return_value = None
+        item_data: InventoryItem = {
+            "auto_add_enabled": True,
+            "quantity": 0,
+            "auto_add_to_list_quantity": 1,
+            "todo_list": "todo.gone",
+        }
+
+        with (
+            patch.object(todo_manager.hass.services, "async_call", new=AsyncMock()) as mock_call,
+            patch.object(todo_manager.hass.bus, "async_fire") as mock_fire,
+        ):
+            assert await todo_manager._add_or_refresh("Milk", item_data) is False
+
+        mock_call.assert_not_called()
+        mock_fire.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_name_placement_omits_description_key(
+        self, todo_manager: TodoManager, mock_hass: MagicMock
+    ) -> None:
+        """Refreshing a "name"-placement entry must not send description (user notes)."""
+        mock_hass.states.get.return_value = MagicMock(attributes={"supported_features": 0xFFFF})
+        item_data: InventoryItem = {
+            "auto_add_enabled": True,
+            "quantity": 0,
+            "auto_add_to_list_quantity": 1,
+            "todo_list": "todo.grocery",
+            "description": "",
+        }
+
+        with (
+            patch.object(
+                todo_manager,
+                "_get_incomplete_items",
+                new=AsyncMock(return_value=[{"summary": "Milk (x1)", "uid": "1"}]),
+            ),
+            patch.object(todo_manager.hass.services, "async_call", new=AsyncMock()) as mock_call,
+        ):
+            assert await todo_manager._add_or_refresh("Milk", item_data) is True
+
+        _, _, service_data = mock_call.call_args[0][:3]
+        assert service_data["rename"] == "Milk (x2)"
+        assert "description" not in service_data
+
+    @pytest.mark.asyncio
+    async def test_remove_item_entry_removes_regardless_of_quantity(
+        self, todo_manager: TodoManager
+    ) -> None:
+        item_data: InventoryItem = {
+            "auto_add_enabled": True,
+            "quantity": 0,
+            "auto_add_to_list_quantity": 5,
+            "todo_list": "todo.shopping_list",
+            "inventory_id": "kitchen",
+        }
+        matching_item = {"summary": "Milk (x6)", "uid": "9"}
+
+        with (
+            patch.object(
+                todo_manager,
+                "_find_matching_incomplete_item",
+                new=AsyncMock(return_value=matching_item),
+            ),
+            patch.object(todo_manager, "_remove_todo_item", new=AsyncMock()) as mock_remove,
+            patch.object(todo_manager.hass.bus, "async_fire") as mock_fire,
+        ):
+            assert await todo_manager.remove_item_entry("Milk", item_data) is True
+
+        mock_remove.assert_awaited_once_with("todo.shopping_list", matching_item)
+        assert mock_fire.call_args[0][0] == EVENT_ITEM_REMOVED_FROM_LIST
+
+    @pytest.mark.asyncio
+    async def test_matching_skips_entries_tagged_for_other_inventory(
+        self, todo_manager: TodoManager, mock_hass: MagicMock
+    ) -> None:
+        other = MagicMock(entry_id="garage")
+        own = MagicMock(entry_id="kitchen")
+        mock_hass.config_entries.async_entries.return_value = [own, other]
+        entries = [
+            {"summary": "Batteries (x2)", "uid": "g", "description": "(garage)"},
+            {"summary": "Batteries (x2)", "uid": "k", "description": "(kitchen)"},
+        ]
+
+        with patch.object(
+            todo_manager, "_get_incomplete_items", new=AsyncMock(return_value=entries)
+        ):
+            match = await todo_manager._find_matching_incomplete_item(
+                "todo.grocery", "Batteries", "kitchen"
+            )
+            untagged = await todo_manager._find_matching_incomplete_item(
+                "todo.grocery", "Batteries", "attic"
+            )
+
+        assert match is not None and match["uid"] == "k"
+        assert untagged is None

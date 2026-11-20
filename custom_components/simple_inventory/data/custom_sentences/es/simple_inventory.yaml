@@ -1,0 +1,82 @@
+# Example Spanish custom sentences for Simple Inventory voice control.
+#
+# Installed by the "Install example voice commands" checkbox when Home Assistant's
+# language is Spanish, or copy it by hand to
+# <config>/custom_sentences/es/simple_inventory.yaml and reload the integration.
+# LLM-backed conversation agents don't need it: they get the intents as tools.
+#
+# {simple_inventory_name:inventory} only matches your inventories' names, which Simple
+# Inventory keeps in simple_inventory_names.yaml next to this file (see the English file).
+language: "es"
+intents:
+  SimpleInventoryRemoveItem:
+    data:
+      - sentences:
+          - "(quita|saca) {quantity} {item} (de|del) [la|las|los] {simple_inventory_name:inventory}"
+          - "(quita|saca) {item} (de|del) [la|las|los] {simple_inventory_name:inventory}"
+          - "hemos gastado {quantity} {item} (de|del) [la|las|los] {simple_inventory_name:inventory}"
+  SimpleInventoryAddItem:
+    data:
+      - sentences:
+          - "(añade|agrega) {quantity} {item} (a|al) [la|las|los] {simple_inventory_name:inventory}"
+          - "(añade|agrega) {item} (a|al) [la|las|los] {simple_inventory_name:inventory}"
+  SimpleInventoryQueryItem:
+    data:
+      - sentences:
+          - "(cuántos|cuantos|cuántas|cuantas|cuánto|cuanto|cuánta|cuanta) {item} (hay|tenemos|quedan) en [el|la|las|los] {simple_inventory_name:inventory}"
+          - "nos hemos quedado sin {item} en [el|la|las|los] {simple_inventory_name:inventory}"
+  SimpleInventoryFindItem:
+    data:
+      - sentences:
+          - "(cuántos|cuantos|cuántas|cuantas|cuánto|cuanto|cuánta|cuanta) {item} (hay|tenemos|quedan)"
+          - "(tenemos|nos queda|nos quedan) {item}"
+          - "(dónde|donde) (está|esta|están|estan) [el|la|los|las] {item}"
+  SimpleInventoryExpiryCountQuery:
+    data:
+      - sentences:
+          - "(cuántos|cuantos) (artículos|articulos|productos) (están|estan) {status} [en [el|la|las|los] {simple_inventory_name:inventory}]"
+          - "(cuántos|cuantos) (artículos|articulos|productos) {status} hay [en [el|la|las|los] {simple_inventory_name:inventory}]"
+  SimpleInventoryLowStockCountQuery:
+    data:
+      - sentences:
+          - "(cuántos|cuantos) (artículos|articulos|productos) (tienen poco stock|se están acabando|se estan acabando) [en [el|la|las|los] {simple_inventory_name:inventory}]"
+  SimpleInventoryLowStockListQuery:
+    data:
+      - sentences:
+          - "(qué|que) se [nos] (está|esta) acabando [en [el|la|las|los] {simple_inventory_name:inventory}]"
+          - "(qué|que|cuáles|cuales) (artículos|articulos|productos) (tienen poco stock|se están acabando|se estan acabando) [en [el|la|las|los] {simple_inventory_name:inventory}]"
+  SimpleInventoryExpiryListQuery:
+    data:
+      - sentences:
+          - "(qué|que|cuáles|cuales) (artículos|articulos|productos) (están|estan) {status} [en [el|la|las|los] {simple_inventory_name:inventory}]"
+  SimpleInventorySetItemQuantity:
+    data:
+      - sentences:
+          - "pon {item} a {quantity} en [el|la|las|los] {simple_inventory_name:inventory}"
+  SimpleInventoryTransferItem:
+    data:
+      - sentences:
+          - "(mueve|pasa) {quantity} {item} (de|del) [la|las|los] {from_location} (a|al) [la|las|los] {to_location} en [el|la|las|los] {simple_inventory_name:inventory}"
+          - "(mueve|pasa) {item} (de|del) [la|las|los] {from_location} (a|al) [la|las|los] {to_location} en [el|la|las|los] {simple_inventory_name:inventory}"
+lists:
+  # Filled by simple_inventory_names.yaml (Home Assistant concatenates the lists).
+  simple_inventory_name:
+    values: []
+  item:
+    wildcard: true
+  from_location:
+    wildcard: true
+  to_location:
+    wildcard: true
+  quantity:
+    range:
+      from: 1
+      to: 100
+  status:
+    values:
+      - in: "caducados"
+        out: "expired"
+      - in: "a punto de caducar"
+        out: "expiring_soon"
+      - in: "por caducar"
+        out: "expiring_soon"

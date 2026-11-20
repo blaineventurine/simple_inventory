@@ -1,18 +1,25 @@
 """Tests for the Simple Inventory config flow."""
 
-from typing import Generator
+import asyncio
+from typing import Any, Generator
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from homeassistant import data_entry_flow
 from homeassistant.core import HomeAssistant
+from pytest_homeassistant_custom_component.common import (  # type: ignore[import-untyped]
+    MockConfigEntry,
+)
 from typing_extensions import Self
 
 from custom_components.simple_inventory.config_flow import (
+    GLOBAL_ENTRY_UNIQUE_ID,
     OptionsFlowHandler,
     SimpleInventoryConfigFlow,
+    _async_validate_inventory_name,
     clean_inventory_name,
 )
+from custom_components.simple_inventory.const import DOMAIN
 
 
 @pytest.fixture
@@ -232,6 +239,7 @@ async def test_internal_step(hass: HomeAssistant) -> None:
     """Test the internal step for creating global entry."""
     flow = SimpleInventoryConfigFlow()
     flow.hass = hass
+    flow.context = {"source": "internal"}
 
     user_input = {"entry_type": "global"}
     result = await flow.async_step_internal(user_input)
@@ -268,82 +276,161 @@ def test_options_flow_update_logic() -> None:
     assert new_data["description"] == "Updated description"
 
 
-async def test_options_flow_offers_checkbox_for_global_entry(hass: HomeAssistant) -> None:
-    hass.config.language = "en"
-    config_entry = MagicMock()
-    config_entry.data = {"entry_type": "global", "name": "All Items Expiring Soon"}
-    config_entry.entry_id = "global_entry"
-
-    handler = OptionsFlowHandler(config_entry)
+def _options_handler(
+    hass: HomeAssistant, data: dict[str, Any], entry_id: str = "kitchen_entry"
+) -> tuple[OptionsFlowHandler, MockConfigEntry]:
+    """An options flow bound to a real entry, as HA's options flow manager binds it."""
+    entry = MockConfigEntry(domain=DOMAIN, data=data, entry_id=entry_id, title=data.get("name", ""))
+    entry.add_to_hass(hass)
+    handler = OptionsFlowHandler()
     handler.hass = hass
+    handler.handler = entry.entry_id
+    return handler, entry
 
-    result = await handler.async_step_init()
+
+_GLOBAL_ENTRY_DATA = {"entry_type": "global", "name": "All Items Expiring Soon"}
+
+
+async def test_options_flow_global_entry_shows_panel_settings_and_voice(
+    hass: HomeAssistant,
+) -> None:
+    """The global entry offers the sidebar panel settings and, when possible, the voice sentences."""
+    hass.config.language = "en"
+    handler, _ = _options_handler(hass, _GLOBAL_ENTRY_DATA, "global_entry")
+
+    with patch(
+        "custom_components.simple_inventory.config_flow.can_offer_voice_sentences",
+        return_value=True,
+    ):
+        result = await handler.async_step_init()
+
+    assert result["type"] == data_entry_flow.FlowResultType.FORM
+    assert result["step_id"] == "global_settings"
+    schema = result["data_schema"]
+    assert schema is not None
+    assert [str(key) for key in schema.schema] == [
+        "show_panel",
+        "panel_admin_only",
+        "install_voice_sentences",
+    ]
+
+
+async def test_options_flow_global_entry_without_voice_still_shows_panel_settings(
+    hass: HomeAssistant,
+) -> None:
+    handler, _ = _options_handler(hass, _GLOBAL_ENTRY_DATA, "global_entry")
+
+    with patch(
+        "custom_components.simple_inventory.config_flow.can_offer_voice_sentences",
+        return_value=False,
+    ):
+        result = await handler.async_step_init()
+
+    assert result["type"] == data_entry_flow.FlowResultType.FORM
+    schema = result["data_schema"]
+    assert schema is not None
+    assert [str(key) for key in schema.schema] == ["show_panel", "panel_admin_only"]
+
+
+async def test_options_flow_global_entry_saves_panel_options(hass: HomeAssistant) -> None:
+    handler, _ = _options_handler(hass, _GLOBAL_ENTRY_DATA, "global_entry")
+
+    with (
+        patch(
+            "custom_components.simple_inventory.config_flow.can_offer_voice_sentences",
+            return_value=True,
+        ),
+        patch(
+            "custom_components.simple_inventory.config_flow.async_install_voice_sentences",
+            AsyncMock(),
+        ) as install,
+    ):
+        result = await handler.async_step_global_settings(
+            {"show_panel": True, "panel_admin_only": True, "install_voice_sentences": True}
+        )
+
+    assert result["type"] == data_entry_flow.FlowResultType.CREATE_ENTRY
+    assert result["data"] == {"show_panel": True, "panel_admin_only": True}
+    install.assert_awaited_once_with(hass)
+
+
+async def test_options_flow_global_settings_default_to_saved_options(hass: HomeAssistant) -> None:
+    handler, entry = _options_handler(hass, _GLOBAL_ENTRY_DATA, "global_entry")
+    hass.config_entries.async_update_entry(
+        entry, options={"show_panel": True, "panel_admin_only": False}
+    )
+
+    with patch(
+        "custom_components.simple_inventory.config_flow.can_offer_voice_sentences",
+        return_value=False,
+    ):
+        result = await handler.async_step_init()
 
     schema = result["data_schema"]
     assert schema is not None
-    assert "install_voice_sentences" in schema.schema
+    defaults = {str(key): key.default() for key in schema.schema}
+    assert defaults == {"show_panel": True, "panel_admin_only": False}
 
 
 async def test_options_flow_omits_checkbox_for_regular_inventory(hass: HomeAssistant) -> None:
     hass.config.language = "en"
-    config_entry = MagicMock()
-    config_entry.data = {"entry_type": "inventory", "name": "Kitchen Fridge"}
-    config_entry.entry_id = "kitchen_entry"
-
-    handler = OptionsFlowHandler(config_entry)
-    handler.hass = hass
+    handler, _ = _options_handler(hass, {"entry_type": "inventory", "name": "Kitchen Fridge"})
 
     result = await handler.async_step_init()
 
+    assert result["step_id"] == "init"
     schema = result["data_schema"]
     assert schema is not None
     assert "install_voice_sentences" not in schema.schema
+    assert result["description_placeholders"] == {"current_name": "Kitchen Fridge"}
 
 
-async def test_options_flow_checked_triggers_install(hass: HomeAssistant) -> None:
-    """Checking the box on an options-flow submit calls async_install_voice_sentences."""
+async def test_options_flow_global_entry_checked_triggers_install(hass: HomeAssistant) -> None:
+    """Checking the box calls async_install_voice_sentences and leaves the entry alone."""
     hass.config.language = "en"
-    config_entry = MagicMock()
-    config_entry.data = {"entry_type": "global", "name": "All Items Expiring Soon"}
-    config_entry.entry_id = "global_entry"
+    handler, _ = _options_handler(hass, _GLOBAL_ENTRY_DATA, "global_entry")
 
-    handler = OptionsFlowHandler(config_entry)
-    handler.hass = hass
-    handler.hass.config_entries = MagicMock()
-    handler.hass.config_entries.async_entries = MagicMock(return_value=[])
+    with (
+        patch(
+            "custom_components.simple_inventory.config_flow.async_install_voice_sentences",
+            new=AsyncMock(return_value=True),
+        ) as mock_install,
+        patch.object(hass.config_entries, "async_update_entry") as update_mock,
+    ):
+        result = await handler.async_step_global_settings({"install_voice_sentences": True})
+
+    assert result["type"] == data_entry_flow.FlowResultType.CREATE_ENTRY
+    mock_install.assert_awaited_once_with(hass)
+    update_mock.assert_not_called()
+
+
+async def test_options_flow_global_entry_unchecked_skips_install(hass: HomeAssistant) -> None:
+    hass.config.language = "en"
+    handler, _ = _options_handler(hass, _GLOBAL_ENTRY_DATA, "global_entry")
 
     with patch(
         "custom_components.simple_inventory.config_flow.async_install_voice_sentences",
         new=AsyncMock(return_value=True),
     ) as mock_install:
-        result = await handler.async_step_init(
-            {
-                "name": "All Items Expiring Soon",
-                "icon": "mdi:package-variant",
-                "description": "",
-                "install_voice_sentences": True,
-            }
-        )
+        result = await handler.async_step_global_settings({"install_voice_sentences": False})
 
     assert result["type"] == data_entry_flow.FlowResultType.CREATE_ENTRY
-    mock_install.assert_awaited_once_with(hass)
+    mock_install.assert_not_awaited()
 
 
-async def test_options_flow_preserves_voice_sentences_checkbox_on_error(
-    hass: HomeAssistant,
+@patch.object(SimpleInventoryConfigFlow, "_async_current_entries")
+async def test_add_inventory_preserves_voice_sentences_checkbox_on_error(
+    mock_current_entries: MagicMock, hass: HomeAssistant
 ) -> None:
     hass.config.language = "en"
-    config_entry = MagicMock()
-    config_entry.data = {"entry_type": "global", "name": "All Items Expiring Soon"}
-    config_entry.entry_id = "global_entry"
+    existing_entry = MagicMock()
+    existing_entry.data = {"name": "Colliding Name"}
+    mock_current_entries.return_value = [existing_entry]
+    flow = SimpleInventoryConfigFlow()
+    flow.hass = hass
 
-    handler = OptionsFlowHandler(config_entry)
-    handler.hass = hass
-
-    with patch.object(
-        OptionsFlowHandler, "_async_name_exists_excluding_current", return_value=True
-    ):
-        result = await handler.async_step_init(
+    with patch.object(SimpleInventoryConfigFlow, "_global_entry_exists", return_value=False):
+        result = await flow.async_step_add_inventory(
             {
                 "name": "Colliding Name",
                 "icon": "mdi:package-variant",
@@ -359,41 +446,19 @@ async def test_options_flow_preserves_voice_sentences_checkbox_on_error(
     assert marker.default() is True
 
 
-def test_name_exists_excluding_current_logic() -> None:
-    """Test the name exists check logic."""
-    config_entry = MagicMock()
-    config_entry.entry_id = "current_entry"
+async def test_options_flow_name_check_excludes_current_entry(hass: HomeAssistant) -> None:
+    """Keeping the current name is allowed; taking another entry's name is not."""
+    handler, entry = _options_handler(hass, {"entry_type": "inventory", "name": "Kitchen"})
+    _options_handler(hass, {"entry_type": "inventory", "name": "Pantry"}, "pantry")
 
-    other_entry = MagicMock()
-    other_entry.entry_id = "other_entry"
-    other_entry.data = {"name": "Other Inventory"}
+    with patch.object(hass.config_entries, "async_update_entry") as update_mock:
+        clash = await handler.async_step_init({"name": "pantry"})
+        same = await handler.async_step_init({"name": "Kitchen"})
 
-    entries = [config_entry, other_entry]
-    test_name = "Other Inventory"
-
-    # Simulate the logic from _async_name_exists_excluding_current
-    name_exists = False
-    for entry in entries:
-        if (
-            entry.entry_id != config_entry.entry_id
-            and entry.data.get("name", "").lower() == test_name.lower()
-        ):
-            name_exists = True
-            break
-
-    assert name_exists
-
-    test_name = "New Name"
-    name_exists = False
-    for entry in entries:
-        if (
-            entry.entry_id != config_entry.entry_id
-            and entry.data.get("name", "").lower() == test_name.lower()
-        ):
-            name_exists = True
-            break
-
-    assert not name_exists
+    assert clash["errors"] == {"name": "name_exists"}
+    assert same["type"] == data_entry_flow.FlowResultType.CREATE_ENTRY
+    update_mock.assert_called_once()
+    assert update_mock.call_args.args == (entry,)
 
 
 @patch.object(SimpleInventoryConfigFlow, "_async_current_entries")
@@ -414,22 +479,23 @@ def test_global_entry_exists(mock_current_entries: MagicMock) -> None:
     assert flow._global_entry_exists()
 
 
-@patch.object(SimpleInventoryConfigFlow, "_async_current_entries")
-async def test_name_exists(mock_current_entries: MagicMock) -> None:
-    """Test checking if inventory name exists."""
-    flow = SimpleInventoryConfigFlow()
-
+async def test_validate_inventory_name(hass: HomeAssistant) -> None:
+    """Names are compared case-insensitively against the given entries."""
     existing_entry = MagicMock()
     existing_entry.data = {"name": "Kitchen Fridge"}
 
-    mock_current_entries.return_value = [existing_entry]
-
-    # Should return True for existing name (case insensitive)
-    assert await flow._async_name_exists("Kitchen Fridge")
-    assert await flow._async_name_exists("kitchen fridge")
-
-    # Should return False for non-existing name
-    assert not await flow._async_name_exists("Garage Freezer")
+    assert await _async_validate_inventory_name(hass, "Kitchen Fridge", [existing_entry]) == (
+        "Kitchen Fridge",
+        "name_exists",
+    )
+    assert await _async_validate_inventory_name(hass, "kitchen fridge", [existing_entry]) == (
+        "kitchen fridge",
+        "name_exists",
+    )
+    assert await _async_validate_inventory_name(hass, "Garage Freezer", [existing_entry]) == (
+        "Garage Freezer",
+        None,
+    )
 
 
 class TestCleanInventoryName:
@@ -590,3 +656,135 @@ async def test_options_flow_cleaning_logic(hass: HomeAssistant) -> None:
     assert new_data["name"] == "Garage Storage"
     assert new_data["icon"] == "mdi:garage"
     assert new_data["description"] == "Garage items"
+
+
+@pytest.mark.parametrize("raw_name", ["   ", "Inventory Inventory", "inventory, inventory"])
+@patch.object(SimpleInventoryConfigFlow, "_async_current_entries", return_value=[])
+async def test_add_inventory_rejects_name_empty_after_cleaning(
+    _mock_current_entries: MagicMock, hass: HomeAssistant, raw_name: str
+) -> None:
+    flow = SimpleInventoryConfigFlow()
+    flow.hass = hass
+
+    result = await flow.async_step_add_inventory({"name": raw_name})
+
+    assert result["type"] == data_entry_flow.FlowResultType.FORM
+    assert result["errors"] == {"name": "invalid_name"}
+
+
+@pytest.mark.parametrize("raw_name", ["   ", "Inventory Inventory", "inventory, inventory"])
+async def test_options_flow_rejects_name_empty_after_cleaning(
+    hass: HomeAssistant, raw_name: str
+) -> None:
+    handler, _ = _options_handler(hass, {"entry_type": "inventory", "name": "Kitchen"})
+
+    with patch.object(hass.config_entries, "async_update_entry") as update_mock:
+        result = await handler.async_step_init({"name": raw_name, "icon": "mdi:fridge"})
+
+    assert result["type"] == data_entry_flow.FlowResultType.FORM
+    assert result["errors"] == {"name": "invalid_name"}
+    update_mock.assert_not_called()
+
+
+@patch.object(SimpleInventoryConfigFlow, "_async_current_entries")
+async def test_add_inventory_does_not_request_global_when_inventories_exist(
+    mock_current_entries: MagicMock, hass: HomeAssistant
+) -> None:
+    """With inventories present but the global entry deleted by the user, adding another
+    inventory must not resurrect it."""
+    existing_inventory = MagicMock()
+    existing_inventory.data = {"name": "Kitchen", "entry_type": "inventory"}
+    mock_current_entries.return_value = [existing_inventory]
+    flow = SimpleInventoryConfigFlow()
+    flow.hass = hass
+
+    result = await flow.async_step_add_inventory({"name": "Garage"})
+
+    assert result["type"] == data_entry_flow.FlowResultType.CREATE_ENTRY
+    assert result["data"]["create_global"] is False
+
+
+async def test_options_flow_update_does_not_bypass_reload(hass: HomeAssistant) -> None:
+    """The options flow only updates the entry; the update listener reloads it so
+    entities, the device and the repository row all pick up the new name/icon."""
+    handler, config_entry = _options_handler(
+        hass, {"entry_type": "inventory", "name": "Kitchen", "icon": "mdi:fridge"}
+    )
+
+    with (
+        patch.object(hass.config_entries, "async_entries", return_value=[]),
+        patch.object(hass.config_entries, "async_update_entry") as update_mock,
+    ):
+        result = await handler.async_step_init(
+            {"name": "Pantry", "icon": "mdi:cupboard", "description": "Dry goods"}
+        )
+
+    assert result["type"] == data_entry_flow.FlowResultType.CREATE_ENTRY
+    update_mock.assert_called_once_with(
+        config_entry,
+        data={
+            "entry_type": "inventory",
+            "name": "Pantry",
+            "icon": "mdi:cupboard",
+            "description": "Dry goods",
+        },
+        title="Pantry",
+    )
+
+
+_GLOBAL_DATA = {
+    "name": "All Items Expiring Soon",
+    "icon": "mdi:calendar-alert",
+    "description": "Tracks expiring items across all inventories",
+    "entry_type": "global",
+}
+
+
+@pytest.fixture
+def real_flow_manager(
+    hass: HomeAssistant, enable_custom_integrations: None
+) -> Generator[None, None, None]:
+    """Drive flows through hass.config_entries.flow; created entries are not set up."""
+    with (
+        patch("homeassistant.config_entries.async_process_deps_reqs", new=AsyncMock()),
+        patch.object(hass.config_entries, "async_setup", new=AsyncMock(return_value=True)),
+    ):
+        yield
+
+
+async def test_concurrent_internal_flows_create_one_global_entry(
+    hass: HomeAssistant, real_flow_manager: None
+) -> None:
+    """Two entries carrying create_global set up concurrently must not yield two globals."""
+    results = await asyncio.gather(
+        hass.config_entries.flow.async_init(
+            DOMAIN, context={"source": "internal"}, data=dict(_GLOBAL_DATA)
+        ),
+        hass.config_entries.flow.async_init(
+            DOMAIN, context={"source": "internal"}, data=dict(_GLOBAL_DATA)
+        ),
+    )
+    await hass.async_block_till_done()
+
+    entries = hass.config_entries.async_entries(DOMAIN)
+    assert len(entries) == 1
+    assert entries[0].unique_id == GLOBAL_ENTRY_UNIQUE_ID
+    assert sorted(r["type"] for r in results) == [
+        data_entry_flow.FlowResultType.ABORT,
+        data_entry_flow.FlowResultType.CREATE_ENTRY,
+    ]
+
+
+async def test_internal_flow_aborts_when_legacy_global_entry_exists(
+    hass: HomeAssistant, real_flow_manager: None
+) -> None:
+    """Global entries created before the unique_id existed have none; still no duplicate."""
+    MockConfigEntry(domain=DOMAIN, data=dict(_GLOBAL_DATA), unique_id=None).add_to_hass(hass)
+
+    result = await hass.config_entries.flow.async_init(
+        DOMAIN, context={"source": "internal"}, data=dict(_GLOBAL_DATA)
+    )
+
+    assert result["type"] == data_entry_flow.FlowResultType.ABORT
+    assert result["reason"] == "already_configured"
+    assert len(hass.config_entries.async_entries(DOMAIN)) == 1

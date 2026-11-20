@@ -1,5 +1,6 @@
 {
   "content_in_root": false,
+  "homeassistant": "2026.10.0",
   "name": "Simple Inventory",
   "render_readme": true
 }

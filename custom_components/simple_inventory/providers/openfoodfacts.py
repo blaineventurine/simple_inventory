@@ -6,81 +6,72 @@ import logging
 from typing import Any
 
 import aiohttp
-from homeassistant.core import HomeAssistant
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
-from .base import BarcodeProvider, ProductInfo
+from .base import BarcodeProvider, ProductInfo, text_field
 
 _LOGGER = logging.getLogger(__name__)
 
 _FIELDS = "product_name,brands,categories,generic_name,quantity,image_url"
-_USER_AGENT = "SimpleInventory/1.0 (HomeAssistant Integration)"
-_TIMEOUT = aiohttp.ClientTimeout(total=10)
 _MAX_CATEGORIES = 3
 
 
 class OpenFoodFactsProvider(BarcodeProvider):
     """Barcode lookup via Open Food Facts API."""
 
+    name = "openfoodfacts"
     _API_BASE = "https://world.openfoodfacts.org"
-
-    def __init__(self, hass: HomeAssistant) -> None:
-        self._hass = hass
-
-    @property
-    def provider_name(self) -> str:
-        return "openfoodfacts"
 
     async def async_lookup(self, barcode: str) -> ProductInfo | None:
         """Look up a barcode on Open Food Facts."""
-        session = async_get_clientsession(self._hass)
+        session = async_get_clientsession(self.hass)
         url = f"{self._API_BASE}/api/v2/product/{barcode}.json"
 
         try:
             resp = await session.get(
                 url,
                 params={"fields": _FIELDS},
-                headers={"User-Agent": _USER_AGENT},
-                timeout=_TIMEOUT,
+                headers={"User-Agent": self._USER_AGENT},
+                timeout=self._TIMEOUT,
             )
             resp.raise_for_status()
             data: dict[str, Any] = await resp.json()
         except (aiohttp.ClientError, TimeoutError):
-            _LOGGER.debug(
-                "Lookup failed for barcode %s using provider %s", barcode, self.provider_name
-            )
+            _LOGGER.debug("Lookup failed for barcode %s using provider %s", barcode, self.name)
             return None
 
         if data.get("status") != 1:
             return None
 
-        product = data.get("product", {})
-        product_name = product.get("product_name", "").strip()
+        product = data.get("product")
+        if not isinstance(product, dict):
+            return None
+        product_name = text_field(product, "product_name")
         if not product_name:
             return None
 
         result: ProductInfo = {"name": product_name}
 
-        brand = product.get("brands", "").strip()
+        brand = text_field(product, "brands")
         if brand:
             result["brand"] = brand
 
-        generic_name = product.get("generic_name", "").strip()
+        generic_name = text_field(product, "generic_name")
         if generic_name:
             result["description"] = generic_name
 
-        raw_categories = product.get("categories", "").strip()
+        raw_categories = text_field(product, "categories")
         if raw_categories:
             cats = [_strip_lang_prefix(c.strip()) for c in raw_categories.split(",")]
             cats = [c for c in cats if c][:_MAX_CATEGORIES]
             if cats:
                 result["category"] = ", ".join(cats)
 
-        unit = product.get("quantity", "").strip()
+        unit = text_field(product, "quantity")
         if unit:
             result["unit"] = unit
 
-        image_url = product.get("image_url", "").strip()
+        image_url = text_field(product, "image_url")
         if image_url:
             result["image_url"] = image_url
 

@@ -80,7 +80,7 @@ mk_patch() { local maj="$1" min="$2" pat="$3"; echo "v${maj}.${min}.$((pat+1))";
 mk_minor() { local maj="$1" min="$2"; echo "v${maj}.$((min+1)).0"; }
 
 latest_beta_for_base() {
-    local base="$1"   # e.g. v0.6.0
+    local base="$1"   # vX.Y.0
     git tag -l "${base}b[0-9]*" \
         | sed -E "s/^${base}b([0-9]+)$/\1 &/" \
         | sort -k1,1n \

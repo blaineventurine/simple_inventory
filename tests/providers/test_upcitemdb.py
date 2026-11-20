@@ -154,4 +154,41 @@ class TestUPCItemDBProvider:
         assert "unit" not in result
 
     def test_provider_name(self, provider: UPCItemDBProvider) -> None:
-        assert provider.provider_name == "upcitemdb"
+        assert provider.name == "upcitemdb"
+
+
+class TestNullFields:
+    async def test_null_secondary_fields_keep_product(self, provider: UPCItemDBProvider) -> None:
+        data = {
+            "code": "OK",
+            "items": [
+                {
+                    "title": "Organic Whole Milk",
+                    "description": None,
+                    "brand": None,
+                    "category": None,
+                    "size": None,
+                }
+            ],
+        }
+        mock_session = MagicMock()
+        mock_session.get = AsyncMock(return_value=_mock_response(data))
+
+        with patch(
+            "custom_components.simple_inventory.providers.upcitemdb.async_get_clientsession",
+            return_value=mock_session,
+        ):
+            result = await provider.async_lookup("012345678905")
+
+        assert result == {"name": "Organic Whole Milk"}
+
+    async def test_null_title_is_not_found(self, provider: UPCItemDBProvider) -> None:
+        data = {"code": "OK", "items": [{"title": None}]}
+        mock_session = MagicMock()
+        mock_session.get = AsyncMock(return_value=_mock_response(data))
+
+        with patch(
+            "custom_components.simple_inventory.providers.upcitemdb.async_get_clientsession",
+            return_value=mock_session,
+        ):
+            assert await provider.async_lookup("012345678905") is None

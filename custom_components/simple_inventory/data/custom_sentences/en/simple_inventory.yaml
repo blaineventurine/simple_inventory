@@ -8,57 +8,95 @@
 #   cp custom_components/simple_inventory/data/custom_sentences/en/simple_inventory.yaml \
 #      <config>/custom_sentences/en/simple_inventory.yaml
 #
-# Then reload custom sentences: Developer Tools -> Actions, call the
-# `conversation.reload` action (or restart Home Assistant). This only
+# Then reload the integration (or restart Home Assistant). This only
 # wires up the local, offline Assist pipeline (Home Assistant Voice's
 # default setup). If you use an LLM-backed conversation agent (OpenAI,
 # Google Generative AI, a local model via Ollama, etc.) in Assist control
 # mode instead, no sentence file is needed at all -- the same intents
 # below are automatically exposed to it as callable tools.
+#
+# {simple_inventory_name:inventory} only matches the names of your
+# inventories. Simple Inventory keeps them in simple_inventory_names.yaml
+# next to this file and rewrites it when an inventory is added, renamed or
+# removed. Home Assistant prefers custom sentences over its own, so a slot
+# that matched any words would take over sentences like "add milk to my
+# shopping list".
 language: "en"
 intents:
   SimpleInventoryRemoveItem:
     data:
       - sentences:
-          - "remove {quantity} {item} from [the] {inventory} [inventory]"
-          - "remove {item} from [the] {inventory} [inventory]"
-          - "take {quantity} {item} out of [the] {inventory} [inventory]"
-          - "we used [up] {quantity} {item} from [the] {inventory} [inventory]"
+          - "remove {quantity} {item} from [the] {simple_inventory_name:inventory} [inventory]"
+          - "remove {item} from [the] {simple_inventory_name:inventory} [inventory]"
+          - "take {quantity} {item} out of [the] {simple_inventory_name:inventory} [inventory]"
+          - "we used [up] {quantity} {item} from [the] {simple_inventory_name:inventory} [inventory]"
+          - "remove {quantity} {item} from [the] {location} in [the] {simple_inventory_name:inventory} [inventory]"
+          - "remove {item} from [the] {location} in [the] {simple_inventory_name:inventory} [inventory]"
+          - "take {quantity} {item} out of [the] {location} in [the] {simple_inventory_name:inventory} [inventory]"
+          - "we used [up] {quantity} {item} from [the] {location} in [the] {simple_inventory_name:inventory} [inventory]"
   SimpleInventoryAddItem:
     data:
       - sentences:
-          - "add {quantity} {item} to [the] {inventory} [inventory]"
-          - "add {item} to [the] {inventory} [inventory]"
-          - "restock {quantity} {item} in [the] {inventory} [inventory]"
+          - "add {quantity} {item} to [the] {simple_inventory_name:inventory} [inventory]"
+          - "add {item} to [the] {simple_inventory_name:inventory} [inventory]"
+          - "restock {quantity} {item} in [the] {simple_inventory_name:inventory} [inventory]"
+          - "add {quantity} {item} to [the] {location} in [the] {simple_inventory_name:inventory} [inventory]"
+          - "add {item} to [the] {location} in [the] {simple_inventory_name:inventory} [inventory]"
   SimpleInventoryQueryItem:
     data:
       - sentences:
-          - "how many {item} [do we have] [are there] in [the] {inventory} [inventory]"
-          - "are we out of {item} in [the] {inventory} [inventory]"
+          - "how many {item} [do we have] [are [there]] in [the] {simple_inventory_name:inventory} [inventory]"
+          - "are we out of {item} in [the] {simple_inventory_name:inventory} [inventory]"
+  SimpleInventoryFindItem:
+    data:
+      - sentences:
+          - "how (many|much) {item} do we have"
+          - "do we have [any] {item}"
+          - "where (is|are) [the] {item}"
+          - "where can I find [the] {item}"
   SimpleInventoryExpiryCountQuery:
     data:
       - sentences:
-          - "how many items are {status} [in [the] {inventory} [inventory]]"
-          - "how many {status} items [are there] [in [the] {inventory} [inventory]]"
+          - "how many items are {status} [in [the] {simple_inventory_name:inventory} [inventory]]"
+          - "how many {status} items [are there] [in [the] {simple_inventory_name:inventory} [inventory]]"
   SimpleInventoryLowStockCountQuery:
     data:
       - sentences:
-          - "how many items are low on stock [in [the] {inventory} [inventory]]"
-          - "how many items are running low [in [the] {inventory} [inventory]]"
+          - "how many items are low on stock [in [the] {simple_inventory_name:inventory} [inventory]]"
+          - "how many items are running low [in [the] {simple_inventory_name:inventory} [inventory]]"
+  SimpleInventoryLowStockListQuery:
+    data:
+      - sentences:
+          - "(what's|what is) running low [in [the] {simple_inventory_name:inventory} [inventory]]"
+          - "what are we [running] low on [in [the] {simple_inventory_name:inventory} [inventory]]"
+          - "which items are (low on stock|running low) [in [the] {simple_inventory_name:inventory} [inventory]]"
+          - "list [the] low stock items [in [the] {simple_inventory_name:inventory} [inventory]]"
   SimpleInventoryExpiryListQuery:
     data:
       - sentences:
-          - "which items are {status} [in [the] {inventory} [inventory]]"
-          - "what items are {status} [in [the] {inventory} [inventory]]"
-          - "list [the] {status} items [in [the] {inventory} [inventory]]"
+          - "which items are {status} [in [the] {simple_inventory_name:inventory} [inventory]]"
+          - "what items are {status} [in [the] {simple_inventory_name:inventory} [inventory]]"
+          - "list [the] {status} items [in [the] {simple_inventory_name:inventory} [inventory]]"
   SimpleInventorySetItemQuantity:
     data:
       - sentences:
-          - "set {item} to {quantity} in [the] {inventory} [inventory]"
+          - "set {item} to {quantity} in [the] {simple_inventory_name:inventory} [inventory]"
+  SimpleInventoryTransferItem:
+    data:
+      - sentences:
+          - "move {quantity} {item} from [the] {from_location} to [the] {to_location} in [the] {simple_inventory_name:inventory} [inventory]"
+          - "move {item} from [the] {from_location} to [the] {to_location} in [the] {simple_inventory_name:inventory} [inventory]"
 lists:
+  # Filled by simple_inventory_names.yaml (Home Assistant concatenates the lists).
+  simple_inventory_name:
+    values: []
   item:
     wildcard: true
-  inventory:
+  location:
+    wildcard: true
+  from_location:
+    wildcard: true
+  to_location:
     wildcard: true
   quantity:
     range:

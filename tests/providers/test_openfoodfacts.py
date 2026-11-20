@@ -138,7 +138,7 @@ class TestOpenFoodFactsProvider:
         assert "category" not in result
 
     def test_provider_name(self, provider: OpenFoodFactsProvider) -> None:
-        assert provider.provider_name == "openfoodfacts"
+        assert provider.name == "openfoodfacts"
 
 
 class TestStripLangPrefix:
@@ -153,3 +153,45 @@ class TestStripLangPrefix:
 
     def test_two_char_prefix(self) -> None:
         assert _strip_lang_prefix("fr:boissons") == "boissons"
+
+
+class TestNullFields:
+    """OFF returns JSON null for missing secondary fields; that must not drop the product."""
+
+    async def test_null_secondary_fields_keep_product(
+        self, provider: OpenFoodFactsProvider
+    ) -> None:
+        data = {
+            "status": 1,
+            "product": {
+                "product_name": "Peanut Butter",
+                "brands": None,
+                "categories": None,
+                "generic_name": None,
+                "quantity": None,
+                "image_url": None,
+            },
+        }
+        mock_session = MagicMock()
+        mock_session.get = AsyncMock(return_value=_mock_response(data))
+
+        with patch(
+            "custom_components.simple_inventory.providers.openfoodfacts.async_get_clientsession",
+            return_value=mock_session,
+        ):
+            result = await provider.async_lookup("1234567890123")
+
+        assert result == {"name": "Peanut Butter"}
+
+    @pytest.mark.parametrize("product", [None, {"product_name": None}])
+    async def test_null_product_or_name_is_not_found(
+        self, provider: OpenFoodFactsProvider, product: dict | None
+    ) -> None:
+        mock_session = MagicMock()
+        mock_session.get = AsyncMock(return_value=_mock_response({"status": 1, "product": product}))
+
+        with patch(
+            "custom_components.simple_inventory.providers.openfoodfacts.async_get_clientsession",
+            return_value=mock_session,
+        ):
+            assert await provider.async_lookup("1234567890123") is None

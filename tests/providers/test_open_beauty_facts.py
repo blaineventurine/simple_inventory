@@ -31,7 +31,7 @@ def _mock_response(data: dict, status: int = 200) -> AsyncMock:
 
 class TestOpenBeautyFactsProvider:
     def test_provider_name(self, provider: OpenBeautyFactsProvider) -> None:
-        assert provider.provider_name == "openbeautyfacts"
+        assert provider.name == "openbeautyfacts"
 
     def test_api_base(self, provider: OpenBeautyFactsProvider) -> None:
         assert provider._API_BASE == "https://world.openbeautyfacts.org"
